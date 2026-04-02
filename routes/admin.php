@@ -1,0 +1,22 @@
+<?php
+
+use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Admin\SurveyTemplateController;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::resource('companies', CompanyController::class);
+    Route::post('companies/{company}/templates/{template}', [CompanyController::class, 'attachTemplate'])->name('companies.templates.attach');
+    Route::delete('companies/{company}/templates/{template}', [CompanyController::class, 'detachTemplate'])->name('companies.templates.detach');
+    Route::resource('plans', PlanController::class)->except(['show']);
+    Route::resource('survey-templates', SurveyTemplateController::class);
+    Route::get('ai-settings', [AiSettingsController::class, 'edit'])->name('ai-settings.edit');
+    Route::put('ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
+    Route::post('ai-settings/test', [AiSettingsController::class, 'test'])->name('ai-settings.test');
+    Route::get('capacitacao', [AdminTrainingController::class, 'index'])->name('training.index');
+});

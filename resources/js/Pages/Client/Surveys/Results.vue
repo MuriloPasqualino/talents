@@ -1,0 +1,583 @@
+<script setup>
+import ClientLayout from '@/Layouts/ClientLayout.vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { marked } from 'marked';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+
+marked.setOptions({ breaks: true, gfm: true });
+
+const props = defineProps({
+    survey: Object,
+    overall: Object,
+    bySection: Array,
+    deptOveralls: Array,
+    deptSectionsByDepartment: Array,
+    insights: Array,
+    aiEnabled: { type: Boolean, default: false },
+    aiAnalysis: { type: Object, default: null },
+    aiAnalysisPending: { type: Boolean, default: false },
+});
+
+const radar = computed(() => ({
+    chart: { type: 'radar', toolbar: { show: false }, foreColor: '#334155' },
+    colors: ['#632a7e'],
+    stroke: { width: 2 },
+    fill: { opacity: 0.15 },
+    xaxis: {
+        categories: props.bySection?.map((r) => r.meta?.section_title || 'Dimensão') ?? [],
+    },
+    yaxis: { show: false, min: 0, max: 100 },
+    markers: { size: 4 },
+    dataLabels: { enabled: true },
+}));
+
+const radarSeries = computed(() => [
+    { name: 'Saúde média', data: props.bySection?.map((r) => Number(r.average_score)) ?? [] },
+]);
+
+const riskToBarColor = (level) => {
+    if (level === 'green') return '#10b981';
+    if (level === 'yellow') return '#f59e0b';
+    return '#ef4444';
+};
+
+const deptBarChart = computed(() => {
+    const rows = props.deptOveralls ?? [];
+    return {
+        chart: { type: 'bar', toolbar: { show: false }, foreColor: '#334155' },
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                columnWidth: '55%',
+                distributed: true,
+                dataLabels: { position: 'top' },
+            },
+        },
+        colors: rows.map((r) => riskToBarColor(r.risk_level)),
+        dataLabels: { enabled: true, offsetY: -8 },
+        xaxis: {
+            categories: rows.map((r) => r.department_name),
+        },
+        yaxis: { min: 0, max: 100, title: { text: 'Saúde (0–100)' } },
+        legend: { show: false },
+        tooltip: { y: { formatter: (val) => `${Number(val).toFixed(1)}` } },
+    };
+});
+
+const deptBarSeries = computed(() => [
+    {
+        name: 'Média de saúde',
+        data: (props.deptOveralls ?? []).map((r) => Number(r.average_score)),
+    },
+]);
+
+const deptGroupedBar = computed(() => {
+    const depts = props.deptOveralls ?? [];
+    const sections = props.bySection ?? [];
+    const cats = depts.map((d) => d.department_name);
+    const series = sections.map((sec) => {
+        const sid = sec.survey_template_section_id;
+        return {
+            name: sec.meta?.section_title || 'Dimensão',
+            data: depts.map((d) => {
+                const grp = props.deptSectionsByDepartment?.find((g) => g.department_id === d.department_id);
+                const row = grp?.sections?.find((s) => s.survey_template_section_id === sid);
+                return row != null ? Number(row.average_score) : null;
+            }),
+        };
+    });
+    return {
+        chart: { type: 'bar', toolbar: { show: false }, foreColor: '#334155' },
+        plotOptions: { bar: { horizontal: false, columnWidth: '70%' } },
+        xaxis: { categories: cats },
+        yaxis: { min: 0, max: 100, title: { text: 'Saúde (0–100)' } },
+        legend: { position: 'bottom' },
+        dataLabels: { enabled: false },
+        colors: ['#7b4fa2', '#b388d9', '#632a7e', '#4a2070', '#9b6bc4', '#d4b8e4', '#e8dcf2'],
+        tooltip: { shared: true, intersect: false },
+    };
+});
+
+const deptGroupedSeries = computed(() => {
+    const depts = props.deptOveralls ?? [];
+    const sections = props.bySection ?? [];
+    return sections.map((sec) => {
+        const sid = sec.survey_template_section_id;
+        return {
+            name: sec.meta?.section_title || 'Dimensão',
+            data: depts.map((d) => {
+                const grp = props.deptSectionsByDepartment?.find((g) => g.department_id === d.department_id);
+                const row = grp?.sections?.find((s) => s.survey_template_section_id === sid);
+                return row != null ? Number(row.average_score) : null;
+            }),
+        };
+    });
+});
+
+const heatmapCellClass = (level) => {
+    if (level === 'green') return 'bg-emerald-100 text-emerald-900';
+    if (level === 'yellow') return 'bg-amber-100 text-amber-900';
+    return 'bg-red-100 text-red-900';
+};
+
+const scoreForDeptSection = (departmentId, sectionId) => {
+    const grp = props.deptSectionsByDepartment?.find((g) => g.department_id === departmentId);
+    return grp?.sections?.find((s) => s.survey_template_section_id === sectionId) ?? null;
+};
+
+const healthBadge = (level) => {
+    if (level === 'green') return 'bg-emerald-100 text-emerald-800';
+    if (level === 'yellow') return 'bg-amber-100 text-amber-800';
+    return 'bg-red-100 text-red-800';
+};
+
+const healthLevelLabel = (level) => {
+    if (level === 'green') return 'Saudável';
+    if (level === 'yellow') return 'Atenção';
+    return 'Crítico';
+};
+
+const recalculate = () => {
+    router.post(route('client.surveys.recalculate', props.survey.id));
+};
+
+/** Mia — typewriter + markdown */
+const displayedContent = ref('');
+const miaTyping = ref(false);
+let miaTypeTimer = null;
+
+const clearMiaTypewriter = () => {
+    if (miaTypeTimer) {
+        clearInterval(miaTypeTimer);
+        miaTypeTimer = null;
+    }
+    miaTyping.value = false;
+};
+
+const startMiaTypewriter = (fullText) => {
+    clearMiaTypewriter();
+    displayedContent.value = '';
+    if (!fullText) {
+        return;
+    }
+    miaTyping.value = true;
+    let i = 0;
+    const chunk = 20;
+    const delay = 30;
+    miaTypeTimer = setInterval(() => {
+        i = Math.min(i + chunk, fullText.length);
+        displayedContent.value = fullText.slice(0, i);
+        if (i >= fullText.length) {
+            clearMiaTypewriter();
+        }
+    }, delay);
+};
+
+const miaRenderedHtml = computed(() => {
+    try {
+        return marked.parse(displayedContent.value || '');
+    } catch {
+        return '';
+    }
+});
+
+const requestAiAnalysis = () => {
+    clearMiaTypewriter();
+    displayedContent.value = '';
+    router.post(route('client.surveys.ai-analysis', props.survey.id));
+};
+
+/** null = ainda não definido; false = já vimos página sem análise; true = já há/houve análise em cache */
+const initialHadContent = ref(null);
+
+watch(
+    () => ({
+        pending: props.aiAnalysisPending,
+        content: props.aiAnalysis?.content ?? null,
+    }),
+    ({ pending, content }) => {
+        if (pending) {
+            clearMiaTypewriter();
+            displayedContent.value = '';
+            return;
+        }
+        if (!content) {
+            clearMiaTypewriter();
+            displayedContent.value = '';
+            if (initialHadContent.value === null) {
+                initialHadContent.value = false;
+            }
+            return;
+        }
+        if (initialHadContent.value === null) {
+            initialHadContent.value = true;
+            displayedContent.value = content;
+            clearMiaTypewriter();
+            return;
+        }
+        if (initialHadContent.value === false) {
+            startMiaTypewriter(content);
+            initialHadContent.value = true;
+            return;
+        }
+        startMiaTypewriter(content);
+    },
+    { immediate: true },
+);
+
+watch(
+    () => props.survey?.id,
+    () => {
+        initialHadContent.value = null;
+        displayedContent.value = '';
+        clearMiaTypewriter();
+    },
+);
+
+let pollTimer = null;
+
+const startPollIfPending = () => {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+    if (props.aiAnalysisPending) {
+        pollTimer = setInterval(() => {
+            router.reload({
+                only: ['aiAnalysis', 'aiAnalysisPending', 'flash'],
+            });
+        }, 5000);
+    }
+};
+
+onMounted(() => {
+    startPollIfPending();
+});
+
+watch(
+    () => props.aiAnalysisPending,
+    () => {
+        startPollIfPending();
+    },
+);
+
+onUnmounted(() => {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+    }
+    clearMiaTypewriter();
+});
+</script>
+
+<template>
+    <Head :title="`Resultados - ${survey.title}`" />
+
+    <ClientLayout>
+        <template #header>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <h2 class="text-xl font-semibold leading-tight text-talents-900">Resultados</h2>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="rounded-md border border-gray-300 px-3 py-1 text-sm" @click="recalculate">Recalcular</button>
+                    <a
+                        :href="route('client.surveys.reports.executive', survey.id)"
+                        class="rounded-md bg-talents-700 px-3 py-1 text-sm font-semibold text-white"
+                        target="_blank"
+                    >
+                        PDF executivo
+                    </a>
+                    <a
+                        :href="route('client.surveys.reports.technical', survey.id)"
+                        class="rounded-md border border-talents-300 px-3 py-1 text-sm font-semibold text-talents-900"
+                        target="_blank"
+                    >
+                        PDF técnico
+                    </a>
+                    <a
+                        :href="route('client.surveys.export.json', survey.id)"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                        target="_blank"
+                    >
+                        Exportar JSON (BI)
+                    </a>
+                    <a
+                        :href="route('client.surveys.export.csv', survey.id)"
+                        class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-800"
+                        target="_blank"
+                    >
+                        Exportar CSV
+                    </a>
+                    <Link :href="route('client.surveys.show', survey.id)" class="text-sm text-talents-700 hover:underline">Voltar</Link>
+                </div>
+            </div>
+        </template>
+
+        <div
+            v-if="$page.props.flash?.success"
+            class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+        >
+            {{ $page.props.flash.success }}
+        </div>
+        <div
+            v-if="$page.props.flash?.error"
+            class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+        >
+            {{ $page.props.flash.error }}
+        </div>
+        <div
+            v-if="$page.props.flash?.info"
+            class="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+        >
+            {{ $page.props.flash.info }}
+        </div>
+
+        <div
+            v-if="aiEnabled && overall"
+            class="mb-8 overflow-hidden rounded-2xl border border-talents-100 bg-gradient-to-br from-white via-white to-talents-50/40 shadow-sm"
+        >
+            <div class="p-6">
+                <div class="flex items-start gap-4">
+                    <div
+                        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-talents-100 text-talents-800 shadow-inner"
+                        aria-hidden="true"
+                    >
+                        <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="1.5"
+                                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
+                            />
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                            <h3 class="text-lg font-semibold text-talents-900">Mia</h3>
+                            <span class="text-sm font-normal text-gray-500">Assistente NR-1</span>
+                        </div>
+                        <details class="group mt-2">
+                            <summary
+                                class="cursor-pointer list-none text-xs text-talents-700 hover:text-talents-900 [&::-webkit-details-marker]:hidden"
+                            >
+                                <span class="underline decoration-talents-300 decoration-dotted underline-offset-2 group-open:no-underline"
+                                    >Sobre esta análise</span
+                                >
+                            </summary>
+                            <p class="mt-2 text-xs leading-relaxed text-gray-500">
+                                A Mia gera orientações a partir dos dados agregados desta pesquisa. Não substitui avaliação por profissionais
+                                habilitados nem o cumprimento das obrigações legais da empresa. Use como apoio à decisão e ao programa de
+                                gerenciamento de riscos psicossociais.
+                            </p>
+                        </details>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                class="rounded-full bg-talents-700 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-talents-800 disabled:opacity-50"
+                                :disabled="aiAnalysisPending"
+                                @click="requestAiAnalysis"
+                            >
+                                {{ aiAnalysis ? 'Pedir nova análise' : 'Perguntar a Mia' }}
+                            </button>
+                            <button
+                                v-if="aiAnalysisPending"
+                                type="button"
+                                class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                @click="router.reload({ only: ['aiAnalysis', 'aiAnalysisPending', 'flash'] })"
+                            >
+                                Atualizar agora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="aiAnalysisPending" class="mt-6 flex items-center gap-3 rounded-xl border border-talents-100 bg-talents-50/50 px-4 py-3">
+                    <div class="mia-dots flex gap-1" aria-hidden="true">
+                        <span class="mia-dot" />
+                        <span class="mia-dot" />
+                        <span class="mia-dot" />
+                    </div>
+                    <p class="text-sm text-talents-900">Mia está analisando os resultados…</p>
+                </div>
+
+                <div v-else-if="aiAnalysis" class="mt-6 border-t border-talents-100/80 pt-5">
+                    <div class="flex items-end gap-1">
+                        <div
+                            class="mia-prose prose prose-sm min-w-0 flex-1 max-w-none text-gray-800 prose-headings:text-talents-900 prose-a:text-talents-700 prose-strong:text-talents-900"
+                        >
+                            <div class="mia-md" v-html="miaRenderedHtml" />
+                        </div>
+                        <span
+                            v-if="miaTyping"
+                            class="mia-cursor mb-1.5 inline-block h-4 w-0.5 shrink-0 bg-talents-600"
+                            aria-hidden="true"
+                        />
+                    </div>
+                </div>
+
+                <p v-else class="mt-4 text-sm text-gray-500">Nenhuma análise ainda — peça à Mia quando quiser.</p>
+            </div>
+        </div>
+
+        <div v-if="overall" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-talents-900">Indicador geral de saúde (0–100)</h3>
+            <p class="mt-1 text-sm text-gray-500">Quanto maior, melhor o panorama psicossocial agregado.</p>
+            <div class="mt-4 flex flex-wrap items-center gap-4">
+                <span class="text-4xl font-bold text-talents-800">{{ Number(overall.average_score).toFixed(1) }}</span>
+                <span class="rounded-full px-3 py-1 text-sm font-medium" :class="healthBadge(overall.risk_level)">
+                    {{ healthLevelLabel(overall.risk_level) }}
+                </span>
+                <span class="text-sm text-gray-600">Respondentes: {{ overall.respondent_count }}</span>
+            </div>
+        </div>
+
+        <div v-if="bySection?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
+            <div class="mt-4 h-96">
+                <apexchart height="380" :options="radar" :series="radarSeries" />
+            </div>
+        </div>
+
+        <div v-if="deptOveralls?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-talents-900">Saúde por setor (média geral)</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                Setores só aparecem com pelo menos {{ survey.min_responses_for_breakdown }} respondentes no mesmo setor (anonimato).
+            </p>
+            <div class="mt-4 h-80">
+                <apexchart height="320" :options="deptBarChart" :series="deptBarSeries" />
+            </div>
+        </div>
+
+        <div
+            v-if="deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
+            class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+        >
+            <h3 class="text-lg font-semibold text-talents-900">Dimensões por setor (barras agrupadas)</h3>
+            <div class="mt-4 min-h-[28rem]">
+                <apexchart height="380" :options="deptGroupedBar" :series="deptGroupedSeries" />
+            </div>
+        </div>
+
+        <div
+            v-if="deptOveralls?.length && bySection?.length && deptSectionsByDepartment?.length"
+            class="mt-8 overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+        >
+            <h3 class="text-lg font-semibold text-talents-900">Tabela de saúde por setor e dimensão</h3>
+            <table class="mt-4 min-w-full border-collapse text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 bg-gray-50">
+                        <th class="px-3 py-2 text-left font-medium text-gray-700">Setor</th>
+                        <th
+                            v-for="sec in bySection"
+                            :key="sec.survey_template_section_id"
+                            class="px-2 py-2 text-center font-medium text-gray-700"
+                        >
+                            {{ sec.meta?.section_title || 'Dimensão' }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr
+                        v-for="row in deptOveralls"
+                        :key="row.department_id"
+                        class="border-b border-gray-100"
+                    >
+                        <td class="font-medium text-gray-900">{{ row.department_name }}</td>
+                        <td
+                            v-for="sec in bySection"
+                            :key="sec.survey_template_section_id + '-' + row.department_id"
+                            class="px-2 py-2 text-center"
+                        >
+                            <span
+                                v-if="scoreForDeptSection(row.department_id, sec.survey_template_section_id)"
+                                class="inline-block min-w-[3rem] rounded px-2 py-1 font-mono text-xs"
+                                :class="heatmapCellClass(scoreForDeptSection(row.department_id, sec.survey_template_section_id).risk_level)"
+                            >
+                                {{ Number(scoreForDeptSection(row.department_id, sec.survey_template_section_id).average_score).toFixed(1) }}
+                            </span>
+                            <span v-else class="text-gray-400">—</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-talents-900">Insights</h3>
+            <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-gray-700">
+                <li v-for="i in insights" :key="i.id">{{ i.message }}</li>
+                <li v-if="!insights?.length">Nenhum insight gerado ainda.</li>
+            </ul>
+        </div>
+
+        <div
+            v-if="overall && !deptOveralls?.length"
+            class="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+            Não há dados por setor ainda: é necessário o número mínimo de respondentes por setor ou respostas com setor informado.
+        </div>
+    </ClientLayout>
+</template>
+
+<style scoped>
+.mia-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background-color: #632a7e;
+    animation: mia-dot-bounce 1.2s ease-in-out infinite;
+}
+.mia-dot:nth-child(2) {
+    animation-delay: 0.15s;
+}
+.mia-dot:nth-child(3) {
+    animation-delay: 0.3s;
+}
+@keyframes mia-dot-bounce {
+    0%,
+    80%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.35;
+    }
+    40% {
+        transform: translateY(-6px);
+        opacity: 1;
+    }
+}
+.mia-cursor {
+    animation: mia-cursor-blink 1s step-end infinite;
+}
+@keyframes mia-cursor-blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+.mia-prose :deep(h2) {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 700;
+}
+.mia-prose :deep(h2:first-child) {
+    margin-top: 0;
+}
+.mia-prose :deep(h3) {
+    margin-top: 1.25em;
+    margin-bottom: 0.4em;
+    font-weight: 700;
+}
+.mia-prose :deep(p) {
+    line-height: 1.65;
+}
+.mia-prose :deep(p + p) {
+    margin-top: 1em;
+}
+.mia-prose :deep(ul),
+.mia-prose :deep(ol) {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+}
+.mia-prose :deep(li + li) {
+    margin-top: 0.35em;
+}
+</style>

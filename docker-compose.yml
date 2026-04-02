@@ -1,0 +1,88 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: php
+    image: talents-app
+    container_name: talents-app
+    restart: unless-stopped
+    # Desenvolvimento: sem entrypoint de produção (migrate/cache a cada subida)
+    entrypoint: ["php-fpm", "-F"]
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - talents
+    depends_on:
+      - postgres
+      - redis
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: nginx
+    image: talents-nginx
+    container_name: talents-nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - talents
+    depends_on:
+      - app
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: talents-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-talents}
+      POSTGRES_USER: ${DB_USERNAME:-talents}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "${FORWARD_DB_PORT:-5432}:5432"
+    volumes:
+      - talents-pgdata:/var/lib/postgresql/data
+    networks:
+      - talents
+
+  redis:
+    image: redis:7-alpine
+    container_name: talents-redis
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_REDIS_PORT:-6379}:6379"
+    networks:
+      - talents
+
+  queue:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: php
+    image: talents-app
+    container_name: talents-queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      CONTAINER_ROLE: queue
+    command: php artisan queue:work --sleep=3 --tries=3
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - talents
+    depends_on:
+      - postgres
+      - redis
+
+networks:
+  talents:
+    driver: bridge
+
+volumes:
+  talents-pgdata:

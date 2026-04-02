@@ -1,0 +1,42 @@
+# Git e IDE
+.git
+.gitignore
+.github
+.idea
+.vscode
+.fleet
+.zed
+.phpactor.json
+
+# Dependências (instaladas no build)
+node_modules
+vendor
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Build local (gerado no stage Node)
+public/build
+public/hot
+
+# Logs e cache local
+storage/logs/*
+!storage/logs/.gitignore
+storage/framework/cache/*
+!storage/framework/cache/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+
+# Testes e CI
+.phpunit.result.cache
+.phpunit.cache
+tests
+
+# Docker dev (não necessários na imagem final)
+docker-compose.override.yml

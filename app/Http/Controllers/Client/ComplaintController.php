@@ -1,0 +1,127 @@
+<?php
+
+namespace App\Http\Controllers\Client;
+
+use App\Http\Controllers\Controller;
+use App\Models\Complaint;
+use App\Models\ComplaintMessage;
+use App\Services\ComplaintAuditService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ComplaintController extends Controller
+{
+    private function companyId(Request $request): int
+    {
+        return (int) $request->user()->company_id;
+    }
+
+    public function index(Request $request): Response
+    {
+        $complaints = Complaint::query()
+            ->where('company_id', $this->companyId($request))
+            ->orderByDesc('id')
+            ->paginate(20)
+            ->through(fn (Complaint $c) => [
+                'id' => $c->id,
+                'protocol' => $c->protocol,
+                'category' => $c->category,
+                'status' => $c->status,
+                'is_anonymous' => $c->is_anonymous,
+                'created_at' => $c->created_at?->toIso8601String(),
+            ]);
+
+        return Inertia::render('Client/Complaints/Index', [
+            'complaints' => $complaints,
+        ]);
+    }
+
+    public function show(Request $request, Complaint $complaint): Response
+    {
+        abort_unless($complaint->company_id === $this->companyId($request), 404);
+
+        $complaint->load(['messages' => fn ($q) => $q->orderBy('id')]);
+
+        ComplaintAuditService::log($complaint, 'viewed_by_company', $request, $request->user());
+
+        return Inertia::render('Client/Complaints/Show', [
+            'complaint' => [
+                'id' => $complaint->id,
+                'protocol' => $complaint->protocol,
+                'category' => $complaint->category,
+                'status' => $complaint->status,
+                'is_anonymous' => $complaint->is_anonymous,
+                'reporter_name' => $complaint->is_anonymous ? null : $complaint->reporter_name,
+                'reporter_email' => $complaint->is_anonymous ? null : $complaint->reporter_email,
+                'description' => $complaint->description,
+                'created_at' => $complaint->created_at?->toIso8601String(),
+                'resolved_at' => $complaint->resolved_at?->toIso8601String(),
+                'messages' => $complaint->messages->map(fn ($m) => [
+                    'id' => $m->id,
+                    'author_type' => $m->author_type,
+                    'content' => $m->content,
+                    'created_at' => $m->created_at?->toIso8601String(),
+                    'user' => $m->user ? ['name' => $m->user->name] : null,
+                ]),
+                'audit_logs' => $complaint->auditLogs()->with('user')->orderByDesc('id')->limit(50)->get()->map(fn ($log) => [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'meta' => $log->meta,
+                    'ip_address' => $log->ip_address,
+                    'user' => $log->user ? ['name' => $log->user->name] : null,
+                    'created_at' => $log->created_at?->toIso8601String(),
+                ]),
+            ],
+        ]);
+    }
+
+    public function updateStatus(Request $request, Complaint $complaint): RedirectResponse
+    {
+        abort_unless($complaint->company_id === $this->companyId($request), 404);
+
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:new,under_review,resolved,archived'],
+        ]);
+
+        $previous = $complaint->status;
+        $resolvedAt = $complaint->resolved_at;
+        if ($data['status'] === 'resolved') {
+            $resolvedAt = $resolvedAt ?? now();
+        } elseif ($data['status'] !== 'archived') {
+            $resolvedAt = null;
+        }
+        $complaint->update([
+            'status' => $data['status'],
+            'resolved_at' => $resolvedAt,
+        ]);
+
+        ComplaintAuditService::log($complaint, 'status_changed', $request, $request->user(), [
+            'from' => $previous,
+            'to' => $data['status'],
+        ]);
+
+        return back()->with('success', 'Status atualizado.');
+    }
+
+    public function storeMessage(Request $request, Complaint $complaint): RedirectResponse
+    {
+        abort_unless($complaint->company_id === $this->companyId($request), 404);
+
+        $data = $request->validate([
+            'content' => ['required', 'string', 'min:5', 'max:10000'],
+        ]);
+
+        ComplaintMessage::create([
+            'complaint_id' => $complaint->id,
+            'author_type' => ComplaintMessage::AUTHOR_COMPANY,
+            'user_id' => $request->user()->id,
+            'content' => $data['content'],
+        ]);
+
+        ComplaintAuditService::log($complaint, 'message_added_by_company', $request, $request->user());
+
+        return back()->with('success', 'Resposta registrada.');
+    }
+}
