@@ -9,9 +9,16 @@ const props = defineProps({ company: Object, plans: Array });
 
 const form = useForm({
     name: props.company.name,
+    contact_email: props.company.contact_email ?? '',
     legal_name: props.company.legal_name ?? '',
     cnpj: props.company.cnpj ?? '',
     segment: props.company.segment ?? '',
+    address_street: props.company.address_street ?? '',
+    address_neighborhood: props.company.address_neighborhood ?? '',
+    address_city: props.company.address_city ?? '',
+    address_state: props.company.address_state ?? '',
+    address_zip: props.company.address_zip ?? '',
+    tax_regime: props.company.tax_regime ?? '',
     employee_count_estimate: props.company.employee_count_estimate,
     is_active: props.company.is_active,
 });
@@ -29,26 +36,72 @@ const submit = () => {
             <h2 class="text-xl font-semibold leading-tight text-gray-900">Editar empresa</h2>
         </template>
 
-        <form class="max-w-xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm" @submit.prevent="submit">
-            <div>
-                <InputLabel for="name" value="Nome" />
-                <TextInput id="name" v-model="form.name" class="mt-1 block w-full" required />
+        <form class="max-w-4xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm" @submit.prevent="submit">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="name" value="Nome" />
+                    <TextInput id="name" v-model="form.name" class="mt-1 block w-full" required />
+                </div>
+                <div>
+                    <InputLabel for="contact_email" value="E-mail de contato / administrador" />
+                    <TextInput id="contact_email" v-model="form.contact_email" type="email" class="mt-1 block w-full" autocomplete="email" />
+                </div>
             </div>
-            <div>
-                <InputLabel for="legal_name" value="Razão social" />
-                <TextInput id="legal_name" v-model="form.legal_name" class="mt-1 block w-full" />
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="legal_name" value="Razão social" />
+                    <TextInput id="legal_name" v-model="form.legal_name" class="mt-1 block w-full" />
+                </div>
+                <div>
+                    <InputLabel for="cnpj" value="CNPJ" />
+                    <TextInput id="cnpj" v-model="form.cnpj" class="mt-1 block w-full" />
+                </div>
             </div>
-            <div>
-                <InputLabel for="cnpj" value="CNPJ" />
-                <TextInput id="cnpj" v-model="form.cnpj" class="mt-1 block w-full" />
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="address_street" value="Logradouro (rua, nº, complemento)" />
+                    <TextInput id="address_street" v-model="form.address_street" class="mt-1 block w-full" />
+                </div>
+                <div>
+                    <InputLabel for="address_neighborhood" value="Bairro" />
+                    <TextInput id="address_neighborhood" v-model="form.address_neighborhood" class="mt-1 block w-full" />
+                </div>
             </div>
-            <div>
-                <InputLabel for="segment" value="Segmento" />
-                <TextInput id="segment" v-model="form.segment" class="mt-1 block w-full" />
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="address_city" value="Município" />
+                    <TextInput id="address_city" v-model="form.address_city" class="mt-1 block w-full" />
+                </div>
+                <div>
+                    <InputLabel for="address_state" value="Estado (UF)" />
+                    <TextInput
+                        id="address_state"
+                        v-model="form.address_state"
+                        class="mt-1 block w-full max-w-[8rem] uppercase"
+                        maxlength="2"
+                        placeholder="SP"
+                    />
+                </div>
             </div>
-            <div>
-                <InputLabel for="employee_count_estimate" value="Qtd. colaboradores" />
-                <TextInput id="employee_count_estimate" type="number" v-model="form.employee_count_estimate" class="mt-1 block w-full" />
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="address_zip" value="CEP" />
+                    <TextInput id="address_zip" v-model="form.address_zip" class="mt-1 block w-full max-w-[10rem]" placeholder="00000-000" />
+                </div>
+                <div>
+                    <InputLabel for="segment" value="Segmento" />
+                    <TextInput id="segment" v-model="form.segment" class="mt-1 block w-full" />
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                <div>
+                    <InputLabel for="tax_regime" value="Regime de tributação" />
+                    <TextInput id="tax_regime" v-model="form.tax_regime" class="mt-1 block w-full" />
+                </div>
+                <div>
+                    <InputLabel for="employee_count_estimate" value="Qtd. colaboradores" />
+                    <TextInput id="employee_count_estimate" type="number" v-model="form.employee_count_estimate" class="mt-1 block w-full" />
+                </div>
             </div>
             <label class="flex items-center gap-2 text-sm">
                 <input v-model="form.is_active" type="checkbox" class="rounded border-gray-300 text-talents-600 focus:ring-talents-500" />
