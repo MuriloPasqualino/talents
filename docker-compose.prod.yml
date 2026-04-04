@@ -42,8 +42,10 @@ services:
       dockerfile: docker/Dockerfile
       target: nginx
     restart: unless-stopped
-    ports:
-      - "80:80"
+    # Sem "ports:" no host: Coolify/Traefik já usa a :80 e encaminha pelo proxy.
+    # Servidor só Docker (sem Coolify): acrescente ports: ["80:80"] ou use override local.
+    expose:
+      - "80"
     volumes:
       - talents_storage:/var/www/html/storage:ro
     depends_on:
