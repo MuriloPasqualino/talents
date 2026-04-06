@@ -70,7 +70,8 @@ class ActionPlanAdminController extends Controller
                 'content' => $latestAi->content,
             ] : null,
             'aiAnalysisPending' => $aiAnalysisPending,
-            'aiGeneratePostUrl' => route('admin.companies.surveys.ai-analysis', [$company, $survey]),
+            // URL explícita: evita RouteNotFoundException quando há cache de rotas antigo sem este nome.
+            'aiGeneratePostUrl' => url('/admin/companies/'.$company->getKey().'/surveys/'.$survey->getKey().'/ai-analysis'),
         ]));
     }
 

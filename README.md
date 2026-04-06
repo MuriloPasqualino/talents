@@ -66,6 +66,18 @@ O arquivo **`.env`** para Docker local costuma usar `DB_HOST=postgres`, `REDIS_H
 
    Evite versionar `bootstrap/cache/config.php`; em produção, após alterar `.env`, rode `config:clear` ou gere o cache de novo com `php artisan config:cache` **somente** quando o token já estiver definido.
 
+### Rotas novas e cache
+
+Se aparecer `Route [admin....] not defined` ou rotas antigas após um deploy, o cache de rotas pode estar desatualizado:
+
+```bash
+docker compose exec app php artisan route:clear
+# ou, para limpar tudo relacionado a cache de bootstrap:
+docker compose exec app php artisan optimize:clear
+```
+
+Depois de adicionar rotas em produção, regenere o cache **só se** você usa `route:cache` no pipeline: `php artisan route:cache`.
+
 ### Configurações (Mia / IA e SMTP)
 
 No admin, **Configurações** (`/admin/settings`) concentra a IA (Mia) e o envio de e-mail (SMTP). Com SMTP habilitado no painel, os valores do banco substituem `MAIL_*` do `.env` após o boot — útil no Coolify. O atalho antigo `/admin/ai-settings` redireciona para essa página. Ao cadastrar uma **nova empresa**, é criado o primeiro usuário `company_admin` e enviado um e-mail com link para definir senha (depende de SMTP ou do driver `log` em desenvolvimento).
