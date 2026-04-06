@@ -18,6 +18,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         ->name('companies.surveys.action-plan.edit');
     Route::put('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'update'])
         ->name('companies.surveys.action-plan.update');
+    Route::post('companies/{company}/surveys/{survey}/ai-analysis', [ActionPlanAdminController::class, 'generateAiAnalysis'])
+        ->name('companies.surveys.ai-analysis');
     Route::resource('companies', CompanyController::class);
     Route::post('companies/{company}/templates/{template}', [CompanyController::class, 'attachTemplate'])->name('companies.templates.attach');
     Route::delete('companies/{company}/templates/{template}', [CompanyController::class, 'detachTemplate'])->name('companies.templates.detach');
