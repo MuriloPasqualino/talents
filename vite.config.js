@@ -41,7 +41,9 @@ export default defineConfig({
                 ],
             },
             workbox: {
-                globPatterns: ['**/*.{js,css,ico,svg,woff2}'],
+                // Não precachear .js: após deploy, um SW antigo ainda servia chunks antigos
+                // (ex.: ReferenceError por código já corrigido no repositório).
+                globPatterns: ['**/*.{css,ico,svg,woff2}', 'manifest.webmanifest'],
                 navigateFallback: null,
                 runtimeCaching: [
                     {

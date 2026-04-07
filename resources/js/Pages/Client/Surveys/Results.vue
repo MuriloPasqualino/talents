@@ -3,7 +3,7 @@ import Nr1SurveyResultsPanel from '@/Components/Nr1SurveyResultsPanel.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { marked } from 'marked';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 marked.setOptions({ breaks: true, gfm: true });
 
