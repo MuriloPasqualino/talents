@@ -74,7 +74,14 @@ const healthLevelLabel = (level) => {
             </button>
         </div>
 
-        <div class="mt-8">
+        <div class="mt-8 flex flex-wrap gap-3">
+            <Link
+                v-if="$page.props.auth.user?.company?.has_strategic_calendar"
+                :href="route('client.strategic-calendar.index')"
+                class="inline-flex rounded-md border border-talents-300 bg-white px-4 py-2 text-sm font-semibold text-talents-800 hover:bg-talents-50"
+            >
+                Calendário estratégico
+            </Link>
             <Link
                 :href="route('client.surveys.index')"
                 class="inline-flex rounded-md bg-talents-700 px-4 py-2 text-sm font-semibold text-white hover:bg-talents-800"

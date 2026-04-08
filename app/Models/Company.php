@@ -28,6 +28,7 @@ class Company extends Model
         'rhid_email',
         'rhid_password',
         'rhid_domain',
+        'strategic_calendar_access',
     ];
 
     protected function casts(): array
@@ -35,6 +36,7 @@ class Company extends Model
         return [
             'is_active' => 'boolean',
             'rhid_password' => 'encrypted',
+            'strategic_calendar_access' => 'boolean',
         ];
     }
 
@@ -116,6 +118,32 @@ class Company extends Model
         }
 
         return $subscription->plan->modules->contains('key', Module::KEY_METODOLOGIA);
+    }
+
+    /**
+     * Calendário estratégico: override na empresa ou módulo no plano da assinatura ativa.
+     */
+    public function hasStrategicCalendarEnabled(): bool
+    {
+        if ($this->strategic_calendar_access === false) {
+            return false;
+        }
+
+        if ($this->strategic_calendar_access === true) {
+            return true;
+        }
+
+        $subscription = $this->subscriptions()
+            ->where('status', 'active')
+            ->with('plan.modules')
+            ->latest()
+            ->first();
+
+        if (! $subscription?->plan) {
+            return false;
+        }
+
+        return $subscription->plan->modules->contains('key', Module::KEY_CALENDARIO_ESTRATEGICO);
     }
 
     public function activeSubscription(): ?Subscription

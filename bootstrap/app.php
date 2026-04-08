@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureCompanyAccess;
 use App\Http\Middleware\EnsureCompanyAdmin;
+use App\Http\Middleware\EnsureStrategicCalendarAccess;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LogInertiaRequestTiming;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super_admin' => EnsureSuperAdmin::class,
             'company' => EnsureCompanyAccess::class,
             'company_admin' => EnsureCompanyAdmin::class,
+            'strategic_calendar' => EnsureStrategicCalendarAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

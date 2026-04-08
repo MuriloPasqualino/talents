@@ -10,12 +10,24 @@ use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyControll
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\StrategicCalendarController as AdminStrategicCalendarController;
 use App\Http\Controllers\Admin\SurveyTemplateController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)
+        ->except(['show'])
+        ->names([
+            'index' => 'strategic-calendar.index',
+            'create' => 'strategic-calendar.create',
+            'store' => 'strategic-calendar.store',
+            'edit' => 'strategic-calendar.edit',
+            'update' => 'strategic-calendar.update',
+            'destroy' => 'strategic-calendar.destroy',
+        ])
+        ->parameters(['calendario-estrategico' => 'item']);
     Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
     Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
         ->name('companies.surveys.action-plan.edit');

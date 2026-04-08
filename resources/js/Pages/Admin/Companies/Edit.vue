@@ -7,6 +7,13 @@ import { Head, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({ company: Object, plans: Array });
 
+const accessMode = () => {
+    const v = props.company.strategic_calendar_access;
+    if (v === true) return 'enabled';
+    if (v === false) return 'disabled';
+    return 'inherit';
+};
+
 const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
@@ -21,6 +28,7 @@ const form = useForm({
     tax_regime: props.company.tax_regime ?? '',
     employee_count_estimate: props.company.employee_count_estimate,
     is_active: props.company.is_active,
+    strategic_calendar_access_mode: accessMode(),
 });
 
 const submit = () => {
@@ -107,6 +115,21 @@ const submit = () => {
                 <input v-model="form.is_active" type="checkbox" class="rounded border-gray-300 text-talents-600 focus:ring-talents-500" />
                 Ativa
             </label>
+            <div>
+                <InputLabel for="strategic_calendar_access_mode" value="Calendário estratégico" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Por padrão segue o plano (módulo no plano). Você pode forçar habilitado ou desabilitado para esta empresa.
+                </p>
+                <select
+                    id="strategic_calendar_access_mode"
+                    v-model="form.strategic_calendar_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="inherit">Seguir o plano</option>
+                    <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
             <PrimaryButton :disabled="form.processing">Atualizar</PrimaryButton>
         </form>
     </AdminLayout>

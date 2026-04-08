@@ -1,6 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
     stats: Object,
@@ -36,6 +36,15 @@ defineProps({
                 <p class="text-sm text-gray-500">Respostas concluídas</p>
                 <p class="mt-2 text-3xl font-bold">{{ stats.responses_completed }}</p>
             </div>
+        </div>
+
+        <div class="mt-10">
+            <Link
+                :href="route('admin.strategic-calendar.index')"
+                class="inline-flex rounded-xl border border-talents-200 bg-white px-5 py-4 text-sm font-semibold text-talents-800 shadow-sm transition hover:bg-talents-50"
+            >
+                Calendário estratégico — eventos e ritos
+            </Link>
         </div>
 
         <div class="mt-10 grid gap-8 lg:grid-cols-2">

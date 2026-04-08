@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use InvalidArgumentException;
@@ -197,11 +198,20 @@ class CompanyController extends Controller
             'tax_regime' => ['nullable', 'string', 'max:255'],
             'employee_count_estimate' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['boolean'],
+            'strategic_calendar_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
         ]);
 
         if (isset($data['address_state'])) {
             $data['address_state'] = strtoupper($data['address_state']);
         }
+
+        $mode = $data['strategic_calendar_access_mode'];
+        unset($data['strategic_calendar_access_mode']);
+        $data['strategic_calendar_access'] = match ($mode) {
+            'enabled' => true,
+            'disabled' => false,
+            default => null,
+        };
 
         $company->update($data);
 

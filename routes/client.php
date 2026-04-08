@@ -14,6 +14,7 @@ use App\Http\Controllers\Client\ReportController;
 use App\Http\Controllers\Client\RhidApiController;
 use App\Http\Controllers\Client\RhidComplianceController;
 use App\Http\Controllers\Client\RhidSettingsController;
+use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCalendarController;
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
 use App\Http\Controllers\Client\TrainingController;
@@ -36,6 +37,10 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
     Route::get('surveys/{survey}/export/csv', [ExportController::class, 'csv'])->name('surveys.export.csv');
 
     Route::get('capacitacao', [TrainingController::class, 'index'])->name('training.index');
+
+    Route::middleware('strategic_calendar')->group(function () {
+        Route::get('calendario-estrategico', [ClientStrategicCalendarController::class, 'index'])->name('strategic-calendar.index');
+    });
 
     Route::prefix('metodologia')->name('metodologia.')->group(function () {
         Route::get('/', [ClientMethodologyController::class, 'index'])->name('index');

@@ -9,6 +9,7 @@ import {
     AcademicCapIcon,
     BriefcaseIcon,
     BuildingOfficeIcon,
+    CalendarDaysIcon,
     ClipboardDocumentListIcon,
     FingerPrintIcon,
     HomeIcon,
@@ -56,6 +57,14 @@ import {
                 :active="route().current('client.metodologia.*')"
                 :icon="RocketLaunchIcon"
                 label="Metodologia Talents"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="$page.props.auth.user?.company?.has_strategic_calendar"
+                :href="route('client.strategic-calendar.index')"
+                :active="route().current('client.strategic-calendar.*')"
+                :icon="CalendarDaysIcon"
+                label="Calendário estratégico"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

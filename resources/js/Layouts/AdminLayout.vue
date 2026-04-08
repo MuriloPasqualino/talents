@@ -9,6 +9,7 @@ import {
     AcademicCapIcon,
     BeakerIcon,
     BuildingOffice2Icon,
+    CalendarDaysIcon,
     DocumentDuplicateIcon,
     Cog6ToothIcon,
     CreditCardIcon,
@@ -71,6 +72,13 @@ import {
                 "
                 :icon="BeakerIcon"
                 label="Metodologia"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('admin.strategic-calendar.index')"
+                :active="route().current('admin.strategic-calendar.*')"
+                :icon="CalendarDaysIcon"
+                label="Calendário estratégico"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

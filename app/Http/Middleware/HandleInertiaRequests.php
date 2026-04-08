@@ -33,6 +33,7 @@ class HandleInertiaRequests extends Middleware
             if ($company) {
                 $companyPayload = array_merge($company->toArray(), [
                     'has_methodology' => $company->hasMethodologyEnabled(),
+                    'has_strategic_calendar' => $company->hasStrategicCalendarEnabled(),
                 ]);
             }
         }

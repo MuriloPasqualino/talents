@@ -35,6 +35,14 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $calendario = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_CALENDARIO_ESTRATEGICO],
+            [
+                'name' => 'Calendário estratégico',
+                'description' => 'Eventos e ritos orientados pela Talents para acompanhamento das empresas.',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -46,7 +54,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],
