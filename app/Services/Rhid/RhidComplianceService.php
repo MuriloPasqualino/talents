@@ -148,7 +148,159 @@ class RhidComplianceService
             throw RhidApiException::fromResponse($r, 'person_banco_horas');
         }
 
-        return $json;
+        return $this->normalizeBankHoursRows($json);
+    }
+
+    /**
+     * Lista colaboradores (cadastro RHID).
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
+    public function listPersons(Company $company, ?User $user, array $query = []): array
+    {
+        $r = $this->client->request(
+            $company,
+            $user,
+            'GET',
+            'customerdb/person.svc/a',
+            [
+                'query' => $query,
+                'auditAction' => 'rhid.person.list',
+            ],
+        );
+
+        return $this->decodeJson($r, 'person.list');
+    }
+
+    /**
+     * Banco de horas de todos os colaboradores na data: lista IDs paginada + consultas em lotes.
+     *
+     * @return array{date: string, rows: list<array<string, mixed>>, source: string}
+     */
+    public function allPersonBankHoursAggregated(
+        Company $company,
+        ?User $user,
+        string $date,
+        int $listPageSize = 200,
+        int $bankChunk = 50,
+    ): array {
+        $listPageSize = max(1, min(500, $listPageSize));
+        $bankChunk = max(1, min(200, $bankChunk));
+
+        $ids = [];
+        try {
+            $page = 0;
+            while (true) {
+                $listJson = $this->listPersons($company, $user, [
+                    'page' => $page,
+                    'maxSize' => $listPageSize,
+                ]);
+                $batch = $this->extractPersonIdsFromListResponse($listJson);
+                foreach ($batch as $id) {
+                    $ids[] = $id;
+                }
+                if (count($batch) < $listPageSize) {
+                    break;
+                }
+                $page++;
+                if ($page > 500) {
+                    break;
+                }
+            }
+        } catch (RhidApiException) {
+            $rows = $this->personBankHours($company, $user, ['date' => $date]);
+
+            return [
+                'date' => $date,
+                'rows' => $rows,
+                'source' => 'person_banco_horas_sem_lista',
+            ];
+        }
+
+        $ids = array_values(array_unique(array_filter($ids)));
+
+        if ($ids === []) {
+            $rows = $this->personBankHours($company, $user, ['date' => $date]);
+
+            return [
+                'date' => $date,
+                'rows' => $rows,
+                'source' => 'person_banco_horas_sem_ids',
+            ];
+        }
+
+        $merged = [];
+        foreach (array_chunk($ids, $bankChunk) as $chunk) {
+            $part = $this->personBankHours($company, $user, [
+                'date' => $date,
+                'people' => array_values($chunk),
+            ]);
+            foreach ($part as $row) {
+                $merged[] = $row;
+            }
+        }
+
+        return [
+            'date' => $date,
+            'rows' => $merged,
+            'source' => 'aggregated_by_person_ids',
+        ];
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $json
+     * @return list<array<string, mixed>>
+     */
+    protected function normalizeBankHoursRows(array $json): array
+    {
+        if ($json === []) {
+            return [];
+        }
+
+        if (array_keys($json) === range(0, count($json) - 1)) {
+            /** @var list<array<string, mixed>> $out */
+            $out = [];
+            foreach ($json as $row) {
+                if (is_array($row)) {
+                    $out[] = $row;
+                }
+            }
+
+            return $out;
+        }
+
+        if (isset($json['data']) && is_array($json['data'])) {
+            return $this->normalizeBankHoursRows($json['data']);
+        }
+
+        return [$json];
+    }
+
+    /**
+     * @param  array<string, mixed>  $listJson
+     * @return list<int>
+     */
+    protected function extractPersonIdsFromListResponse(array $listJson): array
+    {
+        $rows = $listJson['data'] ?? $listJson;
+        if (! is_array($rows)) {
+            return [];
+        }
+        if ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1)) {
+            $rows = [$rows];
+        }
+        $ids = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if (isset($row['id']) && is_numeric($row['id'])) {
+                $ids[] = (int) $row['id'];
+            }
+        }
+
+        return $ids;
     }
 
     /**

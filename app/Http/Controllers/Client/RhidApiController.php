@@ -122,11 +122,41 @@ class RhidApiController extends Controller
             'companies' => ['nullable'],
             'costcenters' => ['nullable'],
             'departments' => ['nullable'],
-            'people' => ['nullable'],
+            'people' => ['nullable', 'array'],
+            'people.*' => ['integer'],
             'personroles' => ['nullable'],
         ]);
 
         return $this->jsonOrError(fn () => $compliance->personBankHours($company, $request->user(), $query));
+    }
+
+    public function allPersonBankHours(Request $request, RhidComplianceService $compliance): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $validated = $request->validate([
+            'date' => ['required'],
+            'listPageSize' => ['nullable', 'integer', 'min:1', 'max:500'],
+            'bankChunk' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        return $this->jsonOrError(fn () => $compliance->allPersonBankHoursAggregated(
+            $company,
+            $request->user(),
+            (string) $validated['date'],
+            (int) ($validated['listPageSize'] ?? 200),
+            (int) ($validated['bankChunk'] ?? 50),
+        ));
+    }
+
+    public function listPeople(Request $request, RhidComplianceService $compliance): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $query = $request->validate([
+            'page' => ['nullable', 'integer', 'min:0'],
+            'maxSize' => ['nullable', 'integer', 'min:1', 'max:500'],
+        ]);
+
+        return $this->jsonOrError(fn () => $compliance->listPersons($company, $request->user(), $query));
     }
 
     public function massPersonShift(Request $request, RhidComplianceService $compliance): JsonResponse|Response
