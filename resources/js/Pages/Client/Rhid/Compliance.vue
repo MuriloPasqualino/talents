@@ -1,11 +1,19 @@
 <script setup>
+import RhidResponsePanel from '@/Components/Rhid/RhidResponsePanel.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import {
+    extractListItems,
+    monthRangeHtmlDates,
+    todayHtmlDate,
+    toRhidYmd,
+    toRhidYmdHm,
+} from '@/utils/rhidDate';
 
 const page = usePage();
 
@@ -17,51 +25,84 @@ const props = defineProps({
 const tab = ref('overview');
 const err = ref(null);
 const loading = ref(false);
-const jsonPreview = ref(null);
+/** Ultima resposta de API para o painel legivel (exceto marcacoes) */
+const responsePanelData = ref(null);
 
 const lastPunches = ref([]);
 const justificationTypes = ref(null);
-const alertTypes = ref(null);
-const justificationsList = ref(null);
-const bankHours = ref(null);
 const devices = ref(null);
 
-const jIni = ref('');
-const jFim = ref('');
+const { first: monthFirst, last: monthLast } = monthRangeHtmlDates();
+
+const jIniDate = ref(monthFirst);
+const jFimDate = ref(monthLast);
 const jPage = ref(0);
 const jMax = ref(50);
 
-const bankDate = ref('');
+const jIni = computed(() => toRhidYmd(jIniDate.value));
+const jFim = computed(() => toRhidYmd(jFimDate.value));
+
+const bankDateHtml = ref(todayHtmlDate());
 
 const reportGuid = ref('');
 const reportPercent = ref(null);
-const reportStatusJson = ref(null);
-const reportIni = ref('20240101');
-const reportFim = ref('20240131');
+const reportIniDate = ref(monthFirst);
+const reportFimDate = ref(monthLast);
 const reportFormato = ref('PDF');
 const reportNome = ref('espelho');
 const reportJsonOverride = ref('');
 
+const reportIni = computed(() => toRhidYmd(reportIniDate.value));
+const reportFim = computed(() => toRhidYmd(reportFimDate.value));
+
 const afdTipo = ref('afd');
-const afdIni = ref('20240101');
-const afdFim = ref('20240131');
+const afdIniDate = ref(monthFirst);
+const afdFimDate = ref(monthLast);
 const afdBody = ref('[99000001]');
 
+const afdIni = computed(() => toRhidYmd(afdIniDate.value));
+const afdFim = computed(() => toRhidYmd(afdFimDate.value));
+
 const massJ = ref({
-    idJustificationType: 11,
+    idJustificationType: null,
     justificativa: 'Feriado',
-    inicio: '202403220000',
-    fim: '202403222359',
     minutesDiurno: 0,
     minutesNoturno: 0,
     selectedIdPerson: '',
 });
 
+const massJDateStart = ref(todayHtmlDate());
+const massJTimeStart = ref('00:00');
+const massJDateEnd = ref(todayHtmlDate());
+const massJTimeEnd = ref('23:59');
+
+const shiftIdPerson = ref(1);
+const shiftIdShift = ref(1);
+const shiftStartDate = ref(todayHtmlDate());
+const shiftStartTime = ref('00:00');
+const shiftEndDate = ref('2099-12-31');
+const shiftEndTime = ref('00:00');
+const shiftUseAdvanced = ref(false);
 const shiftJson = ref(
     '[{"idPerson": 1, "idShift": 1, "startStr": "202403060000", "endStr": "209912310000"}]',
 );
 
 const isAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
+
+const justificationTypeOptions = computed(() => {
+    const items = extractListItems(justificationTypes.value);
+    return items
+        .map((row) => {
+            const id = row.id ?? row.idJustificationType;
+            const name =
+                row.name ?? row.descricao ?? row.description ?? row.str ?? (id != null ? `Tipo ${id}` : '');
+            if (id == null) {
+                return null;
+            }
+            return { id, label: `${name} (#${id})` };
+        })
+        .filter(Boolean);
+});
 
 const clearErr = () => {
     err.value = null;
@@ -71,14 +112,41 @@ const handleError = (e) => {
     err.value = e.response?.data?.message || e.message || 'Erro na requisicao';
 };
 
+const prefetchJustificationTypesForMassForm = async () => {
+    if (!props.configured) {
+        return;
+    }
+    try {
+        const { data } = await axios.get(route('client.rhid.api.justification-types'));
+        justificationTypes.value = data;
+        const opts = extractListItems(data);
+        const firstId = opts[0]?.id ?? opts[0]?.idJustificationType;
+        if (firstId != null && massJ.value.idJustificationType == null) {
+            massJ.value.idJustificationType = firstId;
+        }
+    } catch {
+        /* formulario continua com campo manual se falhar */
+    }
+};
+
+watch(
+    () => tab.value,
+    (t) => {
+        if (t === 'justifications') {
+            prefetchJustificationTypesForMassForm();
+        }
+    },
+);
+
 const loadLastPunches = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
         const { data } = await axios.get(route('client.rhid.api.last-punches'));
         lastPunches.value = Array.isArray(data) ? data : [];
-        jsonPreview.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -87,13 +155,15 @@ const loadLastPunches = async () => {
 };
 
 const loadJustificationTypes = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
         const { data } = await axios.get(route('client.rhid.api.justification-types'));
         justificationTypes.value = data;
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -102,13 +172,14 @@ const loadJustificationTypes = async () => {
 };
 
 const loadAlertTypes = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
         const { data } = await axios.get(route('client.rhid.api.alert-types'));
-        alertTypes.value = data;
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -117,7 +188,9 @@ const loadAlertTypes = async () => {
 };
 
 const loadJustifications = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
@@ -127,8 +200,7 @@ const loadJustifications = async () => {
             page: jPage.value,
             maxSize: jMax.value,
         });
-        justificationsList.value = data;
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -137,15 +209,17 @@ const loadJustifications = async () => {
 };
 
 const loadBankHours = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
+        const dateParam = toRhidYmd(bankDateHtml.value) || bankDateHtml.value;
         const { data } = await axios.get(route('client.rhid.api.person-bank-hours'), {
-            params: { date: bankDate.value },
+            params: { date: dateParam },
         });
-        bankHours.value = data;
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -154,13 +228,15 @@ const loadBankHours = async () => {
 };
 
 const loadDevices = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
         const { data } = await axios.get(route('client.rhid.api.devices.index'));
         devices.value = data;
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -202,12 +278,13 @@ const buildReportPayload = () => {
 };
 
 const startReport = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     reportGuid.value = '';
     reportPercent.value = null;
-    reportStatusJson.value = null;
     try {
         let body;
         const raw = reportJsonOverride.value.trim();
@@ -218,7 +295,7 @@ const startReport = async () => {
         }
         const { data } = await axios.post(route('client.rhid.api.reports.start'), body);
         reportGuid.value = data.guid || '';
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         if (e instanceof SyntaxError) {
             err.value = 'JSON invalido no campo avancado.';
@@ -231,16 +308,17 @@ const startReport = async () => {
 };
 
 const pollReportStatus = async () => {
-    if (!reportGuid.value) return;
+    if (!reportGuid.value) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
         const { data } = await axios.get(route('client.rhid.api.reports.status'), {
             params: { guid: reportGuid.value },
         });
-        reportStatusJson.value = data;
         reportPercent.value = data.percent ?? null;
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -249,7 +327,9 @@ const pollReportStatus = async () => {
 };
 
 const downloadReport = () => {
-    if (!reportGuid.value) return;
+    if (!reportGuid.value) {
+        return;
+    }
     const url =
         route('client.rhid.api.reports.download') +
         `?guid=${encodeURIComponent(reportGuid.value)}&format=${encodeURIComponent(reportFormato.value)}`;
@@ -257,7 +337,9 @@ const downloadReport = () => {
 };
 
 const exportAfd = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
@@ -278,6 +360,7 @@ const exportAfd = async () => {
         a.download = `afd-${afdIni.value}-${afdFim.value}.${ext}`;
         a.click();
         URL.revokeObjectURL(a.href);
+        responsePanelData.value = { ok: true, mensagem: 'Arquivo AFD baixado com sucesso.' };
     } catch (e) {
         if (e.response?.data instanceof Blob) {
             const text = await e.response.data.text();
@@ -291,7 +374,13 @@ const exportAfd = async () => {
 };
 
 const submitMassJustification = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
+    if (massJ.value.idJustificationType == null) {
+        err.value = 'Selecione o tipo de justificativa.';
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
@@ -299,16 +388,18 @@ const submitMassJustification = async () => {
             .split(/[\s,]+/)
             .map((s) => parseInt(s, 10))
             .filter((n) => !Number.isNaN(n));
+        const inicio = toRhidYmdHm(massJDateStart.value, massJTimeStart.value);
+        const fim = toRhidYmdHm(massJDateEnd.value, massJTimeEnd.value);
         const { data } = await axios.post(route('client.rhid.api.justifications.mass'), {
             idJustificationType: massJ.value.idJustificationType,
             justificativa: massJ.value.justificativa,
-            inicio: massJ.value.inicio,
-            fim: massJ.value.fim,
+            inicio,
+            fim,
             minutesDiurno: massJ.value.minutesDiurno,
             minutesNoturno: massJ.value.minutesNoturno,
             selectedIdPerson: ids,
         });
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -317,16 +408,30 @@ const submitMassJustification = async () => {
 };
 
 const submitMassShift = async () => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
-        const items = JSON.parse(shiftJson.value);
+        let items;
+        if (shiftUseAdvanced.value) {
+            items = JSON.parse(shiftJson.value);
+        } else {
+            items = [
+                {
+                    idPerson: Number(shiftIdPerson.value),
+                    idShift: Number(shiftIdShift.value),
+                    startStr: toRhidYmdHm(shiftStartDate.value, shiftStartTime.value),
+                    endStr: toRhidYmdHm(shiftEndDate.value, shiftEndTime.value),
+                },
+            ];
+        }
         const { data } = await axios.post(route('client.rhid.api.person-shift.mass'), items);
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         if (e instanceof SyntaxError) {
-            err.value = 'JSON invalido (horario em massa).';
+            err.value = 'JSON invalido (horario em massa avancado).';
         } else {
             handleError(e);
         }
@@ -336,13 +441,17 @@ const submitMassShift = async () => {
 };
 
 const forceResync = async () => {
-    if (!props.configured) return;
-    if (!window.confirm('Ressincronizar TODOS os funcionarios em TODOS os equipamentos?')) return;
+    if (!props.configured) {
+        return;
+    }
+    if (!window.confirm('Ressincronizar TODOS os funcionarios em TODOS os equipamentos?')) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
         const { data } = await axios.post(route('client.rhid.api.sync.force-all'));
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -351,12 +460,14 @@ const forceResync = async () => {
 };
 
 const enableIdCloud = async (id) => {
-    if (!props.configured) return;
+    if (!props.configured) {
+        return;
+    }
     loading.value = true;
     clearErr();
     try {
         const { data } = await axios.post(route('client.rhid.api.devices.id-cloud', id));
-        jsonPreview.value = data;
+        responsePanelData.value = data;
     } catch (e) {
         handleError(e);
     } finally {
@@ -473,56 +584,99 @@ const tabs = [
                         Tipos de inconsistencia
                     </PrimaryButton>
                 </div>
-                <pre
-                    v-if="jsonPreview && tab === 'types'"
-                    class="max-h-96 overflow-auto rounded bg-slate-900 p-4 text-xs text-slate-100"
-                    >{{ JSON.stringify(jsonPreview, null, 2) }}</pre
-                >
+                <RhidResponsePanel
+                    v-if="responsePanelData && tab === 'types'"
+                    :data="responsePanelData"
+                    title="Ultima resposta"
+                />
             </div>
 
             <div v-show="tab === 'justifications'" class="space-y-4">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                        <InputLabel value="Ini (AnoMesDia)" />
-                        <TextInput v-model="jIni" class="mt-1 block w-full" placeholder="20240101" />
+                        <InputLabel value="Data inicial" />
+                        <input
+                            v-model="jIniDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
                     </div>
                     <div>
-                        <InputLabel value="Fim (AnoMesDia)" />
-                        <TextInput v-model="jFim" class="mt-1 block w-full" placeholder="20240131" />
+                        <InputLabel value="Data final" />
+                        <input
+                            v-model="jFimDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
                     </div>
                     <div>
                         <InputLabel value="Pagina" />
                         <TextInput v-model.number="jPage" type="number" class="mt-1 block w-full" />
                     </div>
                     <div>
-                        <InputLabel value="Max / pagina" />
+                        <InputLabel value="Itens por pagina" />
                         <TextInput v-model.number="jMax" type="number" class="mt-1 block w-full" />
                     </div>
                 </div>
+                <p class="text-xs text-slate-500">Periodo enviado ao RHID: {{ jIni }} — {{ jFim }}</p>
                 <PrimaryButton type="button" :disabled="loading" @click="loadJustifications">Listar</PrimaryButton>
 
                 <div class="rounded-lg border border-slate-200 p-4">
                     <h3 class="text-sm font-semibold text-talents-900">Justificativa em massa</h3>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <InputLabel value="idJustificationType" />
-                            <TextInput v-model.number="massJ.idJustificationType" type="number" class="mt-1 w-full" />
+                        <div class="sm:col-span-2">
+                            <InputLabel value="Tipo de justificativa" />
+                            <select
+                                v-model.number="massJ.idJustificationType"
+                                class="mt-1 w-full rounded-md border border-slate-300 text-sm"
+                            >
+                                <option v-if="justificationTypeOptions.length === 0" disabled value="">
+                                    Carregue a aba ou aguarde tipos...
+                                </option>
+                                <option v-for="opt in justificationTypeOptions" :key="opt.id" :value="opt.id">
+                                    {{ opt.label }}
+                                </option>
+                            </select>
                         </div>
-                        <div>
-                            <InputLabel value="Texto" />
+                        <div class="sm:col-span-2">
+                            <InputLabel value="Texto da justificativa" />
                             <TextInput v-model="massJ.justificativa" class="mt-1 w-full" />
                         </div>
                         <div>
-                            <InputLabel value="Inicio (AnoMesDiaHHmm)" />
-                            <TextInput v-model="massJ.inicio" class="mt-1 w-full" />
+                            <InputLabel value="Data inicial" />
+                            <input
+                                v-model="massJDateStart"
+                                type="date"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
                         </div>
                         <div>
-                            <InputLabel value="Fim (AnoMesDiaHHmm)" />
-                            <TextInput v-model="massJ.fim" class="mt-1 w-full" />
+                            <InputLabel value="Hora inicial" />
+                            <input
+                                v-model="massJTimeStart"
+                                type="time"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Data final" />
+                            <input
+                                v-model="massJDateEnd"
+                                type="date"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Hora final" />
+                            <input
+                                v-model="massJTimeEnd"
+                                type="time"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
                         </div>
                         <div class="sm:col-span-2">
-                            <InputLabel value="IDs funcionarios (separados por virgula)" />
-                            <TextInput v-model="massJ.selectedIdPerson" class="mt-1 w-full" placeholder="1,2,3" />
+                            <InputLabel value="IDs dos funcionarios (separados por virgula)" />
+                            <TextInput v-model="massJ.selectedIdPerson" class="mt-1 w-full" placeholder="1, 2, 3" />
                         </div>
                     </div>
                     <PrimaryButton type="button" class="mt-3" :disabled="loading" @click="submitMassJustification">
@@ -531,63 +685,139 @@ const tabs = [
                 </div>
 
                 <div class="rounded-lg border border-slate-200 p-4">
-                    <h3 class="text-sm font-semibold text-talents-900">Horario em massa (JSON array)</h3>
-                    <textarea
-                        v-model="shiftJson"
-                        class="mt-2 w-full rounded-md border border-slate-300 font-mono text-xs"
-                        rows="4"
-                    />
+                    <h3 class="text-sm font-semibold text-talents-900">Horario em massa</h3>
+                    <label class="mt-2 flex items-center gap-2 text-sm text-slate-700">
+                        <input v-model="shiftUseAdvanced" type="checkbox" class="rounded border-slate-300" />
+                        Modo avancado (JSON)
+                    </label>
+                    <div v-if="!shiftUseAdvanced" class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <InputLabel value="ID funcionario" />
+                            <TextInput v-model.number="shiftIdPerson" type="number" class="mt-1 w-full" />
+                        </div>
+                        <div>
+                            <InputLabel value="ID escala" />
+                            <TextInput v-model.number="shiftIdShift" type="number" class="mt-1 w-full" />
+                        </div>
+                        <div>
+                            <InputLabel value="Inicio (data)" />
+                            <input
+                                v-model="shiftStartDate"
+                                type="date"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Inicio (hora)" />
+                            <input
+                                v-model="shiftStartTime"
+                                type="time"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Fim (data)" />
+                            <input
+                                v-model="shiftEndDate"
+                                type="date"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Fim (hora)" />
+                            <input
+                                v-model="shiftEndTime"
+                                type="time"
+                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                            />
+                        </div>
+                    </div>
+                    <div v-else class="mt-2">
+                        <InputLabel value="Array JSON" />
+                        <textarea
+                            v-model="shiftJson"
+                            class="mt-2 w-full rounded-md border border-slate-300 font-mono text-xs"
+                            rows="5"
+                        />
+                    </div>
                     <PrimaryButton type="button" class="mt-2" :disabled="loading" @click="submitMassShift">
                         Aplicar horarios
                     </PrimaryButton>
                 </div>
+
+                <RhidResponsePanel
+                    v-if="responsePanelData && tab === 'justifications'"
+                    :data="responsePanelData"
+                    title="Ultima resposta"
+                />
             </div>
 
             <div v-show="tab === 'bank'" class="space-y-3">
                 <div class="max-w-xs">
-                    <InputLabel value="Data referencia" />
-                    <TextInput v-model="bankDate" class="mt-1 w-full" placeholder="ex.: 20240306 ou timestamp" />
+                    <InputLabel value="Data de referencia" />
+                    <input
+                        v-model="bankDateHtml"
+                        type="date"
+                        class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                    />
                 </div>
                 <PrimaryButton type="button" :disabled="loading" @click="loadBankHours">Consultar banco de horas</PrimaryButton>
-                <pre
-                    v-if="bankHours"
-                    class="max-h-96 overflow-auto rounded bg-slate-900 p-4 text-xs text-slate-100"
-                    >{{ JSON.stringify(bankHours, null, 2) }}</pre
-                >
+                <RhidResponsePanel
+                    v-if="responsePanelData && tab === 'bank'"
+                    :data="responsePanelData"
+                    title="Resultado"
+                />
             </div>
 
             <div v-show="tab === 'reports'" class="space-y-3">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                        <InputLabel value="Formato saida" />
-                        <TextInput v-model="reportFormato" class="mt-1 w-full" placeholder="PDF / PDF2 / CSV / HTML" />
+                        <InputLabel value="Formato de saida" />
+                        <select v-model="reportFormato" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
+                            <option value="PDF">PDF</option>
+                            <option value="PDF2">PDF2</option>
+                            <option value="CSV">CSV</option>
+                            <option value="HTML">HTML</option>
+                        </select>
                     </div>
                     <div>
-                        <InputLabel value="Relatorio" />
-                        <TextInput v-model="reportNome" class="mt-1 w-full" placeholder="espelho ou cartao" />
+                        <InputLabel value="Tipo de relatorio" />
+                        <select v-model="reportNome" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
+                            <option value="espelho">Espelho de ponto</option>
+                            <option value="cartao">Cartao de ponto</option>
+                        </select>
                     </div>
                     <div>
-                        <InputLabel value="Ini" />
-                        <TextInput v-model="reportIni" class="mt-1 w-full" />
+                        <InputLabel value="Data inicial" />
+                        <input
+                            v-model="reportIniDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        />
                     </div>
                     <div>
-                        <InputLabel value="Fim" />
-                        <TextInput v-model="reportFim" class="mt-1 w-full" />
+                        <InputLabel value="Data final" />
+                        <input
+                            v-model="reportFimDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        />
                     </div>
                 </div>
-                <div>
-                    <InputLabel value="JSON avancado (opcional — sobrescreve campos acima)" />
+                <details class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <summary class="cursor-pointer font-medium text-slate-800">JSON avancado (opcional)</summary>
+                    <p class="mt-2 text-xs text-slate-600">Substitui os campos acima se preenchido.</p>
                     <textarea
                         v-model="reportJsonOverride"
-                        class="mt-1 w-full rounded-md border border-slate-300 font-mono text-xs"
+                        class="mt-2 w-full rounded-md border border-slate-300 font-mono text-xs"
                         rows="5"
-                        placeholder="Cole o payload completo POST /report.svc/ponto"
+                        placeholder="Payload completo POST relatorio ponto"
                     />
-                </div>
+                </details>
                 <div class="flex flex-wrap gap-2">
                     <PrimaryButton type="button" :disabled="loading" @click="startReport">Iniciar relatorio</PrimaryButton>
                     <PrimaryButton type="button" :disabled="loading || !reportGuid" @click="pollReportStatus">
-                        Status (GUID)
+                        Atualizar status
                     </PrimaryButton>
                     <PrimaryButton type="button" :disabled="!reportGuid" @click="downloadReport">Download</PrimaryButton>
                 </div>
@@ -595,36 +825,53 @@ const tabs = [
                     GUID: <code class="rounded bg-slate-100 px-1">{{ reportGuid }}</code>
                     <span v-if="reportPercent !== null" class="ml-2">Percentual: {{ reportPercent }}%</span>
                 </p>
-                <pre
-                    v-if="reportStatusJson"
-                    class="max-h-48 overflow-auto rounded bg-slate-900 p-4 text-xs text-slate-100"
-                    >{{ JSON.stringify(reportStatusJson, null, 2) }}</pre
-                >
+                <RhidResponsePanel
+                    v-if="responsePanelData && tab === 'reports'"
+                    :data="responsePanelData"
+                    title="Status / resposta"
+                />
             </div>
 
             <div v-show="tab === 'afd'" class="space-y-3">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
-                        <InputLabel value="Tipo" />
+                        <InputLabel value="Tipo de arquivo" />
                         <select v-model="afdTipo" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
-                            <option value="afd">afd (1510)</option>
-                            <option value="afd671">afd671</option>
+                            <option value="afd">AFD (layout 1510)</option>
+                            <option value="afd671">AFD 671 (ZIP)</option>
                         </select>
                     </div>
                     <div>
-                        <InputLabel value="Ini" />
-                        <TextInput v-model="afdIni" class="mt-1 w-full" />
+                        <InputLabel value="Data inicial" />
+                        <input
+                            v-model="afdIniDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        />
                     </div>
                     <div>
-                        <InputLabel value="Fim" />
-                        <TextInput v-model="afdFim" class="mt-1 w-full" />
+                        <InputLabel value="Data final" />
+                        <input
+                            v-model="afdFimDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        />
                     </div>
                     <div>
-                        <InputLabel value="Body JSON" />
-                        <TextInput v-model="afdBody" class="mt-1 w-full" />
+                        <InputLabel value="Filtro interno (REP)" />
+                        <TextInput v-model="afdBody" class="mt-1 w-full" placeholder='ex.: [99000001]' />
                     </div>
                 </div>
+                <details class="text-xs text-slate-600">
+                    <summary class="cursor-pointer">O que e este filtro?</summary>
+                    <p class="mt-1">Lista de numeros de fabricacao dos REP, em JSON. O padrao atende exportacao geral.</p>
+                </details>
                 <PrimaryButton type="button" :disabled="loading" @click="exportAfd">Exportar AFD</PrimaryButton>
+                <RhidResponsePanel
+                    v-if="responsePanelData && tab === 'afd'"
+                    :data="responsePanelData"
+                    title="Resultado"
+                />
             </div>
 
             <div v-show="tab === 'devices'" class="space-y-3">
@@ -667,6 +914,11 @@ const tabs = [
                         </tbody>
                     </table>
                 </div>
+                <RhidResponsePanel
+                    v-if="responsePanelData && tab === 'devices'"
+                    :data="responsePanelData"
+                    title="Ultima resposta"
+                />
             </div>
 
             <div v-show="tab === 'audit'" class="space-y-3">
@@ -691,14 +943,6 @@ const tabs = [
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <div
-                v-if="tab !== 'audit' && tab !== 'punches' && tab !== 'devices' && jsonPreview && tab !== 'bank'"
-                class="rounded-lg border border-dashed border-slate-300 p-3"
-            >
-                <p class="text-xs font-semibold text-slate-500">Ultima resposta (JSON)</p>
-                <pre class="mt-2 max-h-64 overflow-auto text-xs text-slate-700">{{ JSON.stringify(jsonPreview, null, 2) }}</pre>
             </div>
         </div>
     </ClientLayout>
