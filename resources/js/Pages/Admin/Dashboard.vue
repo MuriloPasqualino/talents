@@ -3,8 +3,6 @@ import DashboardBootstrapCalendar from '@/Components/DashboardBootstrapCalendar.
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head } from '@inertiajs/vue3';
 
-import '../../../css/dashboard-calendar-bootstrap.css';
-
 defineProps({
     stats: Object,
     riskBySegment: Array,

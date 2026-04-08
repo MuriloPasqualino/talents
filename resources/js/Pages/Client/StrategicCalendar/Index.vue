@@ -1,5 +1,5 @@
 <script setup>
-import StrategicCalendarMonthGrid from '@/Components/StrategicCalendarMonthGrid.vue';
+import HeroStrategicCalendar from '@/Components/HeroStrategicCalendar.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 
@@ -28,9 +28,13 @@ const navigateMonth = (delta) => {
     );
 };
 
-const monthTitle = () => {
-    const d = new Date(props.calendarYear, props.calendarMonth - 1, 1);
-    return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+const goToday = () => {
+    const t = new Date();
+    router.get(
+        route('client.strategic-calendar.index'),
+        { year: t.getFullYear(), month: t.getMonth() + 1 },
+        { preserveState: true, replace: true },
+    );
 };
 </script>
 
@@ -47,33 +51,14 @@ const monthTitle = () => {
             para executar as ações no tempo certo.
         </p>
 
-        <div class="mb-8 rounded-xl border border-talents-200 bg-white p-4 shadow-sm">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                    <button
-                        type="button"
-                        class="rounded-md border border-talents-300 px-2 py-1 text-sm text-talents-800 hover:bg-talents-50"
-                        @click="navigateMonth(-1)"
-                    >
-                        ‹
-                    </button>
-                    <span class="min-w-[10rem] text-center text-sm font-medium capitalize text-talents-900">{{
-                        monthTitle()
-                    }}</span>
-                    <button
-                        type="button"
-                        class="rounded-md border border-talents-300 px-2 py-1 text-sm text-talents-800 hover:bg-talents-50"
-                        @click="navigateMonth(1)"
-                    >
-                        ›
-                    </button>
-                </div>
-            </div>
-            <StrategicCalendarMonthGrid
+        <div class="mb-10">
+            <HeroStrategicCalendar
                 :year="calendarYear"
                 :month="calendarMonth"
                 :items="monthItems"
                 :kind-labels="kindLabels"
+                @navigate-month="navigateMonth"
+                @go-today="goToday"
             />
         </div>
 

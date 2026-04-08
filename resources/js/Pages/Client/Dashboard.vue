@@ -4,8 +4,6 @@ import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
-import '../../../css/dashboard-calendar-bootstrap.css';
-
 const copied = ref(false);
 
 const copyDenuncia = async (url) => {

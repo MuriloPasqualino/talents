@@ -1,8 +1,8 @@
 <script setup>
-import StrategicCalendarMonthGrid from '@/Components/StrategicCalendarMonthGrid.vue';
+import HeroStrategicCalendar from '@/Components/HeroStrategicCalendar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 
 const props = defineProps({
     items: Object,
@@ -33,6 +33,19 @@ const navigateMonth = (delta) => {
     );
 };
 
+const goToday = () => {
+    const t = new Date();
+    router.get(
+        route('admin.strategic-calendar.index'),
+        {
+            year: t.getFullYear(),
+            month: t.getMonth() + 1,
+            company_id: companyFilter.value || undefined,
+        },
+        { preserveState: true, replace: true },
+    );
+};
+
 watch(companyFilter, (v) => {
     router.get(
         route('admin.strategic-calendar.index'),
@@ -43,11 +56,6 @@ watch(companyFilter, (v) => {
         },
         { preserveState: true, replace: true },
     );
-});
-
-const monthTitle = computed(() => {
-    const d = new Date(props.calendarYear, props.calendarMonth - 1, 1);
-    return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 });
 </script>
 
@@ -67,44 +75,28 @@ const monthTitle = computed(() => {
             </div>
         </template>
 
-        <div class="mb-8 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-2">
-                    <button
-                        type="button"
-                        class="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
-                        @click="navigateMonth(-1)"
-                    >
-                        ‹
-                    </button>
-                    <span class="min-w-[10rem] text-center text-sm font-medium capitalize text-gray-800">{{ monthTitle }}</span>
-                    <button
-                        type="button"
-                        class="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
-                        @click="navigateMonth(1)"
-                    >
-                        ›
-                    </button>
-                </div>
-                <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">Filtrar por empresa</label>
-                    <select
-                        v-model="companyFilter"
-                        class="rounded-md border border-gray-300 text-sm text-gray-900 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                    >
-                        <option value="">Todas</option>
-                        <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-                    </select>
-                </div>
+        <div class="mb-6 flex flex-wrap items-center justify-end gap-3">
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-600">Filtrar por empresa</label>
+                <select
+                    v-model="companyFilter"
+                    class="rounded-md border border-gray-300 text-sm text-gray-900 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="">Todas</option>
+                    <option v-for="c in companies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+                </select>
             </div>
-            <div class="mt-4">
-                <StrategicCalendarMonthGrid
-                    :year="calendarYear"
-                    :month="calendarMonth"
-                    :items="monthItems"
-                    :kind-labels="kindLabels"
-                />
-            </div>
+        </div>
+
+        <div class="mb-10">
+            <HeroStrategicCalendar
+                :year="calendarYear"
+                :month="calendarMonth"
+                :items="monthItems"
+                :kind-labels="kindLabels"
+                @navigate-month="navigateMonth"
+                @go-today="goToday"
+            />
         </div>
 
         <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
