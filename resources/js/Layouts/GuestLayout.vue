@@ -4,14 +4,14 @@ import { Link } from '@inertiajs/vue3';
 </script>
 
 <template>
-    <div class="app-shell flex flex-col items-center px-4 pt-8 sm:justify-center sm:px-6 sm:pt-0">
+    <div class="app-shell flex min-h-screen flex-col items-center px-4 pb-10 pt-8 sm:justify-center sm:px-6 sm:pb-12 sm:pt-6">
         <div>
             <Link href="/">
-                <ApplicationLogo class="h-16 w-16 fill-current text-slate-400 sm:h-20 sm:w-20" />
+                <ApplicationLogo class="h-16 w-16 fill-current text-talents-500 sm:h-20 sm:w-20" />
             </Link>
         </div>
 
-        <div class="surface-card mt-8 w-full max-w-md overflow-hidden px-6 py-8 sm:mt-10">
+        <div class="surface-glass mt-8 w-full max-w-md overflow-hidden px-6 py-8 shadow-shell sm:mt-10 sm:px-8 sm:py-10">
             <slot />
         </div>
     </div>

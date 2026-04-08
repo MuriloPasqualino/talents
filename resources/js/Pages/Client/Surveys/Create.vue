@@ -28,7 +28,7 @@ const submit = () => {
             <h2 class="text-xl font-semibold leading-tight text-talents-900">Nova campanha</h2>
         </template>
 
-        <form class="max-w-xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm" @submit.prevent="submit">
+        <form class="surface-card max-w-xl space-y-4 p-6" @submit.prevent="submit">
             <div>
                 <InputLabel for="survey_template_id" value="Template" />
                 <select

@@ -35,7 +35,7 @@ const categoryLabel = (c) => {
             <h2 class="text-xl font-semibold leading-tight text-talents-900">Denúncias</h2>
         </template>
 
-        <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="surface-card overflow-hidden">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
                     <tr>

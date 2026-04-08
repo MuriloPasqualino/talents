@@ -81,7 +81,7 @@ const submit = () => {
             <h2 class="text-xl font-semibold leading-tight text-gray-900">Nova empresa</h2>
         </template>
 
-        <form class="max-w-4xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm" @submit.prevent="submit">
+        <form class="surface-card max-w-4xl space-y-4 p-6 text-slate-900" @submit.prevent="submit">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
                 <div>
                     <InputLabel for="cnpj" value="CNPJ" />

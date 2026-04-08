@@ -52,7 +52,7 @@ const submit = () => {
         </template>
 
         <form class="space-y-6 text-gray-900" @submit.prevent="submit">
-            <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div class="surface-card p-6">
                 <div>
                     <InputLabel for="title" value="Título" />
                     <TextInput id="title" v-model="form.title" class="mt-1 block w-full" required />
@@ -63,7 +63,7 @@ const submit = () => {
                 </div>
             </div>
 
-            <div v-for="(section, si) in state.sections" :key="si" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div v-for="(section, si) in state.sections" :key="si" class="surface-card p-6">
                 <div class="flex items-center justify-between">
                     <h3 class="font-semibold text-talents-700">Dimensão {{ si + 1 }}</h3>
                 </div>

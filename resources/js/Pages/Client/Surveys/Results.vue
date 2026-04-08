@@ -262,7 +262,7 @@ onUnmounted(() => {
                             <button
                                 v-if="aiAnalysisPending"
                                 type="button"
-                                class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                                 @click="router.reload({ only: ['aiAnalysis', 'aiAnalysisPending', 'flash'] })"
                             >
                                 Atualizar agora

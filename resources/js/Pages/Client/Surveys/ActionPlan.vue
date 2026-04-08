@@ -79,7 +79,7 @@ const patchItem = (item) => {
             <div
                 v-for="item in plan.items"
                 :key="item.id"
-                class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+                class="surface-card p-6"
             >
                 <h3 class="font-semibold text-talents-900">{{ item.title }}</h3>
                 <p class="mt-2 text-sm text-gray-600">{{ item.description }}</p>

@@ -24,7 +24,7 @@ const numberOrOne = (w) => (w != null && w !== '' ? Number(w) : 1);
             <div
                 v-for="section in template.sections"
                 :key="section.id"
-                class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm"
+                class="surface-card p-6 text-slate-900"
             >
                 <h3 class="font-semibold text-talents-700">{{ section.title }}</h3>
                 <p v-if="section.description" class="mt-2 text-sm text-gray-600">{{ section.description }}</p>

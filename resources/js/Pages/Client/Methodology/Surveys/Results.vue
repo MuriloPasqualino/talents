@@ -67,7 +67,7 @@ const chartSeries = computed(() => [
             <apexchart type="radar" height="360" :options="chartOptions" :series="chartSeries" />
         </div>
 
-        <div v-for="block in bySection" :key="block.section.id" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div v-for="block in bySection" :key="block.section.id" class="mt-8 surface-card p-6">
             <h3 class="text-lg font-semibold text-talents-900">{{ block.section.title }}</h3>
             <p v-if="block.section.description" class="mt-1 text-sm text-gray-600">{{ block.section.description }}</p>
 

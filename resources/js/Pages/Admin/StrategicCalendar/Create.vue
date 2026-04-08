@@ -42,7 +42,7 @@ const submit = () => {
             </div>
         </template>
 
-        <form class="max-w-2xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm" @submit.prevent="submit">
+        <form class="surface-card max-w-2xl space-y-4 p-6 text-slate-900" @submit.prevent="submit">
             <div>
                 <InputLabel for="title" value="Nome" />
                 <TextInput id="title" v-model="form.title" class="mt-1 block w-full" required />

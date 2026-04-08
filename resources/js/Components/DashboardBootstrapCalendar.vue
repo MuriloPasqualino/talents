@@ -63,7 +63,7 @@ const goToday = () => {
 </script>
 
 <template>
-    <div class="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm">
+    <div class="surface-card overflow-hidden">
         <div class="flex flex-col gap-2 border-b border-zinc-100 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
                 <h3 class="text-base font-semibold text-zinc-900">{{ title }}</h3>
@@ -72,7 +72,7 @@ const goToday = () => {
             <Link
                 v-if="fullPageHref"
                 :href="fullPageHref"
-                class="inline-flex shrink-0 items-center justify-center rounded-lg bg-talents-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-talents-800"
+                class="inline-flex shrink-0 items-center justify-center rounded-full bg-talents-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-talents-800"
             >
                 {{ fullPageLabel }}
             </Link>

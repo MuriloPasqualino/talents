@@ -29,7 +29,7 @@ const submit = () => {
         </template>
 
         <form class="max-w-xl space-y-6 text-gray-900" @submit.prevent="submit">
-            <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div class="surface-card p-6">
                 <div>
                     <InputLabel for="title" value="Título" />
                     <TextInput id="title" v-model="form.title" class="mt-1 block w-full" required />

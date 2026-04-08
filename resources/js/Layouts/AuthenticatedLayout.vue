@@ -9,7 +9,7 @@ import { HomeIcon, IdentificationIcon, UserCircleIcon } from '@heroicons/vue/24/
 </script>
 
 <template>
-    <SidebarLayout>
+    <SidebarLayout top-bar-title="Painel">
         <template #logo="{ collapsed }">
             <Link
                 :href="route('dashboard')"
@@ -71,6 +71,10 @@ import { HomeIcon, IdentificationIcon, UserCircleIcon } from '@heroicons/vue/24/
 
         <template v-if="$slots.header" #header>
             <slot name="header" />
+        </template>
+
+        <template v-if="$slots.aside" #aside>
+            <slot name="aside" />
         </template>
 
         <slot />

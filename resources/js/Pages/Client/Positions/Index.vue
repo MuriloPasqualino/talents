@@ -39,7 +39,7 @@ const remove = (id) => {
             </button>
         </form>
 
-        <ul class="divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white">
+        <ul class="divide-y divide-slate-200 surface-card overflow-hidden">
             <li v-for="p in positions.data" :key="p.id" class="flex items-center justify-between px-4 py-3 text-sm">
                 <span>{{ p.name }}</span>
                 <button type="button" class="text-red-600 hover:underline" @click="remove(p.id)">Excluir</button>

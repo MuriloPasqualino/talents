@@ -1,7 +1,7 @@
 <script setup>
 import DashboardBootstrapCalendar from '@/Components/DashboardBootstrapCalendar.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
     stats: Object,
@@ -16,9 +16,24 @@ defineProps({
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-2xl font-semibold tracking-tight text-slate-900">
-                Visão geral Talents
-            </h2>
+            <div>
+                <p class="text-sm text-slate-500">Olá, {{ $page.props.auth.user.name }}</p>
+                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Visão geral Talents</h2>
+            </div>
+        </template>
+
+        <template #aside>
+            <div class="space-y-4">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Área admin</p>
+                <div class="surface-glass space-y-3 p-4 text-sm text-slate-700">
+                    <Link :href="route('admin.companies.index')" class="block font-medium text-talents-800 hover:underline">
+                        Empresas
+                    </Link>
+                    <Link :href="route('admin.settings.edit')" class="block font-medium text-talents-800 hover:underline">
+                        Configurações
+                    </Link>
+                </div>
+            </div>
         </template>
 
         <div v-if="dashboardCalendar" class="mb-10">

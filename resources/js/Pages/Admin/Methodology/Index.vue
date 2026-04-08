@@ -59,7 +59,7 @@ const selectedStep = ref(2);
                             Empresas — vincular templates
                         </Link>
                     </div>
-                    <div v-if="recentTemplates?.length" class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div v-if="recentTemplates?.length" class="surface-card p-5">
                         <h3 class="font-semibold text-talents-800">Templates recentes</h3>
                         <ul class="mt-3 divide-y divide-gray-100 text-sm">
                             <li v-for="t in recentTemplates" :key="t.id" class="flex flex-wrap items-center justify-between gap-2 py-2">

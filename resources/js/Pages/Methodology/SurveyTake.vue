@@ -115,12 +115,12 @@ const isLastStep = computed(() => currentStep.value === steps.value.length - 1);
 <template>
     <Head :title="survey.title" />
 
-    <div class="min-h-screen bg-gradient-to-b from-talents-50 to-white text-gray-900">
-        <div class="fixed left-0 right-0 top-0 z-10 h-1.5 bg-talents-100">
-            <div class="h-full bg-talents-600 transition-all duration-300" :style="{ width: progress + '%' }" />
+    <div class="app-shell min-h-screen text-slate-900">
+        <div class="fixed left-0 right-0 top-0 z-10 h-1.5 bg-talents-100/80">
+            <div class="h-full bg-highlight transition-all duration-300" :style="{ width: progress + '%' }" />
         </div>
 
-        <header class="border-b border-talents-100 bg-white/90 px-4 py-6 shadow-sm backdrop-blur">
+        <header class="border-b border-white/40 bg-white/85 px-4 pb-6 pt-8 shadow-sm backdrop-blur-md">
             <div class="mx-auto flex max-w-2xl flex-col items-center text-center">
                 <img src="/images/logo.png" alt="Talents" class="h-12 w-auto" />
                 <p class="mt-3 text-xs font-semibold uppercase tracking-widest text-talents-600">Pesquisa de satisfação</p>
@@ -129,14 +129,14 @@ const isLastStep = computed(() => currentStep.value === steps.value.length - 1);
         </header>
 
         <div class="mx-auto max-w-2xl px-4 py-6">
-            <p class="text-center text-sm text-gray-600">Suas respostas são confidenciais e ajudam a melhorar o ambiente de trabalho.</p>
-            <p class="mt-2 text-center text-xs text-gray-500">{{ progress }}% concluído</p>
+            <p class="text-center text-sm text-slate-600">Suas respostas são confidenciais e ajudam a melhorar o ambiente de trabalho.</p>
+            <p class="mt-2 text-center text-xs text-slate-500">{{ progress }}% concluído</p>
 
             <form class="mt-8 space-y-8" @submit.prevent="isLastStep ? submit() : next()">
-                <div v-if="currentStepData?.type === 'email'" class="rounded-2xl border border-talents-200 bg-white p-6 shadow-sm">
+                <div v-if="currentStepData?.type === 'email'" class="surface-card p-6">
                     <h2 class="text-lg font-semibold text-talents-900">Identificação</h2>
-                    <p class="mt-1 text-sm text-gray-600">Informe seu e-mail para esta pesquisa.</p>
-                    <label class="mt-4 block text-sm font-medium text-gray-700">E-mail</label>
+                    <p class="mt-1 text-sm text-slate-600">Informe seu e-mail para esta pesquisa.</p>
+                    <label class="mt-4 block text-sm font-medium text-slate-700">E-mail</label>
                     <input
                         v-model="form.email"
                         type="email"
@@ -156,12 +156,12 @@ const isLastStep = computed(() => currentStep.value === steps.value.length - 1);
                     </div>
                 </div>
 
-                <div v-else-if="currentStepData?.type === 'section'" class="rounded-2xl border border-talents-200 bg-white p-6 shadow-sm">
+                <div v-else-if="currentStepData?.type === 'section'" class="surface-card p-6">
                     <h2 class="text-lg font-semibold text-talents-900">{{ currentStepData.section.title }}</h2>
-                    <p v-if="currentStepData.section.description" class="mt-1 text-sm text-gray-600">{{ currentStepData.section.description }}</p>
+                    <p v-if="currentStepData.section.description" class="mt-1 text-sm text-slate-600">{{ currentStepData.section.description }}</p>
 
                     <div v-if="!survey.collect_email && currentStep === 0 && survey.company?.departments?.length" class="mt-4">
-                        <label class="block text-sm font-medium text-gray-700">Setor (opcional)</label>
+                        <label class="block text-sm font-medium text-slate-700">Setor (opcional)</label>
                         <select
                             v-model="form.department_id"
                             class="mt-1 w-full rounded-lg border-gray-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
@@ -172,8 +172,8 @@ const isLastStep = computed(() => currentStep.value === steps.value.length - 1);
                     </div>
 
                     <div class="mt-6 space-y-8">
-                        <div v-for="q in currentStepData.section.questions" :key="q.id" class="border-b border-gray-100 pb-6 last:border-0">
-                            <p class="text-sm font-medium text-gray-900">
+                        <div v-for="q in currentStepData.section.questions" :key="q.id" class="border-b border-slate-100 pb-6 last:border-0">
+                            <p class="text-sm font-medium text-slate-900">
                                 {{ q.body }}
                                 <span v-if="q.is_required" class="text-red-500">*</span>
                             </p>
@@ -208,7 +208,7 @@ const isLastStep = computed(() => currentStep.value === steps.value.length - 1);
                     <button
                         v-if="currentStep > 0"
                         type="button"
-                        class="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        class="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
                         @click="prev"
                     >
                         Anterior

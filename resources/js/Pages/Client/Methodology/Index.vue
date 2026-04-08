@@ -45,7 +45,7 @@ const selectedStep = ref(2);
                         <div
                             v-for="s in recentSurveys"
                             :key="s.id"
-                            class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-talents-200"
+                            class="surface-card p-4 transition hover:border-talents-200"
                         >
                             <div class="flex items-start justify-between gap-2">
                                 <div>

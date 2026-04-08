@@ -90,7 +90,7 @@ const submit = () => {
             {{ $page.props.flash.info }}
         </div>
 
-        <div class="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div class="mb-6 surface-card p-5">
             <h3 class="text-sm font-semibold text-gray-900">Pesquisa</h3>
             <dl class="mt-3 grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
                 <div><span class="text-gray-500">Status:</span> {{ survey.status }}</div>
@@ -151,7 +151,7 @@ const submit = () => {
             </p>
         </div>
 
-        <form class="space-y-6 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm" @submit.prevent="submit">
+        <form class="space-y-6 surface-card p-6 text-slate-900" @submit.prevent="submit">
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-talents-800">Itens do plano de ação</h3>
                 <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addRow">+ Adicionar item</button>

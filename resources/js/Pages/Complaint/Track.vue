@@ -18,26 +18,26 @@ const submit = () => {
 <template>
     <Head title="Acompanhar denúncia" />
 
-    <div class="min-h-screen bg-slate-100 px-4 py-12 text-gray-900">
-        <div class="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-            <h1 class="text-lg font-semibold text-gray-900">Acompanhar denúncia</h1>
-            <p class="mt-1 text-sm text-gray-600">{{ companyName }}</p>
+    <div class="app-shell min-h-screen px-4 py-12 text-slate-900">
+        <div class="surface-card mx-auto max-w-md p-8">
+            <h1 class="text-lg font-semibold text-slate-900">Acompanhar denúncia</h1>
+            <p class="mt-1 text-sm text-slate-600">{{ companyName }}</p>
 
             <form class="mt-6 space-y-4" @submit.prevent="submit">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Protocolo (UUID)</label>
+                    <label class="block text-sm font-medium text-slate-700">Protocolo (UUID)</label>
                     <input
                         v-model="form.protocol"
                         type="text"
                         required
-                        class="mt-1 w-full rounded-md border-gray-300 font-mono text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        class="mt-1 w-full rounded-lg border-slate-200 font-mono text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         placeholder="00000000-0000-0000-0000-000000000000"
                     />
                     <p v-if="form.errors.protocol" class="mt-1 text-sm text-red-600">{{ form.errors.protocol }}</p>
                 </div>
                 <button
                     type="submit"
-                    class="w-full rounded-lg bg-talents-700 py-2 text-sm font-semibold text-white hover:bg-talents-800"
+                    class="w-full rounded-full bg-talents-700 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-talents-800"
                     :disabled="form.processing"
                 >
                     Consultar

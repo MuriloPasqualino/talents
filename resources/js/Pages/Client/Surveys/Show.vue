@@ -20,7 +20,7 @@ defineProps({
             </div>
         </template>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div class="surface-card p-6">
             <p class="text-sm text-gray-600">Status: <strong>{{ survey.status }}</strong></p>
             <p class="mt-2 text-sm text-gray-600">
                 Período: {{ survey.starts_at }} — {{ survey.ends_at }}

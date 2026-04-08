@@ -20,7 +20,7 @@ import {
 </script>
 
 <template>
-    <SidebarLayout>
+    <SidebarLayout top-bar-title="Área do cliente">
         <template #logo="{ collapsed }">
             <Link
                 :href="route('client.dashboard')"
@@ -133,6 +133,10 @@ import {
 
         <template v-if="$slots.header" #header>
             <slot name="header" />
+        </template>
+
+        <template v-if="$slots.aside" #aside>
+            <slot name="aside" />
         </template>
 
         <slot />

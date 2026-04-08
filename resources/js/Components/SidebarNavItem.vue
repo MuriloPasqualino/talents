@@ -33,17 +33,17 @@ const closeMobileSidebar = inject('closeMobileSidebar', null);
 
 const linkClasses = computed(() => {
     const base =
-        'group relative flex items-center gap-3 rounded-xl border-l-2 py-2 text-sm font-medium transition duration-150 ease-in-out';
+        'group relative flex items-center gap-3 rounded-2xl border border-transparent py-2.5 text-sm font-medium transition duration-150 ease-in-out';
     if (props.collapsed) {
         if (props.active) {
-            return `${base} justify-center border-transparent bg-talents-50 px-2 text-talents-800`;
+            return `${base} justify-center bg-talents-100/90 px-2 text-talents-900 shadow-sm ring-1 ring-talents-200/60`;
         }
-        return `${base} justify-center border-transparent px-2 text-slate-600 hover:bg-white/80 hover:text-slate-900`;
+        return `${base} justify-center px-2 text-slate-600 hover:bg-slate-100/90 hover:text-slate-900`;
     }
     if (props.active) {
-        return `${base} border-talents-600 bg-talents-50 px-3 text-talents-800`;
+        return `${base} bg-talents-100/90 px-3 text-talents-900 shadow-sm ring-1 ring-talents-300/50`;
     }
-    return `${base} border-transparent px-3 text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900`;
+    return `${base} px-3 text-slate-600 hover:bg-slate-100/80 hover:text-slate-900`;
 });
 
 const iconClasses = computed(() =>

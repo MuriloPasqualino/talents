@@ -54,7 +54,7 @@ const deleteCompany = () => {
         </template>
 
         <div class="grid gap-6 lg:grid-cols-2">
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+            <div class="surface-card p-6 text-slate-900">
                 <h3 class="font-semibold text-talents-700">Dados</h3>
                 <dl class="mt-4 space-y-2 text-sm">
                     <div><dt class="text-gray-500">E-mail (contato / administrador)</dt><dd>{{ company.contact_email || '—' }}</dd></div>
@@ -73,7 +73,7 @@ const deleteCompany = () => {
                     <p class="mt-1 break-all font-mono text-xs text-gray-800">{{ complaintsPublicUrl }}</p>
                 </div>
             </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+            <div class="surface-card p-6 text-slate-900">
                 <h3 class="font-semibold text-talents-700">Assinaturas</h3>
                 <ul class="mt-4 space-y-2 text-sm">
                     <li v-for="sub in company.subscriptions" :key="sub.id">
@@ -125,7 +125,7 @@ const deleteCompany = () => {
             </ul>
         </div>
 
-        <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+        <div class="mt-8 surface-card p-6 text-slate-900">
             <h3 class="font-semibold text-talents-700">Templates disponíveis para a empresa</h3>
             <ul class="mt-4 space-y-2 text-sm">
                 <li v-for="t in templates" :key="t.id" class="flex items-center justify-between">
@@ -145,7 +145,7 @@ const deleteCompany = () => {
             </ul>
         </div>
 
-        <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+        <div class="mt-8 surface-card p-6 text-slate-900">
             <h3 class="font-semibold text-talents-700">Pesquisas e plano de ação</h3>
             <p class="mt-2 text-sm text-gray-600">
                 Edite o plano de ação de cada pesquisa; ele só aparece para a empresa após você preencher e salvar os itens.
@@ -168,7 +168,7 @@ const deleteCompany = () => {
             </ul>
         </div>
 
-        <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+        <div class="mt-8 surface-card p-6 text-slate-900">
             <h3 class="font-semibold text-talents-700">Usuários</h3>
             <ul class="mt-4 space-y-1 text-sm">
                 <li v-for="u in company.users" :key="u.id">{{ u.name }} — {{ u.email }} ({{ u.role }})</li>

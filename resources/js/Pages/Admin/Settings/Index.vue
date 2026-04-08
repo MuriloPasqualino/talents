@@ -133,7 +133,7 @@ const setTab = (name) => {
 
         <form
             v-show="tabQuery === 'ia'"
-            class="max-w-2xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm"
+            class="surface-card max-w-2xl space-y-4 p-6 text-slate-900"
             @submit.prevent="submitAi"
         >
             <h3 class="text-lg font-semibold text-gray-900">Mia (IA)</h3>
@@ -196,7 +196,7 @@ const setTab = (name) => {
 
         <form
             v-show="tabQuery === 'mail'"
-            class="max-w-2xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm"
+            class="surface-card max-w-2xl space-y-4 p-6 text-slate-900"
             @submit.prevent="submitMail"
         >
             <h3 class="text-lg font-semibold text-gray-900">E-mail (SMTP)</h3>
@@ -258,7 +258,7 @@ const setTab = (name) => {
             </div>
         </form>
 
-        <div v-show="tabQuery === 'mail'" class="mt-6 max-w-2xl rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+        <div v-show="tabQuery === 'mail'" class="mt-6 max-w-2xl surface-card p-6 text-slate-900">
             <h4 class="text-sm font-semibold text-gray-900">Testar envio</h4>
             <p class="mt-1 text-sm text-gray-600">Envia um e-mail simples para verificar o SMTP.</p>
             <form class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="sendTestMail">

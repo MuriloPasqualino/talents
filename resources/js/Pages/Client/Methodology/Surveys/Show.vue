@@ -57,7 +57,7 @@ const deleteSurvey = () => {
         </template>
 
         <div class="grid gap-6 lg:grid-cols-2">
-            <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div class="surface-card p-6">
                 <h3 class="font-semibold text-talents-800">Link público</h3>
                 <p class="mt-2 break-all font-mono text-xs text-gray-700">{{ publicUrl }}</p>
                 <button
@@ -71,7 +71,7 @@ const deleteSurvey = () => {
                 <p class="mt-2 text-sm text-gray-600">Status: <strong>{{ survey.status }}</strong></p>
                 <p class="mt-2 text-sm text-gray-600">Coleta de e-mail: {{ survey.collect_email ? 'Sim' : 'Não' }}</p>
             </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+            <div class="surface-card p-6 text-center">
                 <h3 class="font-semibold text-talents-800">QR Code</h3>
                 <img :src="qrSrc" alt="QR Code" class="mx-auto mt-4 h-40 w-40 rounded-lg border border-gray-100 bg-white p-1" />
                 <p class="mt-2 text-xs text-gray-500">Leitura direta para o formulário público</p>

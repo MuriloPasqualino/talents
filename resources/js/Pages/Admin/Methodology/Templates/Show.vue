@@ -16,7 +16,7 @@ defineProps({ template: Object });
             </div>
         </template>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+        <div class="surface-card p-6 text-slate-900">
             <p v-if="template.description" class="text-sm text-gray-600">{{ template.description }}</p>
             <p class="mt-2 text-xs text-gray-500">Etapa {{ template.step_number }} · {{ template.is_active ? 'Ativo' : 'Inativo' }}</p>
         </div>

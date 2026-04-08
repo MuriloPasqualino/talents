@@ -40,7 +40,7 @@ const toggleModule = (id) => {
             <h2 class="text-xl font-semibold leading-tight text-gray-900">Novo plano</h2>
         </template>
 
-        <form class="max-w-xl space-y-4 rounded-xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm" @submit.prevent="submit">
+        <form class="max-w-xl space-y-4 surface-card p-6 text-slate-900" @submit.prevent="submit">
             <div>
                 <InputLabel for="name" value="Nome" />
                 <TextInput id="name" v-model="form.name" class="mt-1 block w-full" required />

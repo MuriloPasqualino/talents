@@ -21,7 +21,7 @@ defineProps({ surveys: Object });
             </div>
         </template>
 
-        <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div class="surface-card overflow-hidden">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
                     <tr>

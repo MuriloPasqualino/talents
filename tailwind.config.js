@@ -15,6 +15,13 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            borderRadius: {
+                shell: '1.75rem',
+            },
+            boxShadow: {
+                shell: '0 25px 50px -12px rgb(74 32 112 / 0.12), 0 0 0 1px rgb(226 232 240 / 0.6)',
+                'shell-inner': '0 20px 40px -15px rgb(99 42 126 / 0.15)',
+            },
             colors: {
                 talents: {
                     50: '#f5f0fa',
@@ -28,6 +35,11 @@ export default {
                     800: '#3a1858',
                     900: '#2a1042',
                     accent: '#b388d9',
+                },
+                /** Destaques tipo LMS (gráficos, CTAs) */
+                highlight: {
+                    DEFAULT: '#e8b84a',
+                    muted: '#f5e6c8',
                 },
             },
         },

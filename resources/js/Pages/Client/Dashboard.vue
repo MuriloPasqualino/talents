@@ -35,7 +35,34 @@ const healthLevelLabel = (level) => {
 
     <ClientLayout>
         <template #header>
-            <h2 class="text-2xl font-semibold tracking-tight text-slate-900">Painel NR-1</h2>
+            <div>
+                <p class="text-sm text-slate-500">Olá, {{ $page.props.auth.user.name }}</p>
+                <h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Painel NR-1</h2>
+            </div>
+        </template>
+
+        <template #aside>
+            <div class="space-y-4">
+                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Atalhos</p>
+                <div class="surface-glass space-y-3 p-4 text-sm text-slate-700">
+                    <Link
+                        :href="route('client.surveys.index')"
+                        class="block font-medium text-talents-800 hover:underline"
+                    >
+                        Pesquisas NR1
+                    </Link>
+                    <Link
+                        v-if="$page.props.auth.user?.company?.has_strategic_calendar"
+                        :href="route('client.strategic-calendar.index')"
+                        class="block font-medium text-talents-800 hover:underline"
+                    >
+                        Calendário estratégico
+                    </Link>
+                    <Link :href="route('profile.edit')" class="block font-medium text-talents-800 hover:underline">
+                        Perfil
+                    </Link>
+                </div>
+            </div>
         </template>
 
         <div v-if="dashboardCalendar" class="mb-10">

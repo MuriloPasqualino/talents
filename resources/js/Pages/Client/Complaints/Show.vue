@@ -73,7 +73,7 @@ const statusLabel = (s) => {
 
         <div class="grid gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
-                <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div class="surface-card p-6">
                     <h3 class="font-semibold text-gray-900">Relato</h3>
                     <p class="mt-2 text-sm text-gray-600">
                         Tipo: {{ complaint.category }} · {{ statusLabel(complaint.status) }}
@@ -87,7 +87,7 @@ const statusLabel = (s) => {
                     <p class="mt-4 whitespace-pre-wrap text-sm text-gray-800">{{ complaint.description }}</p>
                 </div>
 
-                <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div class="surface-card p-6">
                     <h3 class="font-semibold text-gray-900">Mensagens</h3>
                     <div v-for="m in complaint.messages" :key="m.id" class="mt-4 border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
                         <p class="text-xs font-medium text-talents-700">
@@ -117,7 +117,7 @@ const statusLabel = (s) => {
                 </div>
             </div>
 
-            <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div class="surface-card p-6">
                 <h3 class="font-semibold text-gray-900">Trilha de auditoria</h3>
                 <ul class="mt-4 space-y-3 text-xs text-gray-600">
                     <li v-for="log in complaint.audit_logs" :key="log.id" class="border-b border-gray-100 pb-3">
