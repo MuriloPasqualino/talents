@@ -125,7 +125,7 @@ const heroBgStyle = computed(() => {
 });
 
 const rootMinHeight = computed(() =>
-    props.compact ? 'min-h-0 max-h-[min(420px,55vh)]' : 'min-h-[min(720px,85vh)]',
+    props.compact ? 'min-h-0' : 'min-h-[min(720px,85vh)]',
 );
 
 const dayNumClass = computed(() =>
@@ -133,11 +133,24 @@ const dayNumClass = computed(() =>
 );
 
 const gridDayClass = computed(() =>
-    props.compact ? 'text-sm' : 'text-lg sm:text-xl md:text-2xl',
+    props.compact ? 'text-xs' : 'text-lg sm:text-xl md:text-2xl',
 );
 
 const headerDayClass = computed(() =>
     props.compact ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm',
+);
+
+/** No modo compacto, linhas de altura fixa para o mês inteiro caber sem scroll */
+const gridCellWrapperClass = computed(() =>
+    props.compact
+        ? 'flex h-8 items-center justify-center p-px sm:h-9'
+        : 'flex aspect-square items-center justify-center p-0.5 sm:p-1',
+);
+
+const gridButtonSizeClass = computed(() =>
+    props.compact
+        ? 'h-7 w-7 max-h-7 max-w-7 text-xs'
+        : 'h-full w-full max-h-14 max-w-14 sm:max-h-16 sm:max-w-16',
 );
 </script>
 
@@ -148,8 +161,7 @@ const headerDayClass = computed(() =>
     >
         <!-- Hero -->
         <div
-            class="relative flex min-h-[200px] w-full flex-col justify-between p-6 text-white lg:w-[35%] lg:min-h-0 lg:rounded-l-2xl lg:rounded-r-none"
-            :class="compact ? 'lg:min-h-[240px]' : ''"
+            class="relative flex min-h-[200px] w-full flex-col justify-between self-stretch p-6 text-white lg:w-[35%] lg:min-h-0 lg:rounded-l-2xl lg:rounded-r-none"
         >
             <div
                 class="absolute inset-0 bg-gradient-to-br from-slate-950/85 via-slate-900/75 to-slate-800/90"
@@ -184,10 +196,10 @@ const headerDayClass = computed(() =>
 
         <!-- Grid -->
         <div
-            class="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white p-4 sm:p-6 lg:rounded-r-2xl"
-            :class="compact ? 'max-h-[min(380px,55vh)]' : ''"
+            class="flex min-h-0 flex-1 flex-col bg-white lg:rounded-r-2xl"
+            :class="compact ? 'overflow-visible p-3 sm:p-4' : 'overflow-y-auto p-4 sm:p-6'"
         >
-            <div class="mb-4 flex items-center justify-between gap-2">
+            <div class="flex items-center justify-between gap-2" :class="compact ? 'mb-2' : 'mb-4'">
                 <button
                     type="button"
                     class="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700"
@@ -212,24 +224,29 @@ const headerDayClass = computed(() =>
                 </button>
             </div>
 
-            <div role="grid" class="grid grid-cols-7 gap-y-1" :class="compact ? 'gap-x-0.5' : 'gap-x-1'">
+            <div
+                role="grid"
+                class="grid grid-cols-7"
+                :class="compact ? 'gap-x-0.5 gap-y-0' : 'gap-x-1 gap-y-1'"
+            >
                 <div
                     v-for="w in weekdayLabels"
                     :key="w"
-                    class="pb-2 text-center font-medium text-zinc-500"
-                    :class="headerDayClass"
+                    class="text-center font-medium text-zinc-500"
+                    :class="[headerDayClass, compact ? 'pb-1' : 'pb-2']"
                     role="columnheader"
                 >
                     {{ w }}
                 </div>
                 <template v-for="(row, ri) in weeks" :key="ri">
                     <template v-for="(cell, ci) in row" :key="`${ri}-${ci}`">
-                        <div class="flex aspect-square items-center justify-center p-0.5 sm:p-1" role="gridcell">
+                        <div :class="gridCellWrapperClass" role="gridcell">
                             <button
                                 v-if="cell.day"
                                 type="button"
-                                class="relative flex h-full w-full max-h-14 max-w-14 items-center justify-center rounded-full font-medium text-zinc-700 transition sm:max-h-16 sm:max-w-16"
+                                class="relative flex shrink-0 items-center justify-center rounded-full font-medium text-zinc-700 transition"
                                 :class="[
+                                    gridButtonSizeClass,
                                     gridDayClass,
                                     selectedDay === cell.day
                                         ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-600/30'
@@ -242,8 +259,11 @@ const headerDayClass = computed(() =>
                                 {{ cell.day }}
                                 <span
                                     v-if="cell.items?.length"
-                                    class="absolute bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-fuchsia-500"
-                                    :class="selectedDay === cell.day ? 'bg-white' : ''"
+                                    class="absolute left-1/2 -translate-x-1/2 rounded-full bg-fuchsia-500"
+                                    :class="[
+                                        compact ? 'bottom-0 h-1 w-1' : 'bottom-0.5 h-1.5 w-1.5',
+                                        selectedDay === cell.day ? 'bg-white' : '',
+                                    ]"
                                     aria-hidden="true"
                                 />
                             </button>
