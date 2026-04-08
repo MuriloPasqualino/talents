@@ -35,7 +35,7 @@ const healthLevelLabel = (level) => {
 
     <ClientLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-talents-900">Painel NR-1</h2>
+            <h2 class="text-2xl font-semibold tracking-tight text-slate-900">Painel NR-1</h2>
         </template>
 
         <div v-if="dashboardCalendar" class="mb-10">
@@ -53,11 +53,11 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div class="grid gap-6 sm:grid-cols-3">
-            <div class="rounded-xl border border-talents-200 bg-white p-6 shadow-sm">
+            <div class="surface-card p-6">
                 <p class="text-sm text-slate-500">Pesquisas ativas</p>
-                <p class="mt-2 text-3xl font-bold text-talents-800">{{ activeSurveys }}</p>
+                <p class="mt-2 text-3xl font-bold tabular-nums text-talents-800">{{ activeSurveys }}</p>
             </div>
-            <div class="rounded-xl border border-talents-200 bg-white p-6 shadow-sm sm:col-span-2">
+            <div class="surface-card p-6 sm:col-span-2">
                 <p class="text-sm text-slate-500">Última campanha</p>
                 <p v-if="lastSurvey" class="mt-2 text-lg font-semibold text-talents-900">{{ lastSurvey.title }}</p>
                 <p v-else class="mt-2 text-slate-500">Nenhuma campanha ainda.</p>
@@ -77,10 +77,10 @@ const healthLevelLabel = (level) => {
             </div>
         </div>
 
-        <div v-if="complaintsPublicUrl" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-sm font-semibold text-talents-900">Link público — Canal de denúncias</h3>
-            <p class="mt-1 text-xs text-gray-600">Compartilhe com colaboradores (Lei 14.457/2022). Acesso sigiloso com protocolo.</p>
-            <p class="mt-3 break-all rounded-md bg-gray-50 p-2 font-mono text-xs text-gray-800">{{ complaintsPublicUrl }}</p>
+        <div v-if="complaintsPublicUrl" class="surface-card mt-8 p-6">
+            <h3 class="text-sm font-semibold text-slate-900">Link público — Canal de denúncias</h3>
+            <p class="mt-1 text-xs text-slate-600">Compartilhe com colaboradores (Lei 14.457/2022). Acesso sigiloso com protocolo.</p>
+            <p class="mt-3 break-all rounded-lg bg-slate-50 p-2 font-mono text-xs text-slate-800">{{ complaintsPublicUrl }}</p>
             <button
                 type="button"
                 class="mt-3 rounded-md border border-talents-300 px-3 py-1.5 text-sm font-medium text-talents-800 hover:bg-talents-50"

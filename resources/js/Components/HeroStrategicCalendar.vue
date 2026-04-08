@@ -292,9 +292,9 @@ const gridButtonSizeClass = computed(() =>
                                     gridButtonSizeClass,
                                     gridDayClass,
                                     selectedDay === cell.day
-                                        ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-600/30'
+                                        ? 'bg-talents-600 text-white shadow-md shadow-talents-600/25'
                                         : 'hover:bg-zinc-100',
-                                    cell.isToday && selectedDay !== cell.day ? 'ring-2 ring-fuchsia-300/80' : '',
+                                    cell.isToday && selectedDay !== cell.day ? 'ring-2 ring-talents-300/90' : '',
                                 ]"
                                 :title="itemsTitle(cell) || undefined"
                                 @click="onPickDay(cell)"
@@ -302,7 +302,7 @@ const gridButtonSizeClass = computed(() =>
                                 {{ cell.day }}
                                 <span
                                     v-if="cell.items?.length"
-                                    class="absolute left-1/2 -translate-x-1/2 rounded-full bg-fuchsia-500"
+                                    class="absolute left-1/2 -translate-x-1/2 rounded-full bg-talents-500"
                                     :class="[
                                         compact ? 'bottom-0 h-1 w-1' : 'bottom-0.5 h-1.5 w-1.5',
                                         selectedDay === cell.day ? 'bg-white' : '',

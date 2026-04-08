@@ -9,7 +9,7 @@ import { HomeIcon, IdentificationIcon, UserCircleIcon } from '@heroicons/vue/24/
 </script>
 
 <template>
-    <SidebarLayout shell-class="min-h-screen bg-gray-100">
+    <SidebarLayout>
         <template #logo="{ collapsed }">
             <Link
                 :href="route('dashboard')"
@@ -48,10 +48,10 @@ import { HomeIcon, IdentificationIcon, UserCircleIcon } from '@heroicons/vue/24/
                     <template #trigger>
                         <button
                             type="button"
-                            class="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-2 text-left text-sm text-gray-700 shadow-sm transition hover:bg-gray-50"
+                            class="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-2 text-left text-sm text-slate-800 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-talents-500/30"
                             :class="collapsed ? 'justify-center' : ''"
                         >
-                            <UserCircleIcon class="h-8 w-8 shrink-0 text-gray-600" />
+                            <UserCircleIcon class="h-8 w-8 shrink-0 text-talents-600" />
                             <span v-if="!collapsed" class="min-w-0 flex-1 truncate font-medium">
                                 {{ $page.props.auth.user.name }}
                             </span>

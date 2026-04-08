@@ -7,3 +7,15 @@
         @apply antialiased text-slate-900;
     }
 }
+
+@layer components {
+    /** Fundo do shell autenticado (gradiente suave + toque Talents) */
+    .app-shell {
+        @apply min-h-screen bg-gradient-to-br from-slate-50 via-white to-talents-50/40;
+    }
+
+    /** Cartões alinhados ao estilo dashboard moderno */
+    .surface-card {
+        @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm;
+    }
+}
