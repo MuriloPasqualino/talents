@@ -42,6 +42,14 @@ class RhidApiController extends Controller
                 'message' => $e->getMessage(),
                 'payload' => $e->payload,
             ], 422);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Falha na integracao com o RHID. Verifique os logs do servidor ou tente novamente.',
+                'debug_message' => config('app.debug') ? $e->getMessage() : null,
+                'debug_type' => config('app.debug') ? $e::class : null,
+            ], 500);
         }
     }
 

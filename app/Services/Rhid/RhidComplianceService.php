@@ -252,8 +252,12 @@ class RhidComplianceService
      * @param  array<int|string, mixed>  $json
      * @return list<array<string, mixed>>
      */
-    protected function normalizeBankHoursRows(array $json): array
+    protected function normalizeBankHoursRows(array $json, int $depth = 0): array
     {
+        if ($depth > 20) {
+            return [$json];
+        }
+
         if ($json === []) {
             return [];
         }
@@ -271,7 +275,7 @@ class RhidComplianceService
         }
 
         if (isset($json['data']) && is_array($json['data'])) {
-            return $this->normalizeBankHoursRows($json['data']);
+            return $this->normalizeBankHoursRows($json['data'], $depth + 1);
         }
 
         return [$json];

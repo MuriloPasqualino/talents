@@ -120,7 +120,29 @@ class RhidClient
             return $url;
         }
 
-        return $url.(str_contains($url, '?') ? '&' : '?').http_build_query($query);
+        $people = null;
+        if (isset($query['people']) && is_array($query['people'])) {
+            $people = $query['people'];
+            unset($query['people']);
+        }
+
+        $parts = [];
+        if ($query !== []) {
+            $parts[] = http_build_query($query);
+        }
+        if ($people !== null) {
+            foreach ($people as $id) {
+                if (is_numeric($id)) {
+                    $parts[] = 'people='.rawurlencode((string) (int) $id);
+                }
+            }
+        }
+
+        if ($parts === []) {
+            return $url;
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').implode('&', $parts);
     }
 
     protected function summarizeResponse(Response $response, bool $expectJson): ?array
