@@ -68,11 +68,6 @@ export function todayHtmlDate() {
 }
 
 /**
- * Extrai lista de itens de respostas RHID paginadas ou array direto.
- * @param {unknown} payload
- * @returns {unknown[]}
- */
-/**
  * Formata datas no formato Microsoft JSON: /Date(1647918000000-0300)/
  * @param {unknown} val
  * @returns {string} data local pt-BR ou string vazia se invalido
@@ -93,6 +88,31 @@ export function formatRhidDotNetDate(val) {
     return d.toLocaleDateString('pt-BR');
 }
 
+/**
+ * Saldo de banco de horas: a API RHID envia minutos (inteiro, pode ser negativo).
+ * @param {unknown} totalMinutes
+ * @returns {string} ex.: "-9h 53min", "3h 54min", "0h 00min"
+ */
+export function formatRhidBankBalanceMinutes(totalMinutes) {
+    if (totalMinutes == null || totalMinutes === '') {
+        return '—';
+    }
+    const n = Number(totalMinutes);
+    if (!Number.isFinite(n)) {
+        return '—';
+    }
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.round(Math.abs(n));
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    return `${sign}${h}h ${String(m).padStart(2, '0')}min`;
+}
+
+/**
+ * Extrai lista de itens de respostas RHID paginadas ou array direto.
+ * @param {unknown} payload
+ * @returns {unknown[]}
+ */
 export function extractListItems(payload) {
     if (payload == null) {
         return [];

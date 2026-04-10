@@ -8,6 +8,7 @@ import axios from 'axios';
 import { computed, ref } from 'vue';
 import {
     extractListItems,
+    formatRhidBankBalanceMinutes,
     formatRhidDotNetDate,
     monthRangeHtmlDates,
     todayHtmlDate,
@@ -117,20 +118,35 @@ const bankRowCentroCusto = (row) =>
 const bankRowCargo = (row) => row?.roleName || (row?.idPersonRole != null ? `#${row.idPersonRole}` : '—');
 
 const bankDisplayValue = (row) => {
-    const keys = [
-        'strSaldoBancoHoras',
+    const strRaw = row?.strSaldoBancoHoras;
+    if (strRaw != null && String(strRaw).trim() !== '') {
+        const s = String(strRaw).trim();
+        if (/[hHmM]/.test(s) || /\d{1,3}:\d{2}/.test(s)) {
+            return s;
+        }
+        const parsed = Number(s.replace(',', '.'));
+        if (Number.isFinite(parsed)) {
+            return formatRhidBankBalanceMinutes(parsed);
+        }
+        return s;
+    }
+    const numericKeys = [
         'saldoBancoHoras',
         'bancoHoras',
         'saldo',
-        'strBanco',
-        'strSaldo',
-        'totalBancoHoras',
         'minutesBank',
         'balance',
+        'totalBancoHoras',
+        'strBanco',
+        'strSaldo',
     ];
-    for (const k of keys) {
+    for (const k of numericKeys) {
         const v = row?.[k];
         if (v != null && v !== '') {
+            const n = Number(v);
+            if (Number.isFinite(n)) {
+                return formatRhidBankBalanceMinutes(n);
+            }
             return String(v);
         }
     }
@@ -477,7 +493,7 @@ const downloadReport = () => {
                                 <th class="whitespace-nowrap p-2">Nome social</th>
                                 <th class="whitespace-nowrap p-2">Matricula</th>
                                 <th class="whitespace-nowrap p-2">CPF</th>
-                                <th class="whitespace-nowrap p-2">Saldo BH</th>
+                                <th class="whitespace-nowrap p-2">Saldo BH (h / min)</th>
                                 <th class="whitespace-nowrap p-2">Empresa</th>
                                 <th class="whitespace-nowrap p-2">Depto</th>
                                 <th class="whitespace-nowrap p-2">Centro custo</th>
