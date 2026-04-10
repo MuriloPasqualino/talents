@@ -59,6 +59,31 @@ class RhidAuditLogger
             return null;
         }
 
+        // Evita json_encode de listas enormes (ex.: person_banco_horas) — estoura memoria no PHP.
+        if (array_is_list($json) && count($json) > 80) {
+            $first = $json[0] ?? null;
+
+            return [
+                '_truncated' => true,
+                'list_count' => count($json),
+                'first_item_sample' => is_array($first)
+                    ? self::maskSensitive([
+                        'id' => $first['id'] ?? null,
+                        'name' => $first['name'] ?? $first['nome'] ?? null,
+                        'saldoBancoHoras' => $first['saldoBancoHoras'] ?? null,
+                    ])
+                    : null,
+            ];
+        }
+
+        if (isset($json['data']) && is_array($json['data']) && array_is_list($json['data']) && count($json['data']) > 80) {
+            return [
+                '_truncated' => true,
+                'wrapper' => 'data',
+                'list_count' => count($json['data']),
+            ];
+        }
+
         $encoded = json_encode($json, JSON_UNESCAPED_UNICODE);
         if ($encoded === false) {
             return ['_error' => 'json_encode_failed'];

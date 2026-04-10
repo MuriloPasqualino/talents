@@ -102,21 +102,25 @@ class RhidClient
         }
 
         $expectJson = (bool) ($options['expect_json'] ?? true);
-        $this->audit->log(
-            $company,
-            $user,
-            $auditAction,
-            $url,
-            RhidAuditLogger::maskSensitive([
-                'method' => $method,
-                'path' => $path,
-                'query' => $query,
-                'body' => is_array($body) ? $body : null,
-                'raw' => isset($options['raw_body']),
-            ]),
-            $this->summarizeResponse($response, $expectJson),
-            $response->status(),
-        );
+        try {
+            $this->audit->log(
+                $company,
+                $user,
+                $auditAction,
+                $url,
+                RhidAuditLogger::maskSensitive([
+                    'method' => $method,
+                    'path' => $path,
+                    'query' => $query,
+                    'body' => is_array($body) ? $body : null,
+                    'raw' => isset($options['raw_body']),
+                ]),
+                $this->summarizeResponse($response, $expectJson),
+                $response->status(),
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return $response;
     }

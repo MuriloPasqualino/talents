@@ -148,7 +148,7 @@ class RhidComplianceService
             throw RhidApiException::fromResponse($r, 'person_banco_horas');
         }
 
-        return $this->normalizeBankHoursRows($json);
+        return $this->shrinkBankHourRowsForClient($this->normalizeBankHoursRows($json));
     }
 
     /**
@@ -259,6 +259,35 @@ class RhidComplianceService
             'rows' => $merged,
             'source' => 'aggregated_by_person_ids',
         ];
+    }
+
+    /**
+     * Remove campos sensiveis e pesados da resposta RHID antes de enviar ao browser.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function shrinkBankHourRowsForClient(array $rows): array
+    {
+        $keep = array_flip([
+            'id', 'name', 'nome', 'socialName', 'registration', 'cpf', 'pis',
+            'saldoBancoHoras', 'strSaldoBancoHoras', 'bancoHoras', 'saldo',
+            'companyName', 'companyTradingName', 'idCompany',
+            'departmentName', 'idDepartment', 'costCenterName', 'idCostCenter',
+            'roleName', 'idPersonRole',
+            'admissionDate', 'admissionDateStr', 'inicioBancoHoras', 'inicioBancoHorasStr',
+            'email', 'phone', 'status', 'statusStr', 'excluded',
+            'idPerson', 'id_funcionario',
+        ]);
+        $out = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $out[] = array_intersect_key($row, $keep);
+        }
+
+        return $out;
     }
 
     /**
