@@ -72,8 +72,8 @@ const espelhoPanelData = ref(null);
 const espelhoIniDate = ref(monthFirst);
 const espelhoFimDate = ref(monthLast);
 const espelhoFormato = ref('PDF');
-/** '' = todos; 1 = ativos; 2 = inativos */
-const espelhoStatus = ref('');
+/** '' = todos; 1 = ativos; 2 = inativos — padrao ativos (evita exceder limite da licenca RHID) */
+const espelhoStatus = ref('1');
 const espelhoSelectedFields = ref(['TODAS_MARCACOES', 'ENTRADAS_SAIDAS']);
 const espelhoFilterPeople = ref('');
 const espelhoFilterCompanies = ref('');
@@ -722,6 +722,8 @@ const buildReportPayload = () => {
         base.listColumns = ['strHorarioContratualSimples', 'horasTotalNaoExtra'];
         base.listPersonInfo = ['Person.name', 'Person.pis'];
     }
+    /** Somente ativos por padrao: relatorios de ponto incluem muitos inativos e podem estourar o limite da licenca */
+    base.status = '1';
     return base;
 };
 
@@ -2093,7 +2095,8 @@ const justStatusBarChart = computed(() => {
                 <p class="text-sm text-slate-600">
                     Espelho de ponto (RHID): inicia o relatorio, acompanha o GUID ate
                     <code class="rounded bg-slate-100 px-1">percent === 100</code>
-                    e faz o download. Periodo maximo de 31 dias entre as datas.
+                    e faz o download. Periodo maximo de 31 dias entre as datas. Por padrao so funcionarios
+                    ativos (reduz o volume e evita erro de limite de licenca no RHID).
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>

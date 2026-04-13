@@ -135,13 +135,11 @@ class RhidReportService
         $guid = $this->extractPontoStartGuid($json);
         if ($guid === null) {
             $apiErr = $json['error'] ?? $json['Error'] ?? null;
-            $suffix = is_string($apiErr) && $apiErr !== '' ? ' '.$apiErr : '';
+            if (is_string($apiErr) && $apiErr !== '') {
+                throw new RhidApiException($apiErr, $response->status(), $json);
+            }
 
-            throw new RhidApiException(
-                'Resposta sem GUID ao iniciar relatorio RHID.'.$suffix,
-                $response->status(),
-                $json,
-            );
+            throw new RhidApiException('Resposta sem GUID ao iniciar relatorio RHID.', $response->status(), $json);
         }
 
         return [
