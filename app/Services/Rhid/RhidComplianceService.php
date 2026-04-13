@@ -148,7 +148,15 @@ class RhidComplianceService
             throw RhidApiException::fromResponse($r, 'person_banco_horas');
         }
 
-        return $this->shrinkBankHourRowsForClient($this->normalizeBankHoursRows($json));
+        $rows = $this->normalizeBankHoursRows($json);
+        $out = [];
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                $out[] = $this->mergePersonNestedIntoBankHourRow($row);
+            }
+        }
+
+        return $this->shrinkBankHourRowsForClient($out);
     }
 
     /**
@@ -270,8 +278,10 @@ class RhidComplianceService
     protected function shrinkBankHourRowsForClient(array $rows): array
     {
         $keep = array_flip([
-            'name', 'nome', 'socialName', 'registration', 'cpf', 'pis',
+            'name', 'nome', 'strNome', 'strName', 'strPersonName', 'personName', 'socialName', 'strSocialName',
+            'registration', 'matricula', 'strMatricula', 'cpf', 'pis', 'strPis',
             'saldoBancoHoras', 'strSaldoBancoHoras', 'bancoHoras', 'saldo',
+            'minutesBank', 'balance', 'totalBancoHoras', 'strBanco', 'strSaldo',
             'departmentName', 'idDepartment',
             'roleName', 'idPersonRole',
             'excluded',
@@ -292,6 +302,65 @@ class RhidComplianceService
      * @param  array<int|string, mixed>  $json
      * @return list<array<string, mixed>>
      */
+    /**
+     * Lista JSON (0..n-1) com chaves inteiras ou string-numericas consecutivas.
+     *
+     * @param  array<int|string, mixed>  $arr
+     */
+    protected function isSequentialRowList(array $arr): bool
+    {
+        if ($arr === []) {
+            return true;
+        }
+        $expected = 0;
+        foreach (array_keys($arr) as $k) {
+            $i = is_int($k) ? $k : (is_string($k) && ctype_digit((string) $k) ? (int) $k : null);
+            if ($i !== $expected) {
+                return false;
+            }
+            $expected++;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    protected function mergePersonNestedIntoBankHourRow(array $row): array
+    {
+        $nestedKeys = ['person', 'Person', 'pessoa', 'Pessoa'];
+        $lift = [
+            'nome', 'name', 'strNome', 'strName', 'strPersonName', 'personName',
+            'socialName', 'strSocialName',
+            'registration', 'matricula', 'strMatricula', 'cpf', 'pis', 'strPis',
+            'departmentName', 'idDepartment', 'roleName', 'idPersonRole',
+        ];
+        foreach ($nestedKeys as $nk) {
+            if (! isset($row[$nk]) || ! is_array($row[$nk])) {
+                continue;
+            }
+            $inner = $row[$nk];
+            foreach ($lift as $f) {
+                $empty = ! array_key_exists($f, $row) || $row[$f] === null || $row[$f] === '';
+                if ($empty && isset($inner[$f]) && $inner[$f] !== null && $inner[$f] !== '') {
+                    $row[$f] = $inner[$f];
+                }
+            }
+            $idEmpty = ! array_key_exists('idPerson', $row) || $row['idPerson'] === null || $row['idPerson'] === '';
+            if ($idEmpty && isset($inner['id']) && is_numeric($inner['id'])) {
+                $row['idPerson'] = (int) $inner['id'];
+            }
+        }
+
+        return $row;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $json
+     * @return list<array<string, mixed>>
+     */
     protected function normalizeBankHoursRows(array $json, int $depth = 0): array
     {
         if ($depth > 20) {
@@ -302,7 +371,7 @@ class RhidComplianceService
             return [];
         }
 
-        if (array_keys($json) === range(0, count($json) - 1)) {
+        if ($this->isSequentialRowList($json)) {
             /** @var list<array<string, mixed>> $out */
             $out = [];
             foreach ($json as $row) {
@@ -314,10 +383,17 @@ class RhidComplianceService
             return $out;
         }
 
-        if (isset($json['data']) && is_array($json['data'])) {
-            return $this->normalizeBankHoursRows($json['data'], $depth + 1);
+        $listKeys = [
+            'data', 'rows', 'items', 'results', 'list', 'persons', 'values',
+            'personBankHours', 'PersonBankHours', 'd',
+        ];
+        foreach ($listKeys as $lk) {
+            if (isset($json[$lk]) && is_array($json[$lk])) {
+                return $this->normalizeBankHoursRows($json[$lk], $depth + 1);
+            }
         }
 
+        /** @var array<string, mixed> $json */
         return [$json];
     }
 

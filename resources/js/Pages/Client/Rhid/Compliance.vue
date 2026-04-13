@@ -83,13 +83,43 @@ const personDisplayName = (row) =>
 const personMatricula = (row) =>
     row?.registration ?? row?.matricula ?? row?.pis ?? row?.strMatricula ?? row?.strPis ?? '—';
 
-const bankDisplayName = (row) =>
-    row?.nome ??
-    row?.name ??
-    row?.person?.nome ??
-    row?.person?.name ??
-    row?.strPersonName ??
-    (row?.idPerson != null ? `ID ${row.idPerson}` : row?.id != null ? `ID ${row.id}` : '—');
+/**
+ * Nome para exibicao: a API RHID envia nome em campos diferentes (nome, name, strPersonName, objeto person).
+ * O shrink no servidor pode achatar `person` para a raiz; aqui ainda lemos o aninhado se existir.
+ * Quando os campos divergem, usamos o texto mais longo (geralmente nome completo vs abreviado).
+ */
+const bankDisplayName = (row) => {
+    if (row == null || typeof row !== 'object') {
+        return '—';
+    }
+    const nest = row.person || row.Person;
+    const trim = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '');
+    const candidates = [
+        trim(row.strPersonName),
+        trim(row.personName),
+        trim(row.name),
+        trim(row.nome),
+        trim(row.strNome),
+        trim(row.strName),
+        nest ? trim(nest.strPersonName) : '',
+        nest ? trim(nest.personName) : '',
+        nest ? trim(nest.name) : '',
+        nest ? trim(nest.nome) : '',
+        nest ? trim(nest.strNome) : '',
+        nest ? trim(nest.strName) : '',
+    ].filter(Boolean);
+    const unique = [...new Set(candidates)];
+    if (unique.length) {
+        return unique.reduce((a, b) => (b.length > a.length ? b : a));
+    }
+    if (row.idPerson != null) {
+        return `ID ${row.idPerson}`;
+    }
+    if (row.id != null) {
+        return `ID ${row.id}`;
+    }
+    return '—';
+};
 
 const bankHasOptionalFilters = () =>
     [bankFilterCompanies, bankFilterCostcenters, bankFilterDepartments, bankFilterPerson, bankFilterPersonroles].some(
