@@ -128,7 +128,6 @@ const bankRowToDrillLine = (row) => {
         balanceMin: m,
         dept: bankRowDepartamento(row),
         role: bankRowCargo(row),
-        reg: row.registration != null && String(row.registration).trim() !== '' ? String(row.registration) : '—',
         cpf: row.cpf != null && String(row.cpf).trim() !== '' ? String(row.cpf) : '—',
         personId: rhidPersonId(row),
     };
@@ -727,7 +726,6 @@ const downloadReport = () => {
                                     <th class="whitespace-nowrap p-2">Saldo BH</th>
                                     <th class="whitespace-nowrap p-2">Departamento</th>
                                     <th class="whitespace-nowrap p-2">Cargo</th>
-                                    <th class="whitespace-nowrap p-2">Matricula</th>
                                     <th class="whitespace-nowrap p-2">CPF</th>
                                 </tr>
                             </thead>
@@ -750,7 +748,6 @@ const downloadReport = () => {
                                     <td class="whitespace-nowrap p-2 tabular-nums text-slate-800">{{ ln.balance }}</td>
                                     <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="ln.dept">{{ ln.dept }}</td>
                                     <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="ln.role">{{ ln.role }}</td>
-                                    <td class="whitespace-nowrap p-2 text-slate-600">{{ ln.reg }}</td>
                                     <td class="whitespace-nowrap p-2 text-slate-600">{{ ln.cpf }}</td>
                                 </tr>
                             </tbody>
