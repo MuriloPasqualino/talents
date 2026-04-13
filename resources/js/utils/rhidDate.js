@@ -108,6 +108,69 @@ export function formatRhidBankBalanceMinutes(totalMinutes) {
     return `${sign}${h}h ${String(m).padStart(2, '0')}min`;
 }
 
+const BANK_NUMERIC_KEYS = [
+    'saldoBancoHoras',
+    'bancoHoras',
+    'saldo',
+    'minutesBank',
+    'balance',
+    'totalBancoHoras',
+    'strBanco',
+    'strSaldo',
+];
+
+/**
+ * Minutos numéricos do saldo BH (mesma ordem de leitura que a UI de tabela).
+ * @param {Record<string, unknown>|null|undefined} row
+ * @returns {number|null}
+ */
+export function parseRhidBankBalanceMinutes(row) {
+    if (row == null || typeof row !== 'object') {
+        return null;
+    }
+    const strRaw = row.strSaldoBancoHoras;
+    if (strRaw != null && String(strRaw).trim() !== '') {
+        const raw = String(strRaw).trim();
+        const neg = /^-/.test(raw);
+        const s = raw.replace(/^-/, '');
+        const hm = s.match(/^(\d{1,3}):(\d{2})$/);
+        if (hm) {
+            const h = parseInt(hm[1], 10);
+            const m = parseInt(hm[2], 10);
+            if (!Number.isNaN(h) && !Number.isNaN(m)) {
+                const total = h * 60 + m;
+                return neg ? -total : total;
+            }
+        }
+        const hx = s.match(/(\d+)\s*h/i);
+        const mx = s.match(/(\d+)\s*min/i);
+        if (hx || mx) {
+            const h = hx ? parseInt(hx[1], 10) : 0;
+            const m = mx ? parseInt(mx[1], 10) : 0;
+            if (!Number.isNaN(h) && !Number.isNaN(m)) {
+                const total = h * 60 + m;
+                return neg ? -total : total;
+            }
+        }
+        const parsed = Number(raw.replace(',', '.'));
+        if (Number.isFinite(parsed)) {
+            return Math.round(parsed);
+        }
+        return null;
+    }
+    for (const k of BANK_NUMERIC_KEYS) {
+        const v = row[k];
+        if (v != null && v !== '') {
+            const n = Number(v);
+            if (Number.isFinite(n)) {
+                return Math.round(n);
+            }
+            return null;
+        }
+    }
+    return null;
+}
+
 /**
  * Extrai lista de itens de respostas RHID paginadas ou array direto.
  * @param {unknown} payload

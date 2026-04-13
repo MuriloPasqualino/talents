@@ -9,8 +9,8 @@ import { computed, ref } from 'vue';
 import {
     extractListItems,
     formatRhidBankBalanceMinutes,
-    formatRhidDotNetDate,
     monthRangeHtmlDates,
+    parseRhidBankBalanceMinutes,
     todayHtmlDate,
     toRhidYmd,
 } from '@/utils/rhidDate';
@@ -96,26 +96,195 @@ const bankHasOptionalFilters = () =>
         (r) => String(r.value ?? '').trim() !== '',
     );
 
-const bankRowAdmissao = (row) =>
-    (row?.admissionDateStr && String(row.admissionDateStr).trim()) ||
-    formatRhidDotNetDate(row?.admissionDate) ||
-    '—';
-
-const bankRowInicioBh = (row) =>
-    (row?.inicioBancoHorasStr && String(row.inicioBancoHorasStr).trim()) ||
-    formatRhidDotNetDate(row?.inicioBancoHoras) ||
-    '—';
-
-const bankRowEmpresa = (row) =>
-    row?.companyTradingName || row?.companyName || (row?.idCompany != null ? `#${row.idCompany}` : '—');
-
 const bankRowDepartamento = (row) =>
     row?.departmentName || (row?.idDepartment != null ? `#${row.idDepartment}` : '—');
 
-const bankRowCentroCusto = (row) =>
-    row?.costCenterName || (row?.idCostCenter != null ? `#${row.idCostCenter}` : '—');
-
 const bankRowCargo = (row) => row?.roleName || (row?.idPersonRole != null ? `#${row.idPersonRole}` : '—');
+
+const MAX_DEPT_CHART = 12;
+const TOP_DEBIT_N = 10;
+
+const bankBalanceBuckets = computed(() => {
+    let neg = 0;
+    let zero = 0;
+    let pos = 0;
+    let none = 0;
+    for (const row of bankRows.value) {
+        const m = parseRhidBankBalanceMinutes(row);
+        if (m === null) {
+            none += 1;
+        } else if (m < 0) {
+            neg += 1;
+        } else if (m === 0) {
+            zero += 1;
+        } else {
+            pos += 1;
+        }
+    }
+    return { neg, zero, pos, none };
+});
+
+const bankDonutChart = computed(() => {
+    const d = bankBalanceBuckets.value;
+    const items = [
+        { label: 'Saldo negativo', val: d.neg, color: '#ef4444' },
+        { label: 'Saldo zero', val: d.zero, color: '#94a3b8' },
+        { label: 'Saldo positivo', val: d.pos, color: '#10b981' },
+        { label: 'Sem dado numerico', val: d.none, color: '#f59e0b' },
+    ].filter((i) => i.val > 0);
+    const series = items.map((i) => i.val);
+    const labels = items.map((i) => i.label);
+    const colors = items.map((i) => i.color);
+    const total = series.reduce((a, b) => a + b, 0);
+    const options = {
+        chart: { type: 'donut', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        labels,
+        colors,
+        legend: { position: 'bottom', fontSize: '13px' },
+        plotOptions: {
+            pie: {
+                donut: {
+                    size: '68%',
+                    labels: {
+                        show: total > 0,
+                        total: {
+                            show: true,
+                            label: 'Colaboradores',
+                            formatter: () => String(total),
+                        },
+                    },
+                },
+            },
+        },
+        dataLabels: { enabled: true, style: { fontSize: '11px' } },
+        tooltip: {
+            y: {
+                formatter: (val) => {
+                    const pct = total ? ((Number(val) / total) * 100).toFixed(1) : '0';
+                    return `${val} (${pct}%)`;
+                },
+            },
+        },
+    };
+    return { series, options };
+});
+
+const bankDeptAvgChart = computed(() => {
+    const map = new Map();
+    for (const row of bankRows.value) {
+        const m = parseRhidBankBalanceMinutes(row);
+        if (m === null) {
+            continue;
+        }
+        const name = bankRowDepartamento(row);
+        if (!map.has(name)) {
+            map.set(name, { sum: 0, count: 0 });
+        }
+        const g = map.get(name);
+        g.sum += m;
+        g.count += 1;
+    }
+    const entries = [...map.entries()].map(([name, { sum, count }]) => ({
+        name,
+        sum,
+        count,
+        avg: count ? sum / count : 0,
+    }));
+    entries.sort((a, b) => Math.abs(b.avg) - Math.abs(a.avg));
+    const top = entries.slice(0, MAX_DEPT_CHART);
+    const rest = entries.slice(MAX_DEPT_CHART);
+    let final = top;
+    if (rest.length) {
+        let outSum = 0;
+        let outCount = 0;
+        for (const e of rest) {
+            outSum += e.sum;
+            outCount += e.count;
+        }
+        final = [
+            ...top,
+            {
+                name: 'Outros',
+                sum: outSum,
+                count: outCount,
+                avg: outCount ? outSum / outCount : 0,
+            },
+        ];
+    }
+    const categories = final.map((e) => e.name);
+    const data = final.map((e) => Math.round(e.avg));
+    const options = {
+        chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                barHeight: '70%',
+                dataLabels: { position: 'right' },
+            },
+        },
+        colors: ['#632a7e'],
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => formatRhidBankBalanceMinutes(val),
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        tooltip: {
+            y: {
+                formatter: (val) => `${formatRhidBankBalanceMinutes(val)} (media)`,
+            },
+        },
+        yaxis: { labels: { maxWidth: 200 } },
+    };
+    return {
+        series: [{ name: 'Media (min)', data }],
+        options,
+        empty: data.length === 0,
+    };
+});
+
+const bankTopDebitChart = computed(() => {
+    const scored = bankRows.value
+        .map((row) => ({ row, m: parseRhidBankBalanceMinutes(row) }))
+        .filter(({ m }) => m !== null && m < 0)
+        .sort((a, b) => a.m - b.m)
+        .slice(0, TOP_DEBIT_N);
+    const categories = scored.map(({ row }) => {
+        const n = bankDisplayName(row);
+        return n.length > 36 ? `${n.slice(0, 34)}…` : n;
+    });
+    const data = scored.map(({ m }) => m);
+    const options = {
+        chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                barHeight: '72%',
+                dataLabels: { position: 'left' },
+            },
+        },
+        colors: ['#b91c1c'],
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => formatRhidBankBalanceMinutes(val),
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        tooltip: {
+            y: {
+                formatter: (val) => formatRhidBankBalanceMinutes(val),
+            },
+        },
+        yaxis: { labels: { maxWidth: 220 } },
+    };
+    return {
+        series: [{ name: 'Saldo', data }],
+        options,
+        empty: data.length === 0,
+    };
+});
 
 const bankDisplayValue = (row) => {
     const strRaw = row?.strSaldoBancoHoras;
@@ -484,31 +653,68 @@ const downloadReport = () => {
                 <p v-if="bankResult?.source" class="text-xs text-slate-500">
                     Fonte: {{ bankResult.source }} · Data referencia: {{ bankResult.date }}
                 </p>
+
+                <div v-if="bankRows.length" class="grid gap-4 lg:grid-cols-2">
+                    <div
+                        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2"
+                    >
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Distribuicao de saldo</h3>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Colaboradores por faixa de saldo (minutos) na data de referencia.
+                        </p>
+                        <apexchart
+                            v-if="bankDonutChart.series.length"
+                            type="donut"
+                            height="300"
+                            :options="bankDonutChart.options"
+                            :series="bankDonutChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Sem dados para o grafico.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Media de saldo por departamento</h3>
+                        <p class="mb-3 text-xs text-slate-500">Apenas linhas com saldo numerico; ate 12 departamentos + Outros.</p>
+                        <apexchart
+                            v-if="!bankDeptAvgChart.empty"
+                            type="bar"
+                            :height="Math.max(280, (bankDeptAvgChart.series[0]?.data?.length ?? 0) * 36)"
+                            :options="bankDeptAvgChart.options"
+                            :series="bankDeptAvgChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">
+                            Nenhum saldo numerico para agrupar por departamento.
+                        </p>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Maiores debitos (BH)</h3>
+                        <p class="mb-3 text-xs text-slate-500">Ate 10 colaboradores com saldo mais negativo.</p>
+                        <apexchart
+                            v-if="!bankTopDebitChart.empty"
+                            type="bar"
+                            :height="Math.max(260, (bankTopDebitChart.series[0]?.data?.length ?? 0) * 40)"
+                            :options="bankTopDebitChart.options"
+                            :series="bankTopDebitChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Nenhum saldo negativo nesta consulta.</p>
+                    </div>
+                </div>
+
                 <div v-if="bankRows.length" class="overflow-x-auto rounded border border-slate-200">
-                    <table class="min-w-[72rem] text-left text-sm">
+                    <table class="min-w-full text-left text-sm">
                         <thead class="bg-slate-50">
                             <tr>
-                                <th class="whitespace-nowrap p-2">ID</th>
                                 <th class="whitespace-nowrap p-2">Nome</th>
                                 <th class="whitespace-nowrap p-2">Nome social</th>
                                 <th class="whitespace-nowrap p-2">Matricula</th>
                                 <th class="whitespace-nowrap p-2">CPF</th>
                                 <th class="whitespace-nowrap p-2">Saldo BH (h / min)</th>
-                                <th class="whitespace-nowrap p-2">Empresa</th>
-                                <th class="whitespace-nowrap p-2">Depto</th>
-                                <th class="whitespace-nowrap p-2">Centro custo</th>
+                                <th class="whitespace-nowrap p-2">Departamento</th>
                                 <th class="whitespace-nowrap p-2">Cargo</th>
-                                <th class="whitespace-nowrap p-2">Admissao</th>
-                                <th class="whitespace-nowrap p-2">Inicio BH</th>
-                                <th class="whitespace-nowrap p-2">E-mail</th>
-                                <th class="whitespace-nowrap p-2">Telefone</th>
-                                <th class="whitespace-nowrap p-2">Status</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(row, i) in bankRows" :key="row.id ?? i" class="border-t border-slate-100">
-                                <td class="whitespace-nowrap p-2 font-mono text-xs">{{ row.id ?? '—' }}</td>
-                                <td class="max-w-[10rem] truncate p-2 font-medium text-slate-800" :title="bankDisplayName(row)">
+                            <tr v-for="(row, i) in bankRows" :key="i" class="border-t border-slate-100">
+                                <td class="max-w-[12rem] truncate p-2 font-medium text-slate-800" :title="bankDisplayName(row)">
                                     {{ bankDisplayName(row) }}
                                 </td>
                                 <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="row.socialName || ''">
@@ -519,25 +725,12 @@ const downloadReport = () => {
                                 <td class="whitespace-nowrap p-2 tabular-nums font-medium text-slate-800">
                                     {{ bankDisplayValue(row) }}
                                 </td>
-                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowEmpresa(row)">
-                                    {{ bankRowEmpresa(row) }}
-                                </td>
-                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowDepartamento(row)">
+                                <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="bankRowDepartamento(row)">
                                     {{ bankRowDepartamento(row) }}
                                 </td>
-                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowCentroCusto(row)">
-                                    {{ bankRowCentroCusto(row) }}
-                                </td>
-                                <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="bankRowCargo(row)">
+                                <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="bankRowCargo(row)">
                                     {{ bankRowCargo(row) }}
                                 </td>
-                                <td class="whitespace-nowrap p-2 text-slate-600">{{ bankRowAdmissao(row) }}</td>
-                                <td class="whitespace-nowrap p-2 text-slate-600">{{ bankRowInicioBh(row) }}</td>
-                                <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="row.email || ''">
-                                    {{ row.email || '—' }}
-                                </td>
-                                <td class="whitespace-nowrap p-2 text-slate-600">{{ row.phone || '—' }}</td>
-                                <td class="whitespace-nowrap p-2 text-slate-600">{{ row.status ?? '—' }}</td>
                             </tr>
                         </tbody>
                     </table>

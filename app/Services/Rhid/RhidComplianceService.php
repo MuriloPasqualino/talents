@@ -270,13 +270,11 @@ class RhidComplianceService
     protected function shrinkBankHourRowsForClient(array $rows): array
     {
         $keep = array_flip([
-            'id', 'name', 'nome', 'socialName', 'registration', 'cpf', 'pis',
+            'name', 'nome', 'socialName', 'registration', 'cpf', 'pis',
             'saldoBancoHoras', 'strSaldoBancoHoras', 'bancoHoras', 'saldo',
-            'companyName', 'companyTradingName', 'idCompany',
-            'departmentName', 'idDepartment', 'costCenterName', 'idCostCenter',
+            'departmentName', 'idDepartment',
             'roleName', 'idPersonRole',
-            'admissionDate', 'admissionDateStr', 'inicioBancoHoras', 'inicioBancoHorasStr',
-            'email', 'phone', 'status', 'statusStr', 'excluded',
+            'excluded',
             'idPerson', 'id_funcionario',
         ]);
         $out = [];
