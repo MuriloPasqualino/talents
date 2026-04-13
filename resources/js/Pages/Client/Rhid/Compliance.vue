@@ -65,6 +65,32 @@ const reportJsonOverride = ref('');
 const reportIni = computed(() => toRhidYmd(reportIniDate.value));
 const reportFim = computed(() => toRhidYmd(reportFimDate.value));
 
+/** Espelho de ponto (POST report.svc/ponto — mesmas rotas que Relatorios) */
+const espelhoGuid = ref('');
+const espelhoPercent = ref(null);
+const espelhoPanelData = ref(null);
+const espelhoIniDate = ref(monthFirst);
+const espelhoFimDate = ref(monthLast);
+const espelhoFormato = ref('PDF');
+/** '' = todos; 1 = ativos; 2 = inativos */
+const espelhoStatus = ref('');
+const espelhoSelectedFields = ref(['TODAS_MARCACOES', 'ENTRADAS_SAIDAS']);
+const espelhoFilterPeople = ref('');
+const espelhoFilterCompanies = ref('');
+const espelhoFilterDepartments = ref('');
+const espelhoFilterCostcenters = ref('');
+const espelhoFilterPersonroles = ref('');
+const espelhoFilterShifts = ref('');
+const espelhoPolling = ref(false);
+const espelhoPollCancelRequested = ref(false);
+
+const ESPELHO_FIELD_OPTIONS = [
+    { value: 'DIA_DA_SEMANA', label: 'Dia da semana' },
+    { value: 'TODAS_MARCACOES', label: 'Todas as marcacoes' },
+    { value: 'ENTRADAS_SAIDAS', label: 'Entradas / saidas' },
+    { value: 'MARCACOES_DESCONSIDERADAS', label: 'Marcacoes desconsideradas' },
+];
+
 const isAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
 
 const bankRows = computed(() => {
@@ -81,6 +107,7 @@ const tabs = [
     { id: 'punches', label: 'Marcacoes' },
     { id: 'bank', label: 'Banco de horas' },
     { id: 'justifications', label: 'Justificativas' },
+    { id: 'espelho', label: 'Marcacoes (espelho)' },
     { id: 'reports', label: 'Relatorios' },
     { id: 'collaborators', label: 'Colaboradores' },
 ];
@@ -758,6 +785,153 @@ const downloadReport = () => {
         route('client.rhid.api.reports.download') +
         `?guid=${encodeURIComponent(reportGuid.value)}&format=${encodeURIComponent(reportFormato.value)}`;
     window.open(url, '_blank');
+};
+
+const validateEspelhoPeriod = () => {
+    const ini = espelhoIniDate.value;
+    const fim = espelhoFimDate.value;
+    const a = new Date(`${ini}T12:00:00`);
+    const b = new Date(`${fim}T12:00:00`);
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+        return 'Datas invalidas.';
+    }
+    if (b < a) {
+        return 'A data final deve ser igual ou posterior a inicial.';
+    }
+    const daysInclusive = Math.floor((b - a) / 86400000) + 1;
+    if (daysInclusive > 31) {
+        return 'Periodo maximo de 1 mes: ate 31 dias entre a data inicial e a final (conforme API RHID).';
+    }
+    return null;
+};
+
+const buildEspelhoPayload = () => {
+    const fields =
+        espelhoSelectedFields.value.length > 0
+            ? [...espelhoSelectedFields.value]
+            : ['TODAS_MARCACOES', 'ENTRADAS_SAIDAS'];
+    const pdfCartaoPontoParameters = {
+        fontSizeTitle: 12,
+        fontSizeData: 8,
+        fontSizeHeader: 8,
+        fontSizeHeaderSmall: 8,
+        fontSizeFooter: 8,
+        fontName: 'Helvetica',
+        listIdStr: parseIdList(espelhoFilterPeople) ?? [],
+        listCompanyStr: parseIdList(espelhoFilterCompanies) ?? [],
+        listDepartmentStr: parseIdList(espelhoFilterDepartments) ?? [],
+        listCostCenterStr: parseIdList(espelhoFilterCostcenters) ?? [],
+        listPersonRoleStr: parseIdList(espelhoFilterPersonroles) ?? [],
+        listShiftStr: parseIdList(espelhoFilterShifts) ?? [],
+    };
+    /** @type {Record<string, unknown>} */
+    const body = {
+        formatoSaida: espelhoFormato.value,
+        ini: toRhidYmd(espelhoIniDate.value),
+        fim: toRhidYmd(espelhoFimDate.value),
+        relatorio: 'espelho',
+        destinoRelatorio: 'DOWNLOAD',
+        ordenacao: 'Person',
+        listColumns: fields,
+        listPropertyStr: fields,
+        pdfCartaoPontoParameters,
+    };
+    if (espelhoStatus.value === '1' || espelhoStatus.value === '2') {
+        body.status = espelhoStatus.value;
+    }
+    return body;
+};
+
+const startEspelhoReport = async () => {
+    if (!props.configured) {
+        return;
+    }
+    const periodErr = validateEspelhoPeriod();
+    if (periodErr) {
+        err.value = periodErr;
+        return;
+    }
+    loading.value = true;
+    clearErr();
+    espelhoGuid.value = '';
+    espelhoPercent.value = null;
+    espelhoPanelData.value = null;
+    try {
+        const { data } = await axios.post(route('client.rhid.api.reports.start'), buildEspelhoPayload());
+        espelhoGuid.value = data.guid || '';
+        espelhoPanelData.value = data;
+    } catch (e) {
+        handleError(e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const pollEspelhoStatus = async () => {
+    if (!espelhoGuid.value) {
+        return;
+    }
+    loading.value = true;
+    clearErr();
+    try {
+        const { data } = await axios.get(route('client.rhid.api.reports.status'), {
+            params: { guid: espelhoGuid.value },
+        });
+        espelhoPercent.value = data.percent ?? null;
+        espelhoPanelData.value = data;
+    } catch (e) {
+        handleError(e);
+    } finally {
+        loading.value = false;
+    }
+};
+
+const downloadEspelho = () => {
+    if (!espelhoGuid.value) {
+        return;
+    }
+    const url =
+        route('client.rhid.api.reports.download') +
+        `?guid=${encodeURIComponent(espelhoGuid.value)}&format=${encodeURIComponent(espelhoFormato.value)}`;
+    window.open(url, '_blank');
+};
+
+const cancelEspelhoPoll = () => {
+    espelhoPollCancelRequested.value = true;
+};
+
+const pollEspelhoUntilReady = async () => {
+    if (!espelhoGuid.value) {
+        return;
+    }
+    espelhoPollCancelRequested.value = false;
+    espelhoPolling.value = true;
+    clearErr();
+    try {
+        for (let i = 0; i < 120; i++) {
+            if (espelhoPollCancelRequested.value) {
+                break;
+            }
+            const { data } = await axios.get(route('client.rhid.api.reports.status'), {
+                params: { guid: espelhoGuid.value },
+            });
+            espelhoPercent.value = data.percent ?? null;
+            espelhoPanelData.value = data;
+            const p = Number(data.percent);
+            if (p === 100) {
+                break;
+            }
+            if (data.error) {
+                err.value = String(data.error);
+                break;
+            }
+            await new Promise((r) => setTimeout(r, 1500));
+        }
+    } catch (e) {
+        handleError(e);
+    } finally {
+        espelhoPolling.value = false;
+    }
 };
 
 /**
@@ -1913,6 +2087,146 @@ const justStatusBarChart = computed(() => {
                     :data="justResult"
                     title="Resposta completa (suporte)"
                 />
+            </div>
+
+            <div v-show="tab === 'espelho'" class="space-y-3">
+                <p class="text-sm text-slate-600">
+                    Espelho de ponto (RHID): inicia o relatorio, acompanha o GUID ate
+                    <code class="rounded bg-slate-100 px-1">percent === 100</code>
+                    e faz o download. Periodo maximo de 31 dias entre as datas.
+                </p>
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                        <InputLabel value="Formato de saida" />
+                        <select v-model="espelhoFormato" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
+                            <option value="PDF">PDF</option>
+                            <option value="HTML">HTML</option>
+                        </select>
+                    </div>
+                    <div>
+                        <InputLabel value="Status dos funcionarios" />
+                        <select v-model="espelhoStatus" class="mt-1 w-full rounded-md border border-slate-300 text-sm">
+                            <option value="">Todos</option>
+                            <option value="1">Ativos</option>
+                            <option value="2">Inativos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <InputLabel value="Data inicial" />
+                        <input
+                            v-model="espelhoIniDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel value="Data final" />
+                        <input
+                            v-model="espelhoFimDate"
+                            type="date"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <InputLabel value="Colunas e propriedades (listColumns / listPropertyStr)" />
+                    <div class="mt-2 flex flex-wrap gap-3">
+                        <label
+                            v-for="opt in ESPELHO_FIELD_OPTIONS"
+                            :key="opt.value"
+                            class="flex cursor-pointer items-center gap-2 text-sm text-slate-700"
+                        >
+                            <input v-model="espelhoSelectedFields" type="checkbox" class="rounded border-slate-300" :value="opt.value" />
+                            {{ opt.label }}
+                        </label>
+                    </div>
+                </div>
+                <details class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <summary class="cursor-pointer font-medium text-slate-800">Filtros opcionais (IDs RHID, separados por virgula)</summary>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <InputLabel value="Funcionarios (listIdStr)" />
+                            <input
+                                v-model="espelhoFilterPeople"
+                                type="text"
+                                class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs"
+                                placeholder="ex: 1, 2, 3"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Empresas" />
+                            <input
+                                v-model="espelhoFilterCompanies"
+                                type="text"
+                                class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Departamentos" />
+                            <input
+                                v-model="espelhoFilterDepartments"
+                                type="text"
+                                class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Centros de custo" />
+                            <input
+                                v-model="espelhoFilterCostcenters"
+                                type="text"
+                                class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Cargos" />
+                            <input
+                                v-model="espelhoFilterPersonroles"
+                                type="text"
+                                class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel value="Horarios (turnos)" />
+                            <input
+                                v-model="espelhoFilterShifts"
+                                type="text"
+                                class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs"
+                            />
+                        </div>
+                    </div>
+                </details>
+                <div class="flex flex-wrap gap-2">
+                    <PrimaryButton type="button" :disabled="loading" @click="startEspelhoReport">
+                        1 — Iniciar (obter GUID)
+                    </PrimaryButton>
+                    <PrimaryButton type="button" :disabled="loading || !espelhoGuid" @click="pollEspelhoStatus">
+                        2 — Atualizar status
+                    </PrimaryButton>
+                    <PrimaryButton
+                        type="button"
+                        :disabled="loading || espelhoPolling || !espelhoGuid"
+                        @click="pollEspelhoUntilReady"
+                    >
+                        Acompanhar ate 100%
+                    </PrimaryButton>
+                    <SecondaryButton
+                        type="button"
+                        :disabled="!espelhoPolling"
+                        @click="cancelEspelhoPoll"
+                    >
+                        Parar acompanhamento
+                    </SecondaryButton>
+                    <PrimaryButton type="button" :disabled="!espelhoGuid" @click="downloadEspelho">
+                        3 — Download
+                    </PrimaryButton>
+                </div>
+                <p v-if="espelhoGuid" class="text-sm text-slate-600">
+                    GUID:
+                    <code class="rounded bg-slate-100 px-1">{{ espelhoGuid }}</code>
+                    <span v-if="espelhoPercent !== null" class="ml-2">Percentual: {{ espelhoPercent }}%</span>
+                    <span v-if="espelhoPolling" class="ml-2 text-amber-700">Acompanhando...</span>
+                </p>
+                <RhidResponsePanel v-if="espelhoPanelData" :data="espelhoPanelData" title="Status / resposta" />
             </div>
 
             <div v-show="tab === 'reports'" class="space-y-3">
