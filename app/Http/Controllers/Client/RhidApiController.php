@@ -105,16 +105,39 @@ class RhidApiController extends Controller
             'justificationTypes.*' => ['integer'],
         ]);
 
-        $payload['page'] = (int) ($payload['page'] ?? 0);
-        $payload['maxSize'] = (int) ($payload['maxSize'] ?? 100);
-
         $payload['ini'] = $this->formatJustificationListDateForRhidApi((string) $payload['ini']);
         $payload['fim'] = $this->formatJustificationListDateForRhidApi((string) $payload['fim']);
 
-        // Documentacao API: maxSize como string.
-        $payload['maxSize'] = (string) $payload['maxSize'];
+        $payload = $this->normalizeJustificationListPayloadForRhid($payload);
 
         return $this->jsonOrError(fn () => $compliance->listJustifications($company, $request->user(), $payload));
+    }
+
+    /**
+     * Alinha o corpo ao que o servico .NET do RHID costuma esperar (DataTables + listas nao-nulas).
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function normalizeJustificationListPayloadForRhid(array $payload): array
+    {
+        $payload['draw'] = (int) config('rhid.justification_list_draw', 0);
+        $payload['page'] = (int) ($payload['page'] ?? 0);
+        $payload['maxSize'] = (int) ($payload['maxSize'] ?? 100);
+
+        $listKeys = ['companies', 'costcenters', 'departments', 'personroles', 'people', 'shifts', 'justificationTypes'];
+        foreach ($listKeys as $key) {
+            if (! isset($payload[$key]) || ! is_array($payload[$key])) {
+                $payload[$key] = [];
+            }
+        }
+
+        $defaultCompanyId = config('rhid.justification_list_default_company_id');
+        if ($defaultCompanyId !== null && $payload['companies'] === []) {
+            $payload['companies'] = [(int) $defaultCompanyId];
+        }
+
+        return $payload;
     }
 
     /**

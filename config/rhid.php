@@ -103,4 +103,26 @@ return [
         return 'iso';
     })(),
 
+    /*
+    |--------------------------------------------------------------------------
+    | POST justification.svc/list — payload extra (evita NullReference em alguns tenants)
+    |--------------------------------------------------------------------------
+    |
+    | draw: padrao 0 (padrao DataTables usado pelo painel RHID).
+    |
+    | default_company_id: quando definido (ex. ID da empresa no cadastro RHID) e o cliente
+    | nao envia "companies", injeta [id] — alguns servidores exigem companies nao-nulo.
+    |
+    */
+    'justification_list_draw' => (int) env('RHID_JUSTIFICATION_LIST_DRAW', 0),
+
+    'justification_list_default_company_id' => (function () {
+        $v = env('RHID_JUSTIFICATION_LIST_DEFAULT_COMPANY_ID');
+        if ($v === null || $v === '') {
+            return null;
+        }
+
+        return (int) $v;
+    })(),
+
 ];

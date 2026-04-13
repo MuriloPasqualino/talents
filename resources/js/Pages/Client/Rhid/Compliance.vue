@@ -1127,9 +1127,10 @@ const justificationApprovalLabel = (row) => {
                     Listagem alinhada ao endpoint RHID
                     <code class="rounded bg-slate-100 px-1 text-xs">POST customerdb/justification.svc/list</code>
                     — parametros <code class="text-xs">ini</code> e <code class="text-xs">fim</code> em formato AnoMesDia
-                    (YYYYMMDD no Talents; o backend converte para o RHID: padrao ISO yyyy-MM-dd, ou
-                    compact/ br via RHID_JUSTIFICATION_LIST_INI_FIM_FORMAT). Filtros opcionais: IDs separados por
-                    virgula ou espaco.
+                    (YYYYMMDD no Talents; o backend converte para o RHID: padrao ISO yyyy-MM-dd, ou compact/br via
+                    RHID_JUSTIFICATION_LIST_INI_FIM_FORMAT). Filtros opcionais: IDs separados por virgula ou espaco.
+                    Se o RHID retornar erro de referencia nula, preencha Empresas (companies) ou configure no servidor
+                    RHID_JUSTIFICATION_LIST_DEFAULT_COMPANY_ID com o id da empresa no cadastro RHID.
                 </p>
                 <div class="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
