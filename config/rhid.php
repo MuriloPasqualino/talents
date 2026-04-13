@@ -38,6 +38,9 @@ return [
     | customerdb/department.svc/a (page, maxSize). Alguns tenants usam o path
     | alternativo departament.svc/a — o codigo tenta ambos.
     |
+    | Cargos (funcoes): GET customerdb/personrole.svc/a com os mesmos parametros;
+    | fallbacks: personroles.svc, person_role.svc.
+    |
     */
 
     /*

@@ -24,6 +24,18 @@ class RhidComplianceAccessTest extends TestCase
             ->assertOk();
     }
 
+    public function test_company_admin_can_open_rhid_collaborator_page(): void
+    {
+        $company = Company::query()->create(['name' => 'Empresa Teste']);
+        $admin = User::factory()->companyAdmin($company->id)->create();
+
+        $this->withoutVite();
+
+        $this->actingAs($admin)
+            ->get(route('client.rhid.collaborators.show', ['person' => 1]))
+            ->assertOk();
+    }
+
     public function test_company_user_cannot_open_rhid_compliance(): void
     {
         $company = Company::query()->create(['name' => 'Empresa Teste']);
@@ -34,6 +46,19 @@ class RhidComplianceAccessTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('client.rhid.compliance.index'))
+            ->assertForbidden();
+    }
+
+    public function test_company_user_cannot_open_rhid_collaborator_page(): void
+    {
+        $company = Company::query()->create(['name' => 'Empresa Teste 2']);
+        $user = User::factory()->create([
+            'company_id' => $company->id,
+            'role' => UserRole::CompanyUser,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('client.rhid.collaborators.show', ['person' => 1]))
             ->assertForbidden();
     }
 }

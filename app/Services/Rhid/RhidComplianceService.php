@@ -17,6 +17,13 @@ class RhidComplianceService
      */
     private array $departmentNameMapCacheByCompany = [];
 
+    /**
+     * Mapa id RHID do cargo (person role) -> nome.
+     *
+     * @var array<int, array<int, string>>
+     */
+    private array $personRoleNameMapCacheByCompany = [];
+
     public function __construct(
         private RhidClient $client,
     ) {}
@@ -165,6 +172,7 @@ class RhidComplianceService
         }
 
         $out = $this->enrichBankHourRowsDepartmentNames($company, $user, $out);
+        $out = $this->enrichBankHourRowsPersonRoleNames($company, $user, $out);
 
         return $this->shrinkBankHourRowsForClient($out);
     }
@@ -203,6 +211,273 @@ class RhidComplianceService
             'page' => 0,
             'maxSize' => 500,
         ], $query));
+    }
+
+    /**
+     * Lista cargos / funcoes (person role) no customerdb — GET personrole.svc/a (Control iD RHID).
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
+    public function listPersonRoles(Company $company, ?User $user, array $query = []): array
+    {
+        return $this->fetchPersonRolesListJson($company, $user, array_merge([
+            'page' => 0,
+            'maxSize' => 500,
+        ], $query));
+    }
+
+    /**
+     * Cadastro de uma pessoa por id (GET customerdb/person.svc/a/{id}).
+     *
+     * @return array<string, mixed>
+     */
+    public function getPersonDetail(Company $company, ?User $user, int $id): array
+    {
+        $r = $this->client->request(
+            $company,
+            $user,
+            'GET',
+            'customerdb/person.svc/a/'.$id,
+            [
+                'auditAction' => 'rhid.person.show',
+            ],
+        );
+
+        $json = $r->json();
+        if (! is_array($json)) {
+            throw RhidApiException::fromResponse($r, 'person.show');
+        }
+
+        if (isset($json['data']) && is_array($json['data'])) {
+            $inner = $json['data'];
+            $row = (is_array($inner) && array_is_list($inner) && isset($inner[0]) && is_array($inner[0]))
+                ? $inner[0]
+                : $inner;
+        } else {
+            $row = $json;
+        }
+
+        if (! is_array($row) || ! isset($row['id'])) {
+            throw new RhidApiException('Colaborador nao encontrado na API RHID.', $r->status());
+        }
+
+        $row = $this->mergePersonNestedIntoBankHourRow($row);
+        $row = $this->enrichSinglePersonDepartmentAndRoleNames($company, $user, $row);
+
+        return $this->shrinkPersonDetailForClient($row);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    protected function enrichSinglePersonDepartmentAndRoleNames(Company $company, ?User $user, array $row): array
+    {
+        $idDept = $row['idDepartment'] ?? null;
+        if ($idDept !== null && $idDept !== '' && is_numeric($idDept)) {
+            $map = $this->departmentIdToNameMap($company, $user);
+            $idi = (int) $idDept;
+            $cur = $row['departmentName'] ?? null;
+            if ((! is_string($cur) || trim($cur) === '') && isset($map[$idi])) {
+                $row['departmentName'] = $map[$idi];
+            }
+        }
+        $idRole = $row['idPersonRole'] ?? null;
+        if ($idRole !== null && $idRole !== '' && is_numeric($idRole)) {
+            $map = $this->personRoleIdToNameMap($company, $user);
+            $idi = (int) $idRole;
+            $cur = $row['roleName'] ?? null;
+            if ((! is_string($cur) || trim($cur) === '') && isset($map[$idi])) {
+                $row['roleName'] = $map[$idi];
+            }
+        }
+
+        return $row;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    protected function shrinkPersonDetailForClient(array $row): array
+    {
+        $keep = array_flip([
+            'id', 'name', 'nome', 'strNome', 'strName', 'strPersonName', 'personName', 'socialName', 'strSocialName',
+            'registration', 'matricula', 'strMatricula', 'cpf', 'pis', 'strPis',
+            'email', 'phone', 'status', 'statusStr',
+            'departmentName', 'idDepartment',
+            'roleName', 'idPersonRole',
+            'companyName', 'companyTradingName', 'idCompany',
+            'costCenterName', 'idCostCenter',
+            'admissionDate', 'admissionDateStr', 'inicioBancoHoras', 'inicioBancoHorasStr',
+            'idPerson', 'id_funcionario',
+        ]);
+
+        return array_intersect_key($row, $keep);
+    }
+
+    /**
+     * GET customerdb/personrole.svc/a (fallbacks por grafia).
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
+    protected function fetchPersonRolesListJson(Company $company, ?User $user, array $query): array
+    {
+        $paths = [
+            'customerdb/personrole.svc/a',
+            'customerdb/personroles.svc/a',
+            'customerdb/person_role.svc/a',
+        ];
+        $last = null;
+        foreach ($paths as $path) {
+            try {
+                $r = $this->client->request(
+                    $company,
+                    $user,
+                    'GET',
+                    $path,
+                    [
+                        'query' => $query,
+                        'auditAction' => 'rhid.personrole.list',
+                    ],
+                );
+
+                return $this->decodeJson($r, 'personrole.list');
+            } catch (RhidApiException $e) {
+                $last = $e;
+                if ($e->httpStatus === 404) {
+                    continue;
+                }
+                throw $e;
+            }
+        }
+
+        throw $last ?? new RhidApiException('Lista de cargos RHID indisponivel.', 404);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function personRoleIdToNameMap(Company $company, ?User $user): array
+    {
+        $cid = (int) $company->id;
+        if (array_key_exists($cid, $this->personRoleNameMapCacheByCompany)) {
+            return $this->personRoleNameMapCacheByCompany[$cid];
+        }
+        $map = [];
+        try {
+            $page = 0;
+            $maxSize = 500;
+            while ($page < 500) {
+                $json = $this->fetchPersonRolesListJson($company, $user, [
+                    'page' => $page,
+                    'maxSize' => $maxSize,
+                ]);
+                $batch = $this->extractPersonRoleIdToNameFromListJson($json);
+                if ($batch === []) {
+                    break;
+                }
+                foreach ($batch as $id => $name) {
+                    $map[$id] = $name;
+                }
+                if (count($batch) < $maxSize) {
+                    break;
+                }
+                $page++;
+            }
+        } catch (RhidApiException) {
+            $map = [];
+        }
+        $this->personRoleNameMapCacheByCompany[$cid] = $map;
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, mixed>  $json
+     * @return array<int, string>
+     */
+    protected function extractPersonRoleIdToNameFromListJson(array $json): array
+    {
+        $rows = $json['data'] ?? $json;
+        if (! is_array($rows)) {
+            return [];
+        }
+        if ($rows !== [] && ! array_is_list($rows)) {
+            if (isset($rows['id'])) {
+                $rows = [$rows];
+            } else {
+                return [];
+            }
+        }
+        $map = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if (! isset($row['id']) || ! is_numeric($row['id'])) {
+                continue;
+            }
+            $id = (int) $row['id'];
+            $name = $this->pickPersonRoleDisplayNameFromRow($row);
+            if ($name !== null && $name !== '') {
+                $map[$id] = $name;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function pickPersonRoleDisplayNameFromRow(array $row): ?string
+    {
+        foreach (['roleName', 'personRoleName', 'strPersonRoleName', 'nome', 'name', 'strNome', 'strName', 'description', 'descricao'] as $k) {
+            if (! array_key_exists($k, $row)) {
+                continue;
+            }
+            $v = $row[$k];
+            if (is_string($v) && trim($v) !== '') {
+                return trim($v);
+            }
+            if (is_int($v) || is_float($v)) {
+                return trim((string) $v);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function enrichBankHourRowsPersonRoleNames(Company $company, ?User $user, array $rows): array
+    {
+        $map = $this->personRoleIdToNameMap($company, $user);
+        if ($map === []) {
+            return $rows;
+        }
+        foreach ($rows as $i => $row) {
+            $id = $row['idPersonRole'] ?? null;
+            if ($id === null || $id === '' || ! is_numeric($id)) {
+                continue;
+            }
+            $idInt = (int) $id;
+            if (! isset($map[$idInt])) {
+                continue;
+            }
+            $current = $row['roleName'] ?? null;
+            if (is_string($current) && trim($current) !== '') {
+                continue;
+            }
+            $rows[$i]['roleName'] = $map[$idInt];
+        }
+
+        return $rows;
     }
 
     /**
@@ -484,10 +759,6 @@ class RhidComplianceService
         return $out;
     }
 
-    /**
-     * @param  array<int|string, mixed>  $json
-     * @return list<array<string, mixed>>
-     */
     /**
      * Lista JSON (0..n-1) com chaves inteiras ou string-numericas consecutivas.
      *

@@ -56,6 +56,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware('company_admin')->prefix('rhid')->name('rhid.')->group(function () {
         Route::get('compliance', [RhidComplianceController::class, 'index'])->name('compliance.index');
+        Route::get('collaborators/{person}', [RhidComplianceController::class, 'collaboratorShow'])
+            ->name('collaborators.show')
+            ->whereNumber('person');
         Route::get('settings', [RhidSettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [RhidSettingsController::class, 'update'])->name('settings.update');
         Route::post('settings/test', [RhidSettingsController::class, 'test'])->name('settings.test');
@@ -70,7 +73,9 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::get('person-bank-hours', [RhidApiController::class, 'personBankHours'])->name('person-bank-hours');
             Route::get('person-bank-hours/all', [RhidApiController::class, 'allPersonBankHours'])->name('person-bank-hours.all');
             Route::get('people', [RhidApiController::class, 'listPeople'])->name('people.index');
+            Route::get('people/{id}', [RhidApiController::class, 'showPerson'])->name('people.show')->whereNumber('id');
             Route::get('departments', [RhidApiController::class, 'listDepartments'])->name('departments.index');
+            Route::get('person-roles', [RhidApiController::class, 'listPersonRoles'])->name('person-roles.index');
             Route::post('person-shift/mass', [RhidApiController::class, 'massPersonShift'])->name('person-shift.mass');
             Route::post('reports/start', [RhidApiController::class, 'startReport'])->name('reports.start');
             Route::get('reports/status', [RhidApiController::class, 'reportStatus'])->name('reports.status');

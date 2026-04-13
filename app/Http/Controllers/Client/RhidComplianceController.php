@@ -17,4 +17,14 @@ class RhidComplianceController extends Controller
             'configured' => $company->rhidConfigured(),
         ]);
     }
+
+    public function collaboratorShow(Request $request, int $person): Response
+    {
+        $company = $request->user()->company()->firstOrFail();
+
+        return Inertia::render('Client/Rhid/CollaboratorShow', [
+            'configured' => $company->rhidConfigured(),
+            'personId' => $person,
+        ]);
+    }
 }

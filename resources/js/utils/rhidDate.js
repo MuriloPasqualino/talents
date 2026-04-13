@@ -172,6 +172,75 @@ export function parseRhidBankBalanceMinutes(row) {
 }
 
 /**
+ * Nome amigavel para exibicao (cadastro / banco de horas).
+ * @param {Record<string, unknown>|null|undefined} row
+ * @returns {string}
+ */
+export function pickRhidPersonDisplayName(row) {
+    if (row == null || typeof row !== 'object') {
+        return '—';
+    }
+    const nest = row.person || row.Person;
+    const trim = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '');
+    const candidates = [
+        trim(row.strPersonName),
+        trim(row.personName),
+        trim(row.name),
+        trim(row.nome),
+        trim(row.strNome),
+        trim(row.strName),
+        nest ? trim(nest.strPersonName) : '',
+        nest ? trim(nest.personName) : '',
+        nest ? trim(nest.name) : '',
+        nest ? trim(nest.nome) : '',
+        nest ? trim(nest.strNome) : '',
+        nest ? trim(nest.strName) : '',
+    ].filter(Boolean);
+    const unique = [...new Set(candidates)];
+    if (unique.length) {
+        return unique.reduce((a, b) => (b.length > a.length ? b : a));
+    }
+    if (row.idPerson != null) {
+        return `ID ${row.idPerson}`;
+    }
+    if (row.id != null) {
+        return `ID ${row.id}`;
+    }
+    return '—';
+}
+
+/**
+ * Texto de saldo BH para tabelas (mesma leitura que parseRhidBankBalanceMinutes).
+ * @param {Record<string, unknown>|null|undefined} row
+ * @returns {string}
+ */
+export function formatRhidBankBalanceDisplay(row) {
+    const strRaw = row?.strSaldoBancoHoras;
+    if (strRaw != null && String(strRaw).trim() !== '') {
+        const s = String(strRaw).trim();
+        if (/[hHmM]/.test(s) || /\d{1,3}:\d{2}/.test(s)) {
+            return s;
+        }
+        const parsed = Number(s.replace(',', '.'));
+        if (Number.isFinite(parsed)) {
+            return formatRhidBankBalanceMinutes(parsed);
+        }
+        return s;
+    }
+    for (const k of BANK_NUMERIC_KEYS) {
+        const v = row?.[k];
+        if (v != null && v !== '') {
+            const n = Number(v);
+            if (Number.isFinite(n)) {
+                return formatRhidBankBalanceMinutes(n);
+            }
+            return String(v);
+        }
+    }
+    return '—';
+}
+
+/**
  * Extrai lista de itens de respostas RHID paginadas ou array direto.
  * @param {unknown} payload
  * @returns {unknown[]}

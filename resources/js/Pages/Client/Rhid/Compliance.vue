@@ -8,9 +8,11 @@ import axios from 'axios';
 import { computed, ref } from 'vue';
 import {
     extractListItems,
+    formatRhidBankBalanceDisplay,
     formatRhidBankBalanceMinutes,
     monthRangeHtmlDates,
     parseRhidBankBalanceMinutes,
+    pickRhidPersonDisplayName,
     todayHtmlDate,
     toRhidYmd,
 } from '@/utils/rhidDate';
@@ -83,42 +85,16 @@ const personDisplayName = (row) =>
 const personMatricula = (row) =>
     row?.registration ?? row?.matricula ?? row?.pis ?? row?.strMatricula ?? row?.strPis ?? '—';
 
-/**
- * Nome para exibicao: a API RHID envia nome em campos diferentes (nome, name, strPersonName, objeto person).
- * O shrink no servidor pode achatar `person` para a raiz; aqui ainda lemos o aninhado se existir.
- * Quando os campos divergem, usamos o texto mais longo (geralmente nome completo vs abreviado).
- */
-const bankDisplayName = (row) => {
-    if (row == null || typeof row !== 'object') {
-        return '—';
+const bankDisplayName = pickRhidPersonDisplayName;
+const bankDisplayValue = formatRhidBankBalanceDisplay;
+
+const rhidPersonId = (row) => {
+    const id = row?.idPerson ?? row?.id;
+    if (id == null || id === '') {
+        return null;
     }
-    const nest = row.person || row.Person;
-    const trim = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '');
-    const candidates = [
-        trim(row.strPersonName),
-        trim(row.personName),
-        trim(row.name),
-        trim(row.nome),
-        trim(row.strNome),
-        trim(row.strName),
-        nest ? trim(nest.strPersonName) : '',
-        nest ? trim(nest.personName) : '',
-        nest ? trim(nest.name) : '',
-        nest ? trim(nest.nome) : '',
-        nest ? trim(nest.strNome) : '',
-        nest ? trim(nest.strName) : '',
-    ].filter(Boolean);
-    const unique = [...new Set(candidates)];
-    if (unique.length) {
-        return unique.reduce((a, b) => (b.length > a.length ? b : a));
-    }
-    if (row.idPerson != null) {
-        return `ID ${row.idPerson}`;
-    }
-    if (row.id != null) {
-        return `ID ${row.id}`;
-    }
-    return '—';
+    const n = Number(id);
+    return Number.isFinite(n) ? n : null;
 };
 
 const bankHasOptionalFilters = () =>
@@ -133,6 +109,7 @@ const bankRowCargo = (row) => row?.roleName || (row?.idPersonRole != null ? `#${
 
 const MAX_DEPT_CHART = 12;
 const TOP_DEBIT_N = 10;
+const TOP_CREDIT_N = 10;
 
 const bankBalanceBuckets = computed(() => {
     let neg = 0;
@@ -316,41 +293,47 @@ const bankTopDebitChart = computed(() => {
     };
 });
 
-const bankDisplayValue = (row) => {
-    const strRaw = row?.strSaldoBancoHoras;
-    if (strRaw != null && String(strRaw).trim() !== '') {
-        const s = String(strRaw).trim();
-        if (/[hHmM]/.test(s) || /\d{1,3}:\d{2}/.test(s)) {
-            return s;
-        }
-        const parsed = Number(s.replace(',', '.'));
-        if (Number.isFinite(parsed)) {
-            return formatRhidBankBalanceMinutes(parsed);
-        }
-        return s;
-    }
-    const numericKeys = [
-        'saldoBancoHoras',
-        'bancoHoras',
-        'saldo',
-        'minutesBank',
-        'balance',
-        'totalBancoHoras',
-        'strBanco',
-        'strSaldo',
-    ];
-    for (const k of numericKeys) {
-        const v = row?.[k];
-        if (v != null && v !== '') {
-            const n = Number(v);
-            if (Number.isFinite(n)) {
-                return formatRhidBankBalanceMinutes(n);
-            }
-            return String(v);
-        }
-    }
-    return '—';
-};
+const bankTopCreditChart = computed(() => {
+    const scored = bankRows.value
+        .map((row) => ({ row, m: parseRhidBankBalanceMinutes(row) }))
+        .filter(({ m }) => m !== null && m > 0)
+        .sort((a, b) => b.m - a.m)
+        .slice(0, TOP_CREDIT_N);
+    const categories = scored.map(({ row }) => {
+        const n = bankDisplayName(row);
+        return n.length > 36 ? `${n.slice(0, 34)}…` : n;
+    });
+    const data = scored.map(({ m }) => m);
+    const options = {
+        chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                barHeight: '72%',
+                dataLabels: { position: 'right' },
+            },
+        },
+        colors: ['#047857'],
+        dataLabels: {
+            enabled: true,
+            formatter: (val) => formatRhidBankBalanceMinutes(val),
+            style: { fontSize: '11px', colors: ['#334155'] },
+        },
+        xaxis: { categories },
+        tooltip: {
+            y: {
+                formatter: (val) => formatRhidBankBalanceMinutes(val),
+            },
+        },
+        yaxis: { labels: { maxWidth: 220 } },
+    };
+    return {
+        series: [{ name: 'Saldo', data }],
+        options,
+        empty: data.length === 0,
+    };
+});
 
 const loadLastPunches = async () => {
     if (!props.configured) {
@@ -684,9 +667,9 @@ const downloadReport = () => {
                     Fonte: {{ bankResult.source }} · Data referencia: {{ bankResult.date }}
                 </p>
 
-                <div v-if="bankRows.length" class="grid gap-4 lg:grid-cols-2">
+                <div v-if="bankRows.length" class="grid gap-4 lg:grid-cols-3">
                     <div
-                        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2"
+                        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-3"
                     >
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Distribuicao de saldo</h3>
                         <p class="mb-3 text-xs text-slate-500">
@@ -727,6 +710,18 @@ const downloadReport = () => {
                         />
                         <p v-else class="text-sm text-slate-500">Nenhum saldo negativo nesta consulta.</p>
                     </div>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Maiores saldos (BH)</h3>
+                        <p class="mb-3 text-xs text-slate-500">Ate 10 colaboradores com maior saldo positivo.</p>
+                        <apexchart
+                            v-if="!bankTopCreditChart.empty"
+                            type="bar"
+                            :height="Math.max(260, (bankTopCreditChart.series[0]?.data?.length ?? 0) * 40)"
+                            :options="bankTopCreditChart.options"
+                            :series="bankTopCreditChart.series"
+                        />
+                        <p v-else class="text-sm text-slate-500">Nenhum saldo positivo nesta consulta.</p>
+                    </div>
                 </div>
 
                 <div v-if="bankRows.length" class="overflow-x-auto rounded border border-slate-200">
@@ -745,7 +740,14 @@ const downloadReport = () => {
                         <tbody>
                             <tr v-for="(row, i) in bankRows" :key="i" class="border-t border-slate-100">
                                 <td class="max-w-[12rem] truncate p-2 font-medium text-slate-800" :title="bankDisplayName(row)">
-                                    {{ bankDisplayName(row) }}
+                                    <Link
+                                        v-if="rhidPersonId(row) != null"
+                                        :href="route('client.rhid.collaborators.show', rhidPersonId(row))"
+                                        class="text-talents-800 hover:underline"
+                                    >
+                                        {{ bankDisplayName(row) }}
+                                    </Link>
+                                    <span v-else>{{ bankDisplayName(row) }}</span>
                                 </td>
                                 <td class="max-w-[8rem] truncate p-2 text-slate-600" :title="row.socialName || ''">
                                     {{ row.socialName || '—' }}
@@ -848,7 +850,16 @@ const downloadReport = () => {
                         <tbody>
                             <tr v-for="(row, i) in peopleRows" :key="row.id ?? i" class="border-t border-slate-100">
                                 <td class="p-2 font-mono text-xs">{{ row.id }}</td>
-                                <td class="p-2">{{ personDisplayName(row) }}</td>
+                                <td class="p-2">
+                                    <Link
+                                        v-if="row.id != null"
+                                        :href="route('client.rhid.collaborators.show', row.id)"
+                                        class="font-medium text-talents-800 hover:underline"
+                                    >
+                                        {{ personDisplayName(row) }}
+                                    </Link>
+                                    <span v-else>{{ personDisplayName(row) }}</span>
+                                </td>
                                 <td class="p-2 text-slate-600">{{ personMatricula(row) }}</td>
                             </tr>
                         </tbody>

@@ -195,6 +195,30 @@ class RhidApiController extends Controller
         return $this->jsonOrError(fn () => $compliance->listDepartments($company, $request->user(), $query));
     }
 
+    /**
+     * Lista cargos (person role) no customerdb RHID.
+     */
+    public function listPersonRoles(Request $request, RhidComplianceService $compliance): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $query = $request->validate([
+            'page' => ['nullable', 'integer', 'min:0'],
+            'maxSize' => ['nullable', 'integer', 'min:1', 'max:500'],
+        ]);
+
+        return $this->jsonOrError(fn () => $compliance->listPersonRoles($company, $request->user(), $query));
+    }
+
+    /**
+     * Detalhe de um colaborador (GET customerdb/person.svc/a/{id}).
+     */
+    public function showPerson(Request $request, RhidComplianceService $compliance, int $id): JsonResponse|Response
+    {
+        $company = $this->company($request);
+
+        return $this->jsonOrError(fn () => $compliance->getPersonDetail($company, $request->user(), $id));
+    }
+
     public function massPersonShift(Request $request, RhidComplianceService $compliance): JsonResponse|Response
     {
         $company = $this->company($request);
