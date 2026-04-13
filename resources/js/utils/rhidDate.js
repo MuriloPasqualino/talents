@@ -117,43 +117,95 @@ const BANK_NUMERIC_KEYS = [
     'totalBancoHoras',
 ];
 
-/** Chaves normalizadas em minusculas (API pode enviar PascalCase ou aliases). */
-const RHID_BANK_STR_ALIASES = new Set(['strsaldobancohoras', 'strsaldobanco', 'strsaldo', 'strbanco']);
-const RHID_BANK_NUM_ALIASES = new Set([
+/** Ordem alinhada ao PHP: especifico primeiro; balance/saldo genericos por ultimo. */
+const RHID_BANK_STR_PRECEDENCE = ['strsaldobancohoras', 'strsaldobanco', 'strsaldo', 'strbanco'];
+const RHID_BANK_NUM_PRECEDENCE = [
     'saldobancohoras',
-    'saldobanco',
     'bancohoras',
     'totalbancohoras',
     'minutesbank',
-    'balance',
-    'saldo',
     'vlsaldobancohoras',
     'vlsaldo',
     'vlbancohoras',
-]);
+    'saldobanco',
+    'balance',
+    'saldo',
+];
 
 /**
- * Copia saldo texto/numero de um objeto fonte para destino em chaves canonicas.
- * Ultima chave correspondente vence (chame na ordem: raiz, depois person).
- *
+ * @param {Record<string, unknown>} src
+ * @returns {Record<string, unknown>}
+ */
+function rhidLowerKeyMap(src) {
+    /** @type {Record<string, unknown>} */
+    const out = {};
+    for (const [k, v] of Object.entries(src)) {
+        out[String(k).toLowerCase()] = v;
+    }
+    return out;
+}
+
+/**
+ * @param {Record<string, unknown>} src
+ * @param {string[]} orderedLowerAliases
+ * @returns {string|undefined}
+ */
+function pickRhidBankStrFromSource(src, orderedLowerAliases) {
+    const by = rhidLowerKeyMap(src);
+    for (const lc of orderedLowerAliases) {
+        if (!Object.prototype.hasOwnProperty.call(by, lc)) {
+            continue;
+        }
+        const v = by[lc];
+        if (v == null || v === '') {
+            continue;
+        }
+        const s = typeof v === 'string' ? v.trim() : String(v);
+        if (s !== '') {
+            return s;
+        }
+    }
+    return undefined;
+}
+
+/**
+ * @param {Record<string, unknown>} src
+ * @param {string[]} orderedLowerAliases
+ * @returns {number|null}
+ */
+function pickRhidBankNumFromSource(src, orderedLowerAliases) {
+    const by = rhidLowerKeyMap(src);
+    for (const lc of orderedLowerAliases) {
+        if (!Object.prototype.hasOwnProperty.call(by, lc)) {
+            continue;
+        }
+        const v = by[lc];
+        if (v == null || v === '') {
+            continue;
+        }
+        const n = Number(v);
+        if (Number.isFinite(n)) {
+            return n;
+        }
+    }
+    return null;
+}
+
+/**
  * @param {Record<string, unknown>} src
  * @param {Record<string, unknown>} dest
  */
-function liftRhidBankAliasesFromObject(src, dest) {
+function liftRhidBankChunkIntoMerged(src, dest) {
     if (!src || typeof src !== 'object') {
         return;
     }
-    for (const [k, v] of Object.entries(src)) {
-        const lc = String(k).toLowerCase();
-        if (RHID_BANK_STR_ALIASES.has(lc) && v != null && String(v).trim() !== '') {
-            dest.strSaldoBancoHoras = typeof v === 'string' ? v.trim() : v;
-        }
-        if (RHID_BANK_NUM_ALIASES.has(lc) && v != null && v !== '') {
-            const n = Number(v);
-            if (Number.isFinite(n)) {
-                dest.saldoBancoHoras = n;
-            }
-        }
+    const s = pickRhidBankStrFromSource(src, RHID_BANK_STR_PRECEDENCE);
+    const n = pickRhidBankNumFromSource(src, RHID_BANK_NUM_PRECEDENCE);
+    if (s !== undefined) {
+        dest.strSaldoBancoHoras = s;
+    }
+    if (n !== null) {
+        dest.saldoBancoHoras = n;
     }
 }
 
@@ -172,10 +224,10 @@ function buildRhidBankBalanceMergedRow(row) {
     for (const x of ['person', 'Person', 'pessoa', 'Pessoa']) {
         delete rootOnly[x];
     }
-    liftRhidBankAliasesFromObject(rootOnly, merged);
+    liftRhidBankChunkIntoMerged(rootOnly, merged);
     const nest = row.person || row.Person;
     if (nest && typeof nest === 'object') {
-        liftRhidBankAliasesFromObject(nest, merged);
+        liftRhidBankChunkIntoMerged(nest, merged);
     }
     return merged;
 }

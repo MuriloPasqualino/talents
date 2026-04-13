@@ -748,6 +748,9 @@ class RhidComplianceService
     /**
      * Remove campos sensiveis e pesados da resposta RHID antes de enviar ao browser.
      *
+     * `balance` e `saldo` permanecem na allowlist para tenants que so enviam esses aliases;
+     * a escolha do valor exibido segue precedencia em canonicalizeRhidBankHourBalanceFields.
+     *
      * @param  list<array<string, mixed>>  $rows
      * @return list<array<string, mixed>>
      */
@@ -945,9 +948,6 @@ class RhidComplianceService
      */
     protected function canonicalizeRhidBankHourBalanceFields(array $row): array
     {
-        $strList = $this->rhidBankBalanceStrKeyAliases();
-        $numList = $this->rhidBankBalanceNumericKeyAliases();
-
         $chunks = [];
         $rootFlat = [];
         foreach ($row as $k => $v) {
@@ -966,24 +966,16 @@ class RhidComplianceService
 
         $str = null;
         $num = null;
+        $strOrder = $this->rhidBankBalanceStrKeyPrecedence();
+        $numOrder = $this->rhidBankBalanceNumericKeyPrecedence();
         foreach ($chunks as $src) {
-            foreach ($src as $k => $v) {
-                if (! is_string($k) && ! is_int($k)) {
-                    continue;
-                }
-                $lc = strtolower((string) $k);
-                if (in_array($lc, $strList, true)) {
-                    if ($v === null || $v === '') {
-                        continue;
-                    }
-                    $s = is_string($v) ? trim($v) : (string) $v;
-                    if ($s !== '') {
-                        $str = $s;
-                    }
-                }
-                if (in_array($lc, $numList, true) && is_numeric($v)) {
-                    $num = 0 + $v;
-                }
+            $chunkStr = $this->pickRhidBankStringFromSource($src, $strOrder);
+            $chunkNum = $this->pickRhidBankNumericFromSource($src, $numOrder);
+            if ($chunkStr !== null) {
+                $str = $chunkStr;
+            }
+            if ($chunkNum !== null) {
+                $num = $chunkNum;
             }
         }
 
@@ -998,9 +990,75 @@ class RhidComplianceService
     }
 
     /**
+     * @param  array<string, mixed>  $src
+     * @param  list<string>  $orderedLowerAliases
+     */
+    protected function pickRhidBankStringFromSource(array $src, array $orderedLowerAliases): ?string
+    {
+        $byLower = $this->lowerKeyMapFromArray($src);
+        foreach ($orderedLowerAliases as $lc) {
+            if (! array_key_exists($lc, $byLower)) {
+                continue;
+            }
+            $v = $byLower[$lc];
+            if ($v === null || $v === '') {
+                continue;
+            }
+            $s = is_string($v) ? trim($v) : (string) $v;
+            if ($s !== '') {
+                return $s;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $src
+     * @param  list<string>  $orderedLowerAliases
+     */
+    protected function pickRhidBankNumericFromSource(array $src, array $orderedLowerAliases): int|float|null
+    {
+        $byLower = $this->lowerKeyMapFromArray($src);
+        foreach ($orderedLowerAliases as $lc) {
+            if (! array_key_exists($lc, $byLower)) {
+                continue;
+            }
+            $v = $byLower[$lc];
+            if ($v === null || $v === '') {
+                continue;
+            }
+            if (is_numeric($v)) {
+                return 0 + $v;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $src
+     * @return array<string, mixed>
+     */
+    protected function lowerKeyMapFromArray(array $src): array
+    {
+        $out = [];
+        foreach ($src as $k => $v) {
+            if (! is_string($k) && ! is_int($k)) {
+                continue;
+            }
+            $out[strtolower((string) $k)] = $v;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Ordem: mais especifico primeiro; `balance` / `saldo` genericos por ultimo.
+     *
      * @return list<string>
      */
-    protected function rhidBankBalanceStrKeyAliases(): array
+    protected function rhidBankBalanceStrKeyPrecedence(): array
     {
         return ['strsaldobancohoras', 'strsaldobanco', 'strsaldo', 'strbanco'];
     }
@@ -1008,11 +1066,19 @@ class RhidComplianceService
     /**
      * @return list<string>
      */
-    protected function rhidBankBalanceNumericKeyAliases(): array
+    protected function rhidBankBalanceNumericKeyPrecedence(): array
     {
         return [
-            'saldobancohoras', 'saldobanco', 'bancohoras', 'totalbancohoras',
-            'minutesbank', 'balance', 'saldo', 'vlsaldobancohoras', 'vlsaldo', 'vlbancohoras',
+            'saldobancohoras',
+            'bancohoras',
+            'totalbancohoras',
+            'minutesbank',
+            'vlsaldobancohoras',
+            'vlsaldo',
+            'vlbancohoras',
+            'saldobanco',
+            'balance',
+            'saldo',
         ];
     }
 
