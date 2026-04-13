@@ -128,14 +128,50 @@ class RhidReportService
         }
 
         $json = $response->json();
-        if (! is_array($json) || empty($json['guid']) || ! is_string($json['guid'])) {
-            throw new RhidApiException('Resposta sem GUID ao iniciar relatorio RHID.', $response->status(), is_array($json) ? $json : null);
+        if (! is_array($json)) {
+            throw new RhidApiException('Resposta invalida ao iniciar relatorio RHID (nao JSON).', $response->status());
+        }
+
+        $guid = $this->extractPontoStartGuid($json);
+        if ($guid === null) {
+            $apiErr = $json['error'] ?? $json['Error'] ?? null;
+            $suffix = is_string($apiErr) && $apiErr !== '' ? ' '.$apiErr : '';
+
+            throw new RhidApiException(
+                'Resposta sem GUID ao iniciar relatorio RHID.'.$suffix,
+                $response->status(),
+                $json,
+            );
         }
 
         return [
-            'guid' => $json['guid'],
-            'numPeople' => $json['numPeople'] ?? null,
-            'error' => $json['error'] ?? null,
+            'guid' => $guid,
+            'numPeople' => $json['numPeople'] ?? $json['NumPeople'] ?? null,
+            'error' => $json['error'] ?? $json['Error'] ?? null,
         ];
+    }
+
+    /**
+     * O endpoint report.svc/ponto pode serializar em camelCase (guid) ou PascalCase (Guid).
+     *
+     * @param  array<string, mixed>  $json
+     */
+    protected function extractPontoStartGuid(array $json): ?string
+    {
+        foreach (['guid', 'Guid', 'GUID'] as $key) {
+            if (! isset($json[$key])) {
+                continue;
+            }
+            $v = $json[$key];
+            if (is_string($v) && $v !== '') {
+                return $v;
+            }
+        }
+
+        if (isset($json['d']) && is_array($json['d'])) {
+            return $this->extractPontoStartGuid($json['d']);
+        }
+
+        return null;
     }
 }
