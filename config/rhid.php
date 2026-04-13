@@ -30,6 +30,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Departamentos (customerdb)
+    |--------------------------------------------------------------------------
+    |
+    | Conforme documentacao da API Control iD (apicontrolid / RHiD), a listagem
+    | de departamentos segue o mesmo padrao de cadastro: GET com paginacao em
+    | customerdb/department.svc/a (page, maxSize). Alguns tenants usam o path
+    | alternativo departament.svc/a — o codigo tenta ambos.
+    |
+    */
+
+    /*
+    |--------------------------------------------------------------------------
     | Banco de horas (person_banco_horas)
     |--------------------------------------------------------------------------
     |

@@ -70,6 +70,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::get('person-bank-hours', [RhidApiController::class, 'personBankHours'])->name('person-bank-hours');
             Route::get('person-bank-hours/all', [RhidApiController::class, 'allPersonBankHours'])->name('person-bank-hours.all');
             Route::get('people', [RhidApiController::class, 'listPeople'])->name('people.index');
+            Route::get('departments', [RhidApiController::class, 'listDepartments'])->name('departments.index');
             Route::post('person-shift/mass', [RhidApiController::class, 'massPersonShift'])->name('person-shift.mass');
             Route::post('reports/start', [RhidApiController::class, 'startReport'])->name('reports.start');
             Route::get('reports/status', [RhidApiController::class, 'reportStatus'])->name('reports.status');

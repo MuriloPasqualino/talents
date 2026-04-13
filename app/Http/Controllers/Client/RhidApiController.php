@@ -181,6 +181,20 @@ class RhidApiController extends Controller
         return $this->jsonOrError(fn () => $compliance->listPersons($company, $request->user(), $query));
     }
 
+    /**
+     * Lista departamentos no customerdb RHID (GET customerdb/department.svc/a — ver documentacao API Control iD).
+     */
+    public function listDepartments(Request $request, RhidComplianceService $compliance): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $query = $request->validate([
+            'page' => ['nullable', 'integer', 'min:0'],
+            'maxSize' => ['nullable', 'integer', 'min:1', 'max:500'],
+        ]);
+
+        return $this->jsonOrError(fn () => $compliance->listDepartments($company, $request->user(), $query));
+    }
+
     public function massPersonShift(Request $request, RhidComplianceService $compliance): JsonResponse|Response
     {
         $company = $this->company($request);

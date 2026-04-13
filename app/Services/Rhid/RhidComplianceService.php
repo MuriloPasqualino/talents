@@ -9,6 +9,14 @@ use Illuminate\Http\Client\Response;
 
 class RhidComplianceService
 {
+    /**
+     * Mapa id RHID do departamento -> nome, por empresa, na mesma requisicao PHP
+     * (evita repetir GET department.svc no modo agregado de banco de horas).
+     *
+     * @var array<int, array<int, string>>
+     */
+    private array $departmentNameMapCacheByCompany = [];
+
     public function __construct(
         private RhidClient $client,
     ) {}
@@ -156,6 +164,8 @@ class RhidComplianceService
             }
         }
 
+        $out = $this->enrichBankHourRowsDepartmentNames($company, $user, $out);
+
         return $this->shrinkBankHourRowsForClient($out);
     }
 
@@ -179,6 +189,182 @@ class RhidComplianceService
         );
 
         return $this->decodeJson($r, 'person.list');
+    }
+
+    /**
+     * Lista departamentos no customerdb RHID (documentacao API Control iD: mesmo padrao de cadastro GET *.svc/a).
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
+    public function listDepartments(Company $company, ?User $user, array $query = []): array
+    {
+        return $this->fetchDepartmentsListJson($company, $user, array_merge([
+            'page' => 0,
+            'maxSize' => 500,
+        ], $query));
+    }
+
+    /**
+     * GET customerdb/department.svc/a ou departament.svc/a (variacao de grafia na API).
+     *
+     * @param  array<string, mixed>  $query
+     * @return array<string, mixed>
+     */
+    protected function fetchDepartmentsListJson(Company $company, ?User $user, array $query): array
+    {
+        $paths = [
+            'customerdb/department.svc/a',
+            'customerdb/departament.svc/a',
+        ];
+        $last = null;
+        foreach ($paths as $path) {
+            try {
+                $r = $this->client->request(
+                    $company,
+                    $user,
+                    'GET',
+                    $path,
+                    [
+                        'query' => $query,
+                        'auditAction' => 'rhid.department.list',
+                    ],
+                );
+
+                return $this->decodeJson($r, 'department.list');
+            } catch (RhidApiException $e) {
+                $last = $e;
+                if ($e->httpStatus === 404) {
+                    continue;
+                }
+                throw $e;
+            }
+        }
+
+        throw $last ?? new RhidApiException('Lista de departamentos RHID indisponivel.', 404);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function departmentIdToNameMap(Company $company, ?User $user): array
+    {
+        $cid = (int) $company->id;
+        if (array_key_exists($cid, $this->departmentNameMapCacheByCompany)) {
+            return $this->departmentNameMapCacheByCompany[$cid];
+        }
+        $map = [];
+        try {
+            $page = 0;
+            $maxSize = 500;
+            while ($page < 500) {
+                $json = $this->fetchDepartmentsListJson($company, $user, [
+                    'page' => $page,
+                    'maxSize' => $maxSize,
+                ]);
+                $batch = $this->extractDepartmentIdToNameFromListJson($json);
+                if ($batch === []) {
+                    break;
+                }
+                foreach ($batch as $id => $name) {
+                    $map[$id] = $name;
+                }
+                if (count($batch) < $maxSize) {
+                    break;
+                }
+                $page++;
+            }
+        } catch (RhidApiException) {
+            $map = [];
+        }
+        $this->departmentNameMapCacheByCompany[$cid] = $map;
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, mixed>  $json
+     * @return array<int, string>
+     */
+    protected function extractDepartmentIdToNameFromListJson(array $json): array
+    {
+        $rows = $json['data'] ?? $json;
+        if (! is_array($rows)) {
+            return [];
+        }
+        if ($rows !== [] && ! array_is_list($rows)) {
+            if (isset($rows['id'])) {
+                $rows = [$rows];
+            } else {
+                return [];
+            }
+        }
+        $map = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            if (! isset($row['id']) || ! is_numeric($row['id'])) {
+                continue;
+            }
+            $id = (int) $row['id'];
+            $name = $this->pickDepartmentDisplayNameFromRow($row);
+            if ($name !== null && $name !== '') {
+                $map[$id] = $name;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function pickDepartmentDisplayNameFromRow(array $row): ?string
+    {
+        foreach (['departmentName', 'strDepartmentName', 'nome', 'name', 'strNome', 'strName', 'description', 'descricao'] as $k) {
+            if (! array_key_exists($k, $row)) {
+                continue;
+            }
+            $v = $row[$k];
+            if (is_string($v) && trim($v) !== '') {
+                return trim($v);
+            }
+            if (is_int($v) || is_float($v)) {
+                return trim((string) $v);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function enrichBankHourRowsDepartmentNames(Company $company, ?User $user, array $rows): array
+    {
+        $map = $this->departmentIdToNameMap($company, $user);
+        if ($map === []) {
+            return $rows;
+        }
+        foreach ($rows as $i => $row) {
+            $id = $row['idDepartment'] ?? null;
+            if ($id === null || $id === '' || ! is_numeric($id)) {
+                continue;
+            }
+            $idInt = (int) $id;
+            if (! isset($map[$idInt])) {
+                continue;
+            }
+            $current = $row['departmentName'] ?? null;
+            if (is_string($current) && trim($current) !== '') {
+                continue;
+            }
+            $rows[$i]['departmentName'] = $map[$idInt];
+        }
+
+        return $rows;
     }
 
     /**
