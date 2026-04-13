@@ -117,55 +117,67 @@ const BANK_NUMERIC_KEYS = [
     'totalBancoHoras',
 ];
 
-/** Texto de saldo na API (na raiz ou em `person` aninhado). */
-const BANK_STR_KEYS = ['strSaldoBancoHoras', 'strSaldo', 'strBanco'];
+/** Chaves normalizadas em minusculas (API pode enviar PascalCase ou aliases). */
+const RHID_BANK_STR_ALIASES = new Set(['strsaldobancohoras', 'strsaldobanco', 'strsaldo', 'strbanco']);
+const RHID_BANK_NUM_ALIASES = new Set([
+    'saldobancohoras',
+    'saldobanco',
+    'bancohoras',
+    'totalbancohoras',
+    'minutesbank',
+    'balance',
+    'saldo',
+    'vlsaldobancohoras',
+    'vlsaldo',
+    'vlbancohoras',
+]);
 
 /**
- * person_banco_horas as vezes traz saldo coerente com o espelho RHID apenas em `person`;
- * a raiz pode trazer outro campo numerico (ex.: divergencia de -1936 min vs +02:59 na tela).
+ * Copia saldo texto/numero de um objeto fonte para destino em chaves canonicas.
+ * Ultima chave correspondente vence (chame na ordem: raiz, depois person).
+ *
+ * @param {Record<string, unknown>} src
+ * @param {Record<string, unknown>} dest
+ */
+function liftRhidBankAliasesFromObject(src, dest) {
+    if (!src || typeof src !== 'object') {
+        return;
+    }
+    for (const [k, v] of Object.entries(src)) {
+        const lc = String(k).toLowerCase();
+        if (RHID_BANK_STR_ALIASES.has(lc) && v != null && String(v).trim() !== '') {
+            dest.strSaldoBancoHoras = typeof v === 'string' ? v.trim() : v;
+        }
+        if (RHID_BANK_NUM_ALIASES.has(lc) && v != null && v !== '') {
+            const n = Number(v);
+            if (Number.isFinite(n)) {
+                dest.saldoBancoHoras = n;
+            }
+        }
+    }
+}
+
+/**
+ * Une raiz + person com aliases case-insensitive (alinha com RhidComplianceService::canonicalizeRhidBankHourBalanceFields).
  *
  * @param {Record<string, unknown>|null|undefined} row
  * @returns {Record<string, unknown>}
  */
-function mergeRhidPersonNestedBankIntoRow(row) {
+function buildRhidBankBalanceMergedRow(row) {
     if (row == null || typeof row !== 'object') {
-        return /** @type {Record<string, unknown>} */ ({});
-    }
-    const nest = row.person || row.Person;
-    if (!nest || typeof nest !== 'object') {
-        return /** @type {Record<string, unknown>} */ ({ ...row });
+        return {};
     }
     const merged = { ...row };
-    for (const k of BANK_STR_KEYS) {
-        const v = nest[k];
-        if (v != null && String(v).trim() !== '') {
-            merged[k] = v;
-        }
+    const rootOnly = { ...row };
+    for (const x of ['person', 'Person', 'pessoa', 'Pessoa']) {
+        delete rootOnly[x];
     }
-    for (const k of BANK_NUMERIC_KEYS) {
-        const v = nest[k];
-        if (v != null && v !== '') {
-            const n = Number(v);
-            if (Number.isFinite(n)) {
-                merged[k] = v;
-            }
-        }
+    liftRhidBankAliasesFromObject(rootOnly, merged);
+    const nest = row.person || row.Person;
+    if (nest && typeof nest === 'object') {
+        liftRhidBankAliasesFromObject(nest, merged);
     }
     return merged;
-}
-
-/**
- * @param {Record<string, unknown>} row
- * @returns {string|undefined}
- */
-function pickFirstRhidBankStrRaw(row) {
-    for (const k of BANK_STR_KEYS) {
-        const v = row[k];
-        if (v != null && String(v).trim() !== '') {
-            return String(v).trim();
-        }
-    }
-    return undefined;
 }
 
 /**
@@ -177,8 +189,11 @@ export function parseRhidBankBalanceMinutes(row) {
     if (row == null || typeof row !== 'object') {
         return null;
     }
-    row = mergeRhidPersonNestedBankIntoRow(row);
-    const strRaw = pickFirstRhidBankStrRaw(row);
+    const merged = buildRhidBankBalanceMergedRow(row);
+    const strRaw =
+        merged.strSaldoBancoHoras != null && String(merged.strSaldoBancoHoras).trim() !== ''
+            ? String(merged.strSaldoBancoHoras).trim()
+            : undefined;
     if (strRaw != null && strRaw !== '') {
         const raw = strRaw;
         const neg = /^-/.test(raw);
@@ -209,7 +224,7 @@ export function parseRhidBankBalanceMinutes(row) {
         return null;
     }
     for (const k of BANK_NUMERIC_KEYS) {
-        const v = row[k];
+        const v = merged[k];
         if (v != null && v !== '') {
             const n = Number(v);
             if (Number.isFinite(n)) {
@@ -264,8 +279,11 @@ export function formatRhidBankBalanceDisplay(row) {
     if (row == null || typeof row !== 'object') {
         return '—';
     }
-    row = mergeRhidPersonNestedBankIntoRow(row);
-    const strRaw = pickFirstRhidBankStrRaw(row);
+    const merged = buildRhidBankBalanceMergedRow(row);
+    const strRaw =
+        merged.strSaldoBancoHoras != null && String(merged.strSaldoBancoHoras).trim() !== ''
+            ? String(merged.strSaldoBancoHoras).trim()
+            : undefined;
     if (strRaw != null && strRaw !== '') {
         const s = strRaw;
         if (/[hHmM]/.test(s) || /\d{1,3}:\d{2}/.test(s)) {
@@ -278,7 +296,7 @@ export function formatRhidBankBalanceDisplay(row) {
         return s;
     }
     for (const k of BANK_NUMERIC_KEYS) {
-        const v = row?.[k];
+        const v = merged[k];
         if (v != null && v !== '') {
             const n = Number(v);
             if (Number.isFinite(n)) {

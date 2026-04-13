@@ -808,6 +808,8 @@ const downloadReport = () => {
                     (parametro <code class="text-xs">date</code> em YYYYMMDD; filtros opcionais abaixo). Sem filtros, o
                     backend faz uma unica chamada <code class="text-xs">?date=</code> (comportamento da API). A agregacao
                     por varias requisicoes so vale com <code class="text-xs">RHID_BANK_HOURS_AGGREGATE=true</code> no servidor.
+                    O saldo exibido segue o retorno da API (incl. texto <code class="text-xs">strSaldo*</code> ou cadastro
+                    em <code class="text-xs">person</code> quando existir); use a mesma data de referencia do espelho no RHID para comparar.
                 </p>
                 <div class="grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>

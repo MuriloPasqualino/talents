@@ -900,13 +900,9 @@ class RhidComplianceService
             'socialName', 'strSocialName',
             'registration', 'matricula', 'strMatricula', 'cpf', 'pis', 'strPis',
             'departmentName', 'roleName',
-            /** Saldo BH: a raiz de person_banco_horas pode divergir do espelho RHID; o cadastro em `person` costuma bater com a tela. */
-            'strSaldoBancoHoras', 'strSaldo', 'strBanco',
         ];
         /** IDs: so preenche na raiz se ainda vazios (evita trocar id incorretamente). */
         $idLift = ['idDepartment', 'idPersonRole'];
-        /** Minutos / saldo numerico no aninhado tem precedencia sobre a raiz (mesmo raciocinio dos nomes). */
-        $numericBankLift = ['saldoBancoHoras', 'bancoHoras', 'saldo', 'minutesBank', 'balance', 'totalBancoHoras'];
         foreach ($nestedKeys as $nk) {
             if (! isset($row[$nk]) || ! is_array($row[$nk])) {
                 continue;
@@ -921,18 +917,6 @@ class RhidComplianceService
                 }
                 $row[$f] = $inner[$f];
             }
-            foreach ($numericBankLift as $f) {
-                if (! array_key_exists($f, $inner)) {
-                    continue;
-                }
-                $v = $inner[$f];
-                if ($v === null || $v === '') {
-                    continue;
-                }
-                if (is_numeric($v)) {
-                    $row[$f] = 0 + $v;
-                }
-            }
             foreach ($idLift as $f) {
                 $empty = ! array_key_exists($f, $row) || $row[$f] === null || $row[$f] === '';
                 if ($empty && isset($inner[$f]) && ($inner[$f] !== null && $inner[$f] !== '')) {
@@ -945,9 +929,91 @@ class RhidComplianceService
             }
         }
 
+        $row = $this->canonicalizeRhidBankHourBalanceFields($row);
+
         $this->logRhidPersonRowMerge($auditContext ?? 'mergePersonNestedIntoBankHourRow', $before, $row);
 
         return $row;
+    }
+
+    /**
+     * Unifica aliases de saldo BH (camelCase, PascalCase, grafias da API) e da prioridade:
+     * raiz primeiro, depois person/Person (ultimo vence — alinha com espelho quando o aninhado traz strSaldo).
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    protected function canonicalizeRhidBankHourBalanceFields(array $row): array
+    {
+        $strList = $this->rhidBankBalanceStrKeyAliases();
+        $numList = $this->rhidBankBalanceNumericKeyAliases();
+
+        $chunks = [];
+        $rootFlat = [];
+        foreach ($row as $k => $v) {
+            $ks = (string) $k;
+            if (in_array($ks, ['person', 'Person', 'pessoa', 'Pessoa'], true)) {
+                continue;
+            }
+            $rootFlat[$k] = $v;
+        }
+        $chunks[] = $rootFlat;
+        foreach (['person', 'Person', 'pessoa', 'Pessoa'] as $nk) {
+            if (isset($row[$nk]) && is_array($row[$nk])) {
+                $chunks[] = $row[$nk];
+            }
+        }
+
+        $str = null;
+        $num = null;
+        foreach ($chunks as $src) {
+            foreach ($src as $k => $v) {
+                if (! is_string($k) && ! is_int($k)) {
+                    continue;
+                }
+                $lc = strtolower((string) $k);
+                if (in_array($lc, $strList, true)) {
+                    if ($v === null || $v === '') {
+                        continue;
+                    }
+                    $s = is_string($v) ? trim($v) : (string) $v;
+                    if ($s !== '') {
+                        $str = $s;
+                    }
+                }
+                if (in_array($lc, $numList, true) && is_numeric($v)) {
+                    $num = 0 + $v;
+                }
+            }
+        }
+
+        if ($str !== null) {
+            $row['strSaldoBancoHoras'] = $str;
+        }
+        if ($num !== null) {
+            $row['saldoBancoHoras'] = $num;
+        }
+
+        return $row;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function rhidBankBalanceStrKeyAliases(): array
+    {
+        return ['strsaldobancohoras', 'strsaldobanco', 'strsaldo', 'strbanco'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function rhidBankBalanceNumericKeyAliases(): array
+    {
+        return [
+            'saldobancohoras', 'saldobanco', 'bancohoras', 'totalbancohoras',
+            'minutesbank', 'balance', 'saldo', 'vlsaldobancohoras', 'vlsaldo', 'vlbancohoras',
+        ];
     }
 
     /**
