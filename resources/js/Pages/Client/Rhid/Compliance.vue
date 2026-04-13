@@ -2,7 +2,9 @@
 import RhidResponsePanel from '@/Components/Rhid/RhidResponsePanel.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import Modal from '@/Components/Modal.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, ref } from 'vue';
@@ -111,40 +113,95 @@ const MAX_DEPT_CHART = 12;
 const TOP_DEBIT_N = 10;
 const TOP_CREDIT_N = 10;
 
-const bankBalanceBuckets = computed(() => {
-    let neg = 0;
-    let zero = 0;
-    let pos = 0;
-    let none = 0;
-    for (const row of bankRows.value) {
-        const m = parseRhidBankBalanceMinutes(row);
-        if (m === null) {
-            none += 1;
-        } else if (m < 0) {
-            neg += 1;
-        } else if (m === 0) {
-            zero += 1;
-        } else {
-            pos += 1;
+/** Detalhe ao clicar num grafico: lista de colaboradores */
+const bankChartDrilldown = ref(null);
+
+const closeBankChartDrilldown = () => {
+    bankChartDrilldown.value = null;
+};
+
+const bankRowToDrillLine = (row) => {
+    const m = parseRhidBankBalanceMinutes(row);
+    return {
+        name: bankDisplayName(row),
+        balance: bankDisplayValue(row),
+        balanceMin: m,
+        dept: bankRowDepartamento(row),
+        role: bankRowCargo(row),
+        reg: row.registration != null && String(row.registration).trim() !== '' ? String(row.registration) : '—',
+        cpf: row.cpf != null && String(row.cpf).trim() !== '' ? String(row.cpf) : '—',
+        personId: rhidPersonId(row),
+    };
+};
+
+/** Fatias do donut com linhas para drill-down (mesma ordem do grafico). */
+const bankDonutSlices = computed(() => {
+    const rows = bankRows.value;
+    const defs = [
+        { label: 'Saldo negativo', color: '#ef4444', test: (m) => m !== null && m < 0 },
+        { label: 'Saldo zero', color: '#94a3b8', test: (m) => m !== null && m === 0 },
+        { label: 'Saldo positivo', color: '#10b981', test: (m) => m !== null && m > 0 },
+        { label: 'Sem dado numerico', color: '#f59e0b', test: (m) => m === null },
+    ];
+    const out = [];
+    for (const d of defs) {
+        const sliceRows = rows.filter((row) => d.test(parseRhidBankBalanceMinutes(row)));
+        if (sliceRows.length) {
+            out.push({ label: d.label, color: d.color, count: sliceRows.length, rows: sliceRows });
         }
     }
-    return { neg, zero, pos, none };
+    return out;
 });
 
+const openBankDrilldownFromDonut = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const s = bankDonutSlices.value[i];
+    if (!s) {
+        return;
+    }
+    const lines = s.rows.map(bankRowToDrillLine).sort((a, b) => {
+        const ma = a.balanceMin;
+        const mb = b.balanceMin;
+        if (ma == null && mb == null) {
+            return a.name.localeCompare(b.name, 'pt');
+        }
+        if (ma == null) {
+            return 1;
+        }
+        if (mb == null) {
+            return -1;
+        }
+        if (ma !== mb) {
+            return ma - mb;
+        }
+        return a.name.localeCompare(b.name, 'pt');
+    });
+    bankChartDrilldown.value = {
+        title: s.label,
+        subtitle: `Data ${bankDateHtml.value} · ${s.count} colaborador(es) nesta faixa`,
+        lines,
+    };
+};
+
 const bankDonutChart = computed(() => {
-    const d = bankBalanceBuckets.value;
-    const items = [
-        { label: 'Saldo negativo', val: d.neg, color: '#ef4444' },
-        { label: 'Saldo zero', val: d.zero, color: '#94a3b8' },
-        { label: 'Saldo positivo', val: d.pos, color: '#10b981' },
-        { label: 'Sem dado numerico', val: d.none, color: '#f59e0b' },
-    ].filter((i) => i.val > 0);
-    const series = items.map((i) => i.val);
-    const labels = items.map((i) => i.label);
-    const colors = items.map((i) => i.color);
+    const slices = bankDonutSlices.value;
+    const series = slices.map((s) => s.count);
+    const labels = slices.map((s) => s.label);
+    const colors = slices.map((s) => s.color);
     const total = series.reduce((a, b) => a + b, 0);
     const options = {
-        chart: { type: 'donut', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        chart: {
+            type: 'donut',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: {
+                dataPointSelection: openBankDrilldownFromDonut,
+            },
+        },
         labels,
         colors,
         legend: { position: 'bottom', fontSize: '13px' },
@@ -168,15 +225,17 @@ const bankDonutChart = computed(() => {
             y: {
                 formatter: (val) => {
                     const pct = total ? ((Number(val) / total) * 100).toFixed(1) : '0';
-                    return `${val} (${pct}%)`;
+                    return `${val} (${pct}%) — clique para listar`;
                 },
             },
         },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
     return { series, options };
 });
 
-const bankDeptAvgChart = computed(() => {
+/** Barras de departamento com media e lista de colaboradores. */
+const bankDeptSlices = computed(() => {
     const map = new Map();
     for (const row of bankRows.value) {
         const m = parseRhidBankBalanceMinutes(row);
@@ -185,16 +244,18 @@ const bankDeptAvgChart = computed(() => {
         }
         const name = bankRowDepartamento(row);
         if (!map.has(name)) {
-            map.set(name, { sum: 0, count: 0 });
+            map.set(name, { sum: 0, count: 0, rows: [] });
         }
         const g = map.get(name);
         g.sum += m;
         g.count += 1;
+        g.rows.push(row);
     }
-    const entries = [...map.entries()].map(([name, { sum, count }]) => ({
+    const entries = [...map.entries()].map(([name, { sum, count, rows }]) => ({
         name,
         sum,
         count,
+        rows,
         avg: count ? sum / count : 0,
     }));
     entries.sort((a, b) => Math.abs(b.avg) - Math.abs(a.avg));
@@ -204,9 +265,11 @@ const bankDeptAvgChart = computed(() => {
     if (rest.length) {
         let outSum = 0;
         let outCount = 0;
+        const mergedRows = [];
         for (const e of rest) {
             outSum += e.sum;
             outCount += e.count;
+            mergedRows.push(...e.rows);
         }
         final = [
             ...top,
@@ -214,14 +277,53 @@ const bankDeptAvgChart = computed(() => {
                 name: 'Outros',
                 sum: outSum,
                 count: outCount,
+                rows: mergedRows,
                 avg: outCount ? outSum / outCount : 0,
             },
         ];
     }
+    return final;
+});
+
+const openBankDrilldownFromDept = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const slice = bankDeptSlices.value[i];
+    if (!slice) {
+        return;
+    }
+    const lines = slice.rows.map(bankRowToDrillLine).sort((a, b) => {
+        const ma = a.balanceMin ?? 0;
+        const mb = b.balanceMin ?? 0;
+        if (ma !== mb) {
+            return ma - mb;
+        }
+        return a.name.localeCompare(b.name, 'pt');
+    });
+    const avgRounded = Math.round(slice.avg);
+    bankChartDrilldown.value = {
+        title: slice.name,
+        subtitle: `Data ${bankDateHtml.value} · Media ${formatRhidBankBalanceMinutes(avgRounded)} (${slice.count} colaborador(es) com saldo numerico neste agrupamento)`,
+        lines,
+    };
+};
+
+const bankDeptAvgChart = computed(() => {
+    const final = bankDeptSlices.value;
     const categories = final.map((e) => e.name);
     const data = final.map((e) => Math.round(e.avg));
     const options = {
-        chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: {
+                dataPointSelection: openBankDrilldownFromDept,
+            },
+        },
         plotOptions: {
             bar: {
                 horizontal: true,
@@ -239,10 +341,11 @@ const bankDeptAvgChart = computed(() => {
         xaxis: { categories },
         tooltip: {
             y: {
-                formatter: (val) => `${formatRhidBankBalanceMinutes(val)} (media)`,
+                formatter: (val) => `${formatRhidBankBalanceMinutes(val)} (media) — clique para listar`,
             },
         },
         yaxis: { labels: { maxWidth: 200 } },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
     return {
         series: [{ name: 'Media (min)', data }],
@@ -251,19 +354,48 @@ const bankDeptAvgChart = computed(() => {
     };
 });
 
-const bankTopDebitChart = computed(() => {
-    const scored = bankRows.value
+const bankTopDebitScored = computed(() =>
+    bankRows.value
         .map((row) => ({ row, m: parseRhidBankBalanceMinutes(row) }))
         .filter(({ m }) => m !== null && m < 0)
         .sort((a, b) => a.m - b.m)
-        .slice(0, TOP_DEBIT_N);
+        .slice(0, TOP_DEBIT_N),
+);
+
+const openBankDrilldownFromDebit = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const item = bankTopDebitScored.value[i];
+    if (!item) {
+        return;
+    }
+    const line = bankRowToDrillLine(item.row);
+    bankChartDrilldown.value = {
+        title: 'Maior debito — detalhe',
+        subtitle: `${line.name} · Data ${bankDateHtml.value} · Saldo ${line.balance}`,
+        lines: [line],
+    };
+};
+
+const bankTopDebitChart = computed(() => {
+    const scored = bankTopDebitScored.value;
     const categories = scored.map(({ row }) => {
         const n = bankDisplayName(row);
         return n.length > 36 ? `${n.slice(0, 34)}…` : n;
     });
     const data = scored.map(({ m }) => m);
     const options = {
-        chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: {
+                dataPointSelection: openBankDrilldownFromDebit,
+            },
+        },
         plotOptions: {
             bar: {
                 horizontal: true,
@@ -281,10 +413,11 @@ const bankTopDebitChart = computed(() => {
         xaxis: { categories },
         tooltip: {
             y: {
-                formatter: (val) => formatRhidBankBalanceMinutes(val),
+                formatter: (val) => `${formatRhidBankBalanceMinutes(val)} — clique para detalhe`,
             },
         },
         yaxis: { labels: { maxWidth: 220 } },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
     return {
         series: [{ name: 'Saldo', data }],
@@ -293,19 +426,48 @@ const bankTopDebitChart = computed(() => {
     };
 });
 
-const bankTopCreditChart = computed(() => {
-    const scored = bankRows.value
+const bankTopCreditScored = computed(() =>
+    bankRows.value
         .map((row) => ({ row, m: parseRhidBankBalanceMinutes(row) }))
         .filter(({ m }) => m !== null && m > 0)
         .sort((a, b) => b.m - a.m)
-        .slice(0, TOP_CREDIT_N);
+        .slice(0, TOP_CREDIT_N),
+);
+
+const openBankDrilldownFromCredit = (_event, _chartContext, config) => {
+    const i = config?.dataPointIndex;
+    if (i == null || i < 0) {
+        return;
+    }
+    const item = bankTopCreditScored.value[i];
+    if (!item) {
+        return;
+    }
+    const line = bankRowToDrillLine(item.row);
+    bankChartDrilldown.value = {
+        title: 'Maior saldo — detalhe',
+        subtitle: `${line.name} · Data ${bankDateHtml.value} · Saldo ${line.balance}`,
+        lines: [line],
+    };
+};
+
+const bankTopCreditChart = computed(() => {
+    const scored = bankTopCreditScored.value;
     const categories = scored.map(({ row }) => {
         const n = bankDisplayName(row);
         return n.length > 36 ? `${n.slice(0, 34)}…` : n;
     });
     const data = scored.map(({ m }) => m);
     const options = {
-        chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'Figtree, sans-serif', foreColor: '#334155' },
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            fontFamily: 'Figtree, sans-serif',
+            foreColor: '#334155',
+            events: {
+                dataPointSelection: openBankDrilldownFromCredit,
+            },
+        },
         plotOptions: {
             bar: {
                 horizontal: true,
@@ -323,10 +485,11 @@ const bankTopCreditChart = computed(() => {
         xaxis: { categories },
         tooltip: {
             y: {
-                formatter: (val) => formatRhidBankBalanceMinutes(val),
+                formatter: (val) => `${formatRhidBankBalanceMinutes(val)} — clique para detalhe`,
             },
         },
         yaxis: { labels: { maxWidth: 220 } },
+        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
     return {
         series: [{ name: 'Saldo', data }],
@@ -552,6 +715,53 @@ const downloadReport = () => {
         </div>
 
         <div v-else class="space-y-6">
+            <Modal :show="bankChartDrilldown != null" max-width="2xl" @close="closeBankChartDrilldown">
+                <div v-if="bankChartDrilldown" class="p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">{{ bankChartDrilldown.title }}</h3>
+                    <p class="mt-1 text-sm text-slate-600">{{ bankChartDrilldown.subtitle }}</p>
+                    <div class="mt-4 max-h-[min(32rem,70vh)] overflow-auto rounded-lg border border-slate-200">
+                        <table class="min-w-full text-left text-sm">
+                            <thead class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                <tr>
+                                    <th class="whitespace-nowrap p-2">Nome</th>
+                                    <th class="whitespace-nowrap p-2">Saldo BH</th>
+                                    <th class="whitespace-nowrap p-2">Departamento</th>
+                                    <th class="whitespace-nowrap p-2">Cargo</th>
+                                    <th class="whitespace-nowrap p-2">Matricula</th>
+                                    <th class="whitespace-nowrap p-2">CPF</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="(ln, di) in bankChartDrilldown.lines"
+                                    :key="di"
+                                    class="border-t border-slate-100"
+                                >
+                                    <td class="max-w-[14rem] p-2 font-medium text-slate-800">
+                                        <Link
+                                            v-if="ln.personId != null"
+                                            :href="route('client.rhid.collaborators.show', ln.personId)"
+                                            class="text-talents-800 hover:underline"
+                                        >
+                                            {{ ln.name }}
+                                        </Link>
+                                        <span v-else>{{ ln.name }}</span>
+                                    </td>
+                                    <td class="whitespace-nowrap p-2 tabular-nums text-slate-800">{{ ln.balance }}</td>
+                                    <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="ln.dept">{{ ln.dept }}</td>
+                                    <td class="max-w-[10rem] truncate p-2 text-slate-600" :title="ln.role">{{ ln.role }}</td>
+                                    <td class="whitespace-nowrap p-2 text-slate-600">{{ ln.reg }}</td>
+                                    <td class="whitespace-nowrap p-2 text-slate-600">{{ ln.cpf }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <SecondaryButton type="button" @click="closeBankChartDrilldown">Fechar</SecondaryButton>
+                    </div>
+                </div>
+            </Modal>
+
             <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
                 <button
                     v-for="t in tabs"
@@ -674,6 +884,7 @@ const downloadReport = () => {
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Distribuicao de saldo</h3>
                         <p class="mb-3 text-xs text-slate-500">
                             Colaboradores por faixa de saldo (minutos) na data de referencia.
+                            <span class="font-medium text-talents-800"> Clique numa fatia</span> para ver a lista.
                         </p>
                         <apexchart
                             v-if="bankDonutChart.series.length"
@@ -686,7 +897,10 @@ const downloadReport = () => {
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Media de saldo por departamento</h3>
-                        <p class="mb-3 text-xs text-slate-500">Apenas linhas com saldo numerico; ate 12 departamentos + Outros.</p>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Apenas linhas com saldo numerico; ate 12 departamentos + Outros.
+                            <span class="font-medium text-talents-800"> Clique numa barra</span> para listar os colaboradores.
+                        </p>
                         <apexchart
                             v-if="!bankDeptAvgChart.empty"
                             type="bar"
@@ -700,7 +914,10 @@ const downloadReport = () => {
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Maiores debitos (BH)</h3>
-                        <p class="mb-3 text-xs text-slate-500">Ate 10 colaboradores com saldo mais negativo.</p>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Ate 10 colaboradores com saldo mais negativo.
+                            <span class="font-medium text-talents-800"> Clique numa barra</span> para ver departamento, cargo e documentos.
+                        </p>
                         <apexchart
                             v-if="!bankTopDebitChart.empty"
                             type="bar"
@@ -712,7 +929,10 @@ const downloadReport = () => {
                     </div>
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="mb-1 text-sm font-semibold text-slate-800">Maiores saldos (BH)</h3>
-                        <p class="mb-3 text-xs text-slate-500">Ate 10 colaboradores com maior saldo positivo.</p>
+                        <p class="mb-3 text-xs text-slate-500">
+                            Ate 10 colaboradores com maior saldo positivo.
+                            <span class="font-medium text-talents-800"> Clique numa barra</span> para ver o detalhe.
+                        </p>
                         <apexchart
                             v-if="!bankTopCreditChart.empty"
                             type="bar"
