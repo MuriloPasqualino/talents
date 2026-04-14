@@ -82,6 +82,8 @@ const espelhoFilterPersonroles = ref('');
 const espelhoFilterShifts = ref('');
 const espelhoPolling = ref(false);
 const espelhoPollCancelRequested = ref(false);
+/** ID RHID do colaborador para vincular ao PDF salvo (alternativa a um unico ID em Filtros opcionais) */
+const espelhoVinculoPersonId = ref('');
 /** Listagem paginada de imports (Laravel paginator JSON) */
 const espelhoImportsPage = ref(null);
 /** Ultimo import criado ou detalhe expandido */
@@ -97,20 +99,29 @@ const ESPELHO_FIELD_OPTIONS = [
 
 const isAdmin = computed(() => page.props.auth?.user?.role === 'company_admin');
 
-const espelhoSinglePersonId = computed(() => {
-    const ids = parseIdList(espelhoFilterPeople.value);
-    if (!ids || ids.length !== 1) {
+const espelhoTargetPersonId = computed(() => {
+    const manual = String(espelhoVinculoPersonId.value ?? '').trim();
+    if (manual !== '') {
+        const n = parseInt(manual, 10);
+        if (!Number.isNaN(n) && n >= 1) {
+            return n;
+        }
+
         return null;
     }
-    return ids[0];
+    const ids = parseIdList(espelhoFilterPeople.value);
+    if (ids?.length === 1) {
+        return ids[0];
+    }
+
+    return null;
 });
 
-const canSaveEspelhoToTalents = computed(
-    () =>
-        Boolean(espelhoGuid.value) &&
-        Number(espelhoPercent.value) === 100 &&
-        espelhoSinglePersonId.value != null,
-);
+/** Percentual do RHID pode vir como numero ou string */
+const espelhoIsReadyForDownload = computed(() => {
+    const p = Number(espelhoPercent.value);
+    return Boolean(espelhoGuid.value) && !Number.isNaN(p) && p >= 100;
+});
 
 const bankRows = computed(() => {
     const r = bankResult.value;
@@ -958,11 +969,17 @@ const pollEspelhoImportUntilDone = async (importId) => {
 
 const saveEspelhoToTalents = async () => {
     if (!props.configured) {
+        err.value = 'Configure a integracao RHID antes de salvar o espelho.';
         return;
     }
-    if (!canSaveEspelhoToTalents.value) {
+    if (!espelhoIsReadyForDownload.value) {
         err.value =
-            'Aguarde 100% no GUID e informe exatamente um ID de funcionario em Filtros opcionais (listIdStr) para vincular o PDF.';
+            'Gere o espelho e aguarde o percentual chegar a 100% antes de salvar no Talents (GUID precisa estar pronto).';
+        return;
+    }
+    if (espelhoTargetPersonId.value == null) {
+        err.value =
+            'Informe o ID RHID do colaborador no campo abaixo, ou preencha Funcionarios (listIdStr) com exatamente um ID.';
         return;
     }
     clearErr();
@@ -970,7 +987,7 @@ const saveEspelhoToTalents = async () => {
     try {
         const { data } = await axios.post(route('client.rhid.api.espelhos.store'), {
             guid: espelhoGuid.value,
-            id_person: espelhoSinglePersonId.value,
+            id_person: espelhoTargetPersonId.value,
             ini: toRhidYmd(espelhoIniDate.value),
             fim: toRhidYmd(espelhoFimDate.value),
         });
@@ -2192,12 +2209,9 @@ const justStatusBarChart = computed(() => {
             </div>
 
             <div v-show="tab === 'espelho'" class="space-y-3">
-                <p class="text-sm text-slate-600">
-                    Espelho de ponto em PDF (RHID): use Gerar espelho para solicitar o relatorio e aguardar ate 100%; em seguida use Download PDF ou
-                    <strong class="font-medium">Salvar no Talents</strong>
-                    para guardar o arquivo e extrair as linhas por dia (Python). Para salvar vinculado a um colaborador, informe
-                    <strong class="font-medium">exatamente um</strong>
-                    ID em Funcionarios (listIdStr). Periodo maximo de 31 dias. Por padrao so funcionarios ativos (limite de licenca).
+                               <p class="text-sm text-slate-600">
+                    Espelho de ponto em PDF (RHID): use Gerar espelho e aguarde 100%; depois use Download PDF ou Salvar no Talents (grava o PDF e extrai texto por dia).
+                    Informe o ID RHID do colaborador no campo abaixo (ou um unico ID em Funcionarios nos filtros opcionais). Periodo maximo de 31 dias.
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
@@ -2292,6 +2306,17 @@ const justStatusBarChart = computed(() => {
                         </div>
                     </div>
                 </details>
+                <div class="max-w-md">
+                    <InputLabel value="ID RHID do colaborador (para Salvar no Talents)" />
+                    <input
+                        v-model="espelhoVinculoPersonId"
+                        type="text"
+                        inputmode="numeric"
+                        class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-sm"
+                        placeholder="ex: 12345"
+                    />
+                    <p class="mt-1 text-xs text-slate-500">Deve ser o mesmo funcionario usado ao gerar o espelho (um ID).</p>
+                </div>
                 <div class="flex flex-wrap gap-2">
                     <PrimaryButton type="button" :disabled="loading" @click="gerarEspelhoCompleto">
                         Gerar espelho
@@ -2299,18 +2324,10 @@ const justStatusBarChart = computed(() => {
                     <SecondaryButton type="button" :disabled="!espelhoPolling" @click="cancelEspelhoPoll">
                         Cancelar
                     </SecondaryButton>
-                    <PrimaryButton
-                        type="button"
-                        :disabled="!espelhoGuid || Number(espelhoPercent) !== 100"
-                        @click="downloadEspelho"
-                    >
+                    <PrimaryButton type="button" :disabled="!espelhoIsReadyForDownload" @click="downloadEspelho">
                         Download PDF
                     </PrimaryButton>
-                    <PrimaryButton
-                        type="button"
-                        :disabled="loading || !canSaveEspelhoToTalents"
-                        @click="saveEspelhoToTalents"
-                    >
+                    <PrimaryButton type="button" :disabled="loading" @click="saveEspelhoToTalents">
                         Salvar no Talents e extrair
                     </PrimaryButton>
                 </div>
