@@ -103,7 +103,20 @@ def parse_espelho_pdf(
             person_name = h.split(":", 1)[-1].strip() or None
             break
 
-    return {
+    marcacoes_espelho: list[dict[str, Any]] = []
+    marcacoes_espelho_aviso: str | None = None
+    try:
+        from .marcacoes_espelho import extrair_marcacoes_do_espelho_pdf
+
+        marcacoes_espelho = extrair_marcacoes_do_espelho_pdf(path.read_bytes())
+    except ImportError:
+        marcacoes_espelho_aviso = "pdfplumber nao instalado; instale com: pip install pdfplumber"
+    except RuntimeError as e:
+        marcacoes_espelho_aviso = str(e)
+    except Exception as e:
+        marcacoes_espelho_aviso = f"extracao tabelas: {e}"
+
+    out: dict[str, Any] = {
         "schema_version": 1,
         "id_person": id_person,
         "person_name": person_name,
@@ -112,4 +125,9 @@ def parse_espelho_pdf(
         "header_text": "\n".join(header_lines[:200]),
         "days": days,
         "summary": {"line_count": len(lines), "day_count": len(days)},
+        "marcacoes_espelho": marcacoes_espelho,
+        "marcacoes_espelho_count": len(marcacoes_espelho),
     }
+    if marcacoes_espelho_aviso:
+        out["marcacoes_espelho_aviso"] = marcacoes_espelho_aviso
+    return out

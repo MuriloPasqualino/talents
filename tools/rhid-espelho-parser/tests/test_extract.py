@@ -73,3 +73,23 @@ def test_cli_stdout_json(tmp_path: Path) -> None:
     data = json.loads(r.stdout)
     assert data["schema_version"] == 1
     assert data["id_person"] == 1
+    assert "marcacoes_espelho" in data
+    assert "marcacoes_espelho_count" in data
+
+
+def test_preencher_campos_marcacao_espelho_columns() -> None:
+    from rhid_espelho_parser.marcacoes_espelho import _preencher_campos_marcacao_pdf_linha
+
+    row = {
+        "TODAS_MARCACOES": "07:00 12:00",
+        "DIA_DA_SEMANA": "SEG",
+        "Data": "01/03/2026",
+    }
+    data, dia, ent, sai, todas = _preencher_campos_marcacao_pdf_linha(row)
+    assert data == "01/03/2026"
+    assert dia == "SEG"
+    assert todas == "07:00 12:00"
+    row2 = {"Marcacoes (espelho)": "08:15 17:30", "Data": "14/04/2026"}
+    d2, _, _, _, t2 = _preencher_campos_marcacao_pdf_linha(row2)
+    assert d2 == "14/04/2026"
+    assert t2 == "08:15 17:30"
