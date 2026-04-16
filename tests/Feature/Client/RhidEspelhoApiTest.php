@@ -23,6 +23,15 @@ class RhidEspelhoApiTest extends TestCase
         ])->assertUnauthorized();
     }
 
+    public function test_guest_cannot_start_espelho_batch(): void
+    {
+        $this->postJson(route('client.rhid.api.espelhos.batch.start'), [
+            'person_ids' => [1, 2],
+            'ini' => '20260401',
+            'fim' => '20260414',
+        ])->assertUnauthorized();
+    }
+
     public function test_store_espelho_validates_required_fields(): void
     {
         $fx = $this->createSurveyFixture();

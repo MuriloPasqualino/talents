@@ -7,7 +7,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import {
     extractListItems,
     formatRhidBankBalanceDisplay,
@@ -90,6 +90,13 @@ const espelhoImportsPage = ref(null);
 const espelhoLastImport = ref(null);
 const espelhoDetailLoading = ref(false);
 const espelhoBatchProgress = ref('');
+/** idle | resolving | starting | polling | done */
+const espelhoBatchPhase = ref('idle');
+const espelhoBatchTotal = ref(0);
+const espelhoBatchRemaining = ref(0);
+const espelhoBatchRemote = ref(null);
+const espelhoBatchPollAbort = ref(false);
+const espelhoShowTechnicalPanel = ref(false);
 
 const ESPELHO_FIELD_OPTIONS = [
     { value: 'DIA_DA_SEMANA', label: 'Dia da semana' },
@@ -117,6 +124,22 @@ const espelhoTargetPersonId = computed(() => {
 const espelhoIsReadyForDownload = computed(() => {
     const p = Number(espelhoPercent.value);
     return Boolean(espelhoGuid.value) && !Number.isNaN(p) && p >= 100;
+});
+
+const espelhoShowProcessingBanner = computed(() => {
+    if (espelhoPolling.value) {
+        return true;
+    }
+    return ['resolving', 'starting', 'polling'].includes(espelhoBatchPhase.value);
+});
+
+const espelhoBatchProgressPercent = computed(() => {
+    const t = Number(espelhoBatchTotal.value);
+    const r = Number(espelhoBatchRemaining.value);
+    if (!t || t <= 0) {
+        return 0;
+    }
+    return Math.min(100, Math.round(((t - r) / t) * 100));
 });
 
 /** Pares ENT.n/SAÍ.n alinhados ao parser Python (`marcacoes_string_to_ent_sai_slots`) */
@@ -327,17 +350,6 @@ const isRhidPersonRowClearlyInactive = (row) => {
     }
     const st = String(row.statusStr ?? '').toLowerCase();
     return st.includes('inativ');
-};
-
-/** Erros de espelho em branco / inativo — nao devem interromper o lote inteiro. */
-const shouldSkipEspelhoBatchErrorMessage = (msg) => {
-    const m = String(msg ?? '').toLowerCase();
-    return (
-        m.includes('arquivo vazio') ||
-        m.includes('save_file') ||
-        m.includes('nao e um pdf valido') ||
-        m.includes('não é um pdf válido')
-    );
 };
 
 const bankHasOptionalFilters = () =>
@@ -1010,6 +1022,23 @@ const buildEspelhoPayload = (personIdsOverride = null) => {
     return body;
 };
 
+const buildEspelhoBatchMeta = () => ({
+    ini: toRhidYmd(espelhoIniDate.value),
+    fim: toRhidYmd(espelhoFimDate.value),
+    rhid_status: espelhoStatus.value === '1' || espelhoStatus.value === '2' ? espelhoStatus.value : null,
+    list_columns:
+        espelhoSelectedFields.value.length > 0
+            ? [...espelhoSelectedFields.value]
+            : ['TODAS_MARCACOES', 'ENTRADAS_SAIDAS'],
+    filters: {
+        list_company_str: parseIdList(espelhoFilterCompanies.value) ?? [],
+        list_department_str: parseIdList(espelhoFilterDepartments.value) ?? [],
+        list_cost_center_str: parseIdList(espelhoFilterCostcenters.value) ?? [],
+        list_person_role_str: parseIdList(espelhoFilterPersonroles.value) ?? [],
+        list_shift_str: parseIdList(espelhoFilterShifts.value) ?? [],
+    },
+});
+
 /** Inicia o relatorio em PDF e acompanha ate o processamento chegar a 100% */
 const gerarEspelhoCompleto = async () => {
     if (!props.configured) {
@@ -1109,8 +1138,7 @@ const saveEspelhoToTalents = async () => {
         return;
     }
     if (!espelhoIsReadyForDownload.value) {
-        err.value =
-            'Gere o espelho e aguarde o percentual chegar a 100% antes de salvar no Talents (GUID precisa estar pronto).';
+        err.value = 'Gere o espelho e aguarde o processamento chegar a 100% antes de importar.';
         return;
     }
     if (espelhoTargetPersonId.value == null) {
@@ -1118,8 +1146,8 @@ const saveEspelhoToTalents = async () => {
             (parseIdList(espelhoVinculoPersonId.value)?.length ?? 0) > 1 ||
             (parseIdList(espelhoFilterPeople.value)?.length ?? 0) > 1;
         err.value = many
-            ? 'Varios IDs informados: use o botao Salvar todos (lote). Para salvar um unico PDF, deixe apenas um ID no campo ou nos filtros.'
-            : 'Informe exatamente um ID RHID no campo acima ou em Funcionarios (listIdStr) nos filtros opcionais.';
+            ? 'Varios colaboradores selecionados: use Importar todos ou deixe apenas um ID no campo ou nos filtros opcionais.'
+            : 'Informe um ID de colaborador no campo acima ou nos filtros opcionais.';
         return;
     }
     clearErr();
@@ -1141,34 +1169,32 @@ const saveEspelhoToTalents = async () => {
     }
 };
 
-const gerarEspelhoGuidByPersonId = async (idPerson) => {
-    const body = buildEspelhoPayload([idPerson]);
-    const { data: startData } = await axios.post(route('client.rhid.api.reports.start'), body);
-    const guid = startData.guid || '';
-    if (!guid) {
-        throw new Error(`Nao foi possivel obter GUID para colaborador ${idPerson}.`);
-    }
-    for (let i = 0; i < 120; i++) {
-        const { data } = await axios.get(route('client.rhid.api.reports.status'), {
-            params: { guid },
-        });
-        const p = Number(data.percent);
-        if (p === 100) {
-            /* RHID pode marcar 100% antes do save_file servir o PDF; pausa reduz falha em lote. */
-            await new Promise((r) => setTimeout(r, 2000));
-            return guid;
+const pollEspelhoBatchUntilDone = async (batchId) => {
+    espelhoBatchPollAbort.value = false;
+    for (;;) {
+        if (espelhoBatchPollAbort.value) {
+            espelhoBatchPhase.value = 'idle';
+            return;
         }
-        if (data.error) {
-            throw new Error(String(data.error));
+        const { data } = await axios.get(route('client.rhid.api.espelhos.batch.show', batchId));
+        const b = data.batch;
+        espelhoBatchRemote.value = b;
+        espelhoBatchTotal.value = b.total ?? 0;
+        espelhoBatchRemaining.value = b.remaining ?? 0;
+        if (b.status === 'completed' || b.status === 'failed') {
+            espelhoBatchPhase.value = 'done';
+            espelhoBatchProgress.value =
+                b.message || (b.status === 'failed' ? 'Nao foi possivel concluir o lote.' : 'Lote concluido.');
+            await loadEspelhoImports();
+            return;
         }
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 2500));
     }
-    throw new Error(`Timeout ao aguardar GUID ${guid} para colaborador ${idPerson}.`);
 };
 
 const saveEspelhoTodosToTalents = async () => {
     if (!props.configured) {
-        err.value = 'Configure a integracao RHID antes de salvar os espelhos.';
+        err.value = 'Configure a integracao RHID antes de importar os espelhos.';
         return;
     }
     const periodErr = validateEspelhoPeriod();
@@ -1182,75 +1208,54 @@ const saveEspelhoTodosToTalents = async () => {
     clearErr();
     loading.value = true;
     espelhoBatchProgress.value = '';
+    espelhoBatchPhase.value = 'resolving';
+    espelhoBatchTotal.value = 0;
+    espelhoBatchRemaining.value = 0;
+    espelhoBatchRemote.value = null;
     try {
         if (!ids.length) {
-            espelhoBatchProgress.value = 'Buscando colaboradores ativos no RHID...';
             ids = await fetchAllRhidPersonIdsFromApi();
         } else {
-            espelhoBatchProgress.value = 'Filtrando apenas colaboradores ativos (RHID)...';
             const activeSet = new Set(await fetchAllRhidPersonIdsFromApi());
             const before = ids.length;
             ids = ids.filter((id) => activeSet.has(id));
             if (!ids.length) {
-                espelhoBatchProgress.value = '';
+                espelhoBatchPhase.value = 'idle';
                 err.value =
-                    'Nenhum dos IDs informados esta entre os colaboradores ativos retornados pelo RHID. Remova inativos ou deixe o filtro vazio para buscar todos os ativos.';
+                    'Nenhum dos IDs informados esta entre os colaboradores ativos. Ajuste a lista ou deixe em branco para importar todos os ativos.';
                 return;
             }
             if (before > ids.length) {
-                espelhoBatchProgress.value = `Ignorados ${before - ids.length} ID(s) inativos ou ausentes do cadastro ativo.`;
-                await new Promise((r) => setTimeout(r, 1200));
-            }
-        }
-        if (!ids.length) {
-            espelhoBatchProgress.value = '';
-            err.value =
-                'Nenhum colaborador retornado pela API RHID. Verifique a integracao ou informe IDs manualmente.';
-            return;
-        }
-        const total = ids.length;
-        const skippedIds = [];
-        let doneOk = 0;
-        for (let i = 0; i < total; i++) {
-            const idPerson = ids[i];
-            espelhoBatchProgress.value = `Processando ${i + 1}/${total} (ID ${idPerson})...`;
-            try {
-                const guid = await gerarEspelhoGuidByPersonId(idPerson);
-                const { data } = await axios.post(route('client.rhid.api.espelhos.store'), {
-                    guid,
-                    id_person: idPerson,
-                    ini: toRhidYmd(espelhoIniDate.value),
-                    fim: toRhidYmd(espelhoFimDate.value),
-                });
-                espelhoLastImport.value = data.import;
-                await pollEspelhoImportUntilDone(data.import.id);
-                doneOk += 1;
-            } catch (e) {
-                const msg = e.response?.data?.message || e.message || '';
-                if (shouldSkipEspelhoBatchErrorMessage(msg)) {
-                    skippedIds.push(idPerson);
-                    espelhoBatchProgress.value = `Pulado ID ${idPerson} (espelho vazio ou invalido no RHID). Continuando...`;
-                    await new Promise((r) => setTimeout(r, 400));
-                    continue;
-                }
-                throw e;
-            }
-            if (i < total - 1) {
+                espelhoBatchProgress.value = `${before - ids.length} colaborador(es) inativo(s) foram ignorados.`;
                 await new Promise((r) => setTimeout(r, 800));
             }
         }
-        const skipPart =
-            skippedIds.length > 0
-                ? ` Pulados (sem PDF valido no RHID): ${skippedIds.length}${
-                      skippedIds.length <= 20 ? ` — IDs: ${skippedIds.join(', ')}` : '.'
-                  }`
-                : '';
-        espelhoBatchProgress.value = `Concluido: ${doneOk} colaborador(es) importado(s).${skipPart}`;
-        await loadEspelhoImports();
+        if (!ids.length) {
+            espelhoBatchPhase.value = 'idle';
+            err.value = 'Nenhum colaborador ativo encontrado. Verifique a integracao ou informe IDs.';
+            return;
+        }
+        espelhoBatchPhase.value = 'starting';
+        const { data } = await axios.post(route('client.rhid.api.espelhos.batch.start'), {
+            person_ids: ids,
+            ...buildEspelhoBatchMeta(),
+        });
+        const batchId = data.batch.id;
+        espelhoBatchRemote.value = data.batch;
+        espelhoBatchTotal.value = data.batch.total ?? ids.length;
+        espelhoBatchRemaining.value = data.batch.remaining ?? ids.length;
+        espelhoBatchPhase.value = 'polling';
+        await pollEspelhoBatchUntilDone(batchId);
     } catch (e) {
         handleError(e);
+        espelhoBatchPhase.value = 'idle';
     } finally {
         loading.value = false;
+        if (espelhoBatchPhase.value === 'done') {
+            setTimeout(() => {
+                espelhoBatchPhase.value = 'idle';
+            }, 6000);
+        }
     }
 };
 
@@ -1303,7 +1308,13 @@ const showEspelhoImportRow = async (importId) => {
 watch(tab, (t) => {
     if (t === 'espelho') {
         loadEspelhoImports();
+    } else {
+        espelhoBatchPollAbort.value = true;
     }
+});
+
+onBeforeUnmount(() => {
+    espelhoBatchPollAbort.value = true;
 });
 
 /**
@@ -2462,9 +2473,43 @@ const justStatusBarChart = computed(() => {
             </div>
 
             <div v-show="tab === 'espelho'" class="space-y-3">
-                               <p class="text-sm text-slate-600">
-                    Espelho de ponto em PDF (RHID): use Gerar espelho e aguarde 100%; depois use Download PDF ou Salvar no Talents (grava o PDF e processa com o mesmo pipeline do cartão TALENTS6: pdfplumber, colaboradores e marcações por dia).
-                    Informe o ID RHID do colaborador no campo abaixo (ou um unico ID em Funcionarios nos filtros opcionais). Periodo maximo de 31 dias.
+                <div
+                    v-if="espelhoShowProcessingBanner"
+                    class="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm"
+                    role="status"
+                >
+                    <span
+                        class="inline-block size-5 shrink-0 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent"
+                        aria-hidden="true"
+                    />
+                    <div class="min-w-0 flex-1">
+                        <p class="font-medium">
+                            <template v-if="espelhoPolling">Gerando espelho no RHID…</template>
+                            <template v-else-if="espelhoBatchPhase === 'resolving' || espelhoBatchPhase === 'starting'"
+                                >Preparando importacao…</template
+                            >
+                            <template v-else-if="espelhoBatchPhase === 'polling'">Importando PDFs em segundo plano…</template>
+                            <template v-else>Processando…</template>
+                        </p>
+                        <p v-if="espelhoPolling && espelhoPercent !== null" class="mt-0.5 text-sm text-emerald-900/90">
+                            Andamento: {{ espelhoPercent }}%
+                        </p>
+                        <template v-else-if="espelhoBatchPhase === 'polling' && espelhoBatchTotal > 0">
+                            <p class="mt-0.5 text-sm text-emerald-900/90">
+                                Restam {{ espelhoBatchRemaining }} de {{ espelhoBatchTotal }} colaboradores
+                            </p>
+                            <div class="mt-2 h-2 w-full max-w-md overflow-hidden rounded-full bg-emerald-100">
+                                <div
+                                    class="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+                                    :style="{ width: espelhoBatchProgressPercent + '%' }"
+                                />
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <p class="text-sm leading-relaxed text-slate-600">
+                    Gere o espelho de ponto no periodo escolhido, baixe o PDF ou importe para o Talents. A leitura das
+                    marcacoes continua em segundo plano apos o PDF ser salvo. Periodo de ate 31 dias.
                 </p>
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
@@ -2493,7 +2538,7 @@ const justStatusBarChart = computed(() => {
                     </div>
                 </div>
                 <div>
-                    <InputLabel value="Colunas e propriedades (listColumns / listPropertyStr)" />
+                    <InputLabel value="Colunas do relatorio" />
                     <div class="mt-2 flex flex-wrap gap-3">
                         <label
                             v-for="opt in ESPELHO_FIELD_OPTIONS"
@@ -2506,10 +2551,10 @@ const justStatusBarChart = computed(() => {
                     </div>
                 </div>
                 <details class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
-                    <summary class="cursor-pointer font-medium text-slate-800">Filtros opcionais (IDs RHID, separados por virgula)</summary>
+                    <summary class="cursor-pointer font-medium text-slate-800">Filtros opcionais por ID no RHID</summary>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
-                            <InputLabel value="Funcionarios (listIdStr)" />
+                            <InputLabel value="Colaboradores" />
                             <input
                                 v-model="espelhoFilterPeople"
                                 type="text"
@@ -2560,17 +2605,16 @@ const justStatusBarChart = computed(() => {
                     </div>
                 </details>
                 <div class="max-w-md">
-                    <InputLabel value="IDs RHID (Salvar no Talents / lote)" />
+                    <InputLabel value="Colaboradores (importacao individual ou lista)" />
                     <input
                         v-model="espelhoVinculoPersonId"
                         type="text"
                         class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-sm"
-                        placeholder="Um ID ou varios: 12345 ou 10, 20, 30"
+                        placeholder="Ex.: 12345 ou 10, 20, 30"
                     />
                     <p class="mt-1 text-xs text-slate-500">
-                        Salvar um: um ID. Lote: varios IDs (virgula) aqui ou em Funcionarios nos filtros. Se deixar vazio,
-                        <strong class="font-medium">Salvar todos (lote)</strong>
-                        busca automaticamente todos os colaboradores do cadastro RHID (ate 500 por pagina).
+                        Um ID para importar um unico espelho. Varias IDs separadas por virgula, ou deixe em branco e use
+                        <strong class="font-medium">Importar todos</strong> para todos os colaboradores ativos.
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
@@ -2587,24 +2631,33 @@ const justStatusBarChart = computed(() => {
                         Salvar no Talents e extrair
                     </PrimaryButton>
                     <SecondaryButton type="button" :disabled="loading" @click="saveEspelhoTodosToTalents">
-                        Salvar todos (lote)
+                        Importar todos
                     </SecondaryButton>
                 </div>
-                <p v-if="espelhoGuid" class="text-sm text-slate-600">
-                    GUID:
-                    <code class="rounded bg-slate-100 px-1">{{ espelhoGuid }}</code>
-                    <span v-if="espelhoPercent !== null" class="ml-2">Percentual: {{ espelhoPercent }}%</span>
-                    <span v-if="espelhoPolling" class="ml-2 text-amber-700">Gerando...</span>
+                <p v-if="espelhoBatchProgress && espelhoBatchPhase === 'idle'" class="text-sm text-slate-600">
+                    {{ espelhoBatchProgress }}
                 </p>
-                <p v-if="espelhoBatchProgress" class="text-sm text-slate-600">{{ espelhoBatchProgress }}</p>
-                <RhidResponsePanel v-if="espelhoPanelData" :data="espelhoPanelData" title="Status / resposta" />
+                <details v-if="espelhoGuid || espelhoPanelData" class="rounded-md border border-slate-100 bg-slate-50/80 p-2 text-xs text-slate-600">
+                    <summary class="cursor-pointer font-medium text-slate-700">Detalhes tecnicos (suporte)</summary>
+                    <p v-if="espelhoGuid" class="mt-2">
+                        Identificador da tarefa no RHID:
+                        <code class="rounded bg-white px-1">{{ espelhoGuid }}</code>
+                    </p>
+                    <div v-if="espelhoPanelData" class="mt-2 space-y-2">
+                        <label class="flex cursor-pointer items-center gap-2">
+                            <input v-model="espelhoShowTechnicalPanel" type="checkbox" class="rounded border-slate-300" />
+                            Mostrar resposta completa do RHID
+                        </label>
+                        <RhidResponsePanel v-if="espelhoShowTechnicalPanel" :data="espelhoPanelData" title="Resposta RHID" />
+                    </div>
+                </details>
 
                 <div v-if="espelhoLastImport" class="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
-                    <h3 class="font-medium text-slate-800">Ultimo import no Talents</h3>
+                    <h3 class="font-medium text-slate-800">Ultima importacao</h3>
                     <p class="mt-1 text-slate-600">
-                        Import #{{ espelhoLastImport.id }} — colaborador RHID
+                        Registro #{{ espelhoLastImport.id }} — colaborador
                         <code class="rounded bg-slate-100 px-1">{{ espelhoLastImport.id_person }}</code>
-                        — {{ espelhoLastImport.period_ini }} a {{ espelhoLastImport.period_fim }} — parse:
+                        — {{ espelhoLastImport.period_ini }} a {{ espelhoLastImport.period_fim }} — leitura do PDF:
                         <span
                             :class="{
                                 'text-emerald-700': espelhoLastImport.parse_status === 'ok',

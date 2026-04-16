@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Client;
 use App\Exceptions\RhidApiException;
 use App\Exceptions\RhidDomainChoiceRequiredException;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessRhidEspelhoBatchJob;
 use App\Jobs\ProcessRhidEspelhoParseJob;
 use App\Models\Company;
+use App\Models\RhidEspelhoBatch;
 use App\Models\RhidEspelhoImport;
 use App\Services\Rhid\EspelhoPdfIngestService;
 use App\Services\Rhid\RhidAuthService;
@@ -583,6 +585,78 @@ class RhidApiController extends Controller
         ]);
     }
 
+    /**
+     * Inicia importacao em lote (fila): continua com a aba fechada se o worker estiver ativo.
+     */
+    public function startEspelhoBatch(Request $request): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $data = $request->validate([
+            'person_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'person_ids.*' => ['integer', 'min:1'],
+            'ini' => ['required', 'string', 'regex:/^\d{8}$/'],
+            'fim' => ['required', 'string', 'regex:/^\d{8}$/'],
+            'rhid_status' => ['nullable', 'string', 'in:1,2'],
+            'list_columns' => ['nullable', 'array'],
+            'list_columns.*' => ['string', 'max:64'],
+            'filters' => ['nullable', 'array'],
+            'filters.list_company_str' => ['nullable', 'array'],
+            'filters.list_company_str.*' => ['integer'],
+            'filters.list_department_str' => ['nullable', 'array'],
+            'filters.list_department_str.*' => ['integer'],
+            'filters.list_cost_center_str' => ['nullable', 'array'],
+            'filters.list_cost_center_str.*' => ['integer'],
+            'filters.list_person_role_str' => ['nullable', 'array'],
+            'filters.list_person_role_str.*' => ['integer'],
+            'filters.list_shift_str' => ['nullable', 'array'],
+            'filters.list_shift_str.*' => ['integer'],
+        ]);
+
+        $personIds = array_values(array_unique(array_map('intval', $data['person_ids'])));
+
+        $meta = [
+            'person_ids' => $personIds,
+            'ini' => $data['ini'],
+            'fim' => $data['fim'],
+            'rhid_status' => $data['rhid_status'] ?? null,
+            'list_columns' => $data['list_columns'] ?? null,
+            'filters' => array_filter($data['filters'] ?? [], static fn ($v) => $v !== null && $v !== []),
+        ];
+
+        $batch = RhidEspelhoBatch::query()->create([
+            'company_id' => $company->id,
+            'user_id' => $request->user()->id,
+            'status' => 'pending',
+            'total' => count($personIds),
+            'processed' => 0,
+            'succeeded' => 0,
+            'skipped' => 0,
+            'current_id_person' => null,
+            'skipped_person_ids' => [],
+            'meta_json' => $meta,
+            'message' => null,
+        ]);
+
+        ProcessRhidEspelhoBatchJob::dispatch($batch->id);
+
+        return response()->json([
+            'batch' => $this->espelhoBatchPayload($batch),
+        ]);
+    }
+
+    public function showEspelhoBatch(Request $request, int $batch): JsonResponse|Response
+    {
+        $company = $this->company($request);
+        $row = RhidEspelhoBatch::query()
+            ->where('company_id', $company->id)
+            ->whereKey($batch)
+            ->firstOrFail();
+
+        return response()->json([
+            'batch' => $this->espelhoBatchPayload($row),
+        ]);
+    }
+
     public function listEspelhoImports(Request $request): JsonResponse|Response
     {
         $company = $this->company($request);
@@ -663,6 +737,30 @@ class RhidApiController extends Controller
         return $disk->response($row->storage_path, $name, [
             'Content-Type' => 'application/pdf',
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function espelhoBatchPayload(RhidEspelhoBatch $b): array
+    {
+        $total = max(0, (int) $b->total);
+        $processed = max(0, (int) $b->processed);
+        $remaining = max(0, $total - $processed);
+
+        return [
+            'id' => $b->id,
+            'status' => $b->status,
+            'total' => $total,
+            'processed' => $processed,
+            'remaining' => $remaining,
+            'succeeded' => (int) $b->succeeded,
+            'skipped' => (int) $b->skipped,
+            'current_id_person' => $b->current_id_person,
+            'message' => $b->message,
+            'skipped_person_ids' => $b->skipped_person_ids ?? [],
+            'updated_at' => $b->updated_at?->toIso8601String(),
+        ];
     }
 
     /**
