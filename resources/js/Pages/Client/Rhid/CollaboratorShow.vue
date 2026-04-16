@@ -1,6 +1,7 @@
 <script setup>
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import axios from 'axios';
@@ -23,6 +24,85 @@ const err = ref(null);
 const detail = ref(null);
 const bankDateHtml = ref(todayHtmlDate());
 const bankPack = ref(null);
+
+/** Espelhos importados no Talents (mesmo id_person RHID) */
+const espelhoImportsPage = ref(null);
+const espelhoListLoading = ref(false);
+const expandedImportId = ref(null);
+const expandedImportDetail = ref(null);
+const espelhoDetailLoading = ref(false);
+
+const ESPELHO_SLOT_KEYS = ['ent_1', 'sai_1', 'ent_2', 'sai_2', 'ent_3', 'sai_3', 'ent_4', 'sai_4'];
+
+const espelhoSlotColumns = [
+    { key: 'ent_1', label: 'ENT. 1' },
+    { key: 'sai_1', label: 'SAÍ. 1' },
+    { key: 'ent_2', label: 'ENT. 2' },
+    { key: 'sai_2', label: 'SAÍ. 2' },
+    { key: 'ent_3', label: 'ENT. 3' },
+    { key: 'sai_3', label: 'SAÍ. 3' },
+    { key: 'ent_4', label: 'ENT. 4' },
+    { key: 'sai_4', label: 'SAÍ. 4' },
+];
+
+/**
+ * @param {Record<string, unknown>|null|undefined} frag
+ * @returns {Record<string, string>}
+ */
+const espelhoMarcacaoSlots = (frag) => {
+    const out = {};
+    for (const k of ESPELHO_SLOT_KEYS) {
+        const v = frag?.[k];
+        out[k] = v != null && String(v).trim() !== '' ? String(v).trim() : '';
+    }
+    const needsFallback = ESPELHO_SLOT_KEYS.every((k) => !out[k]);
+    if (needsFallback && frag?.marcacoes) {
+        const times = String(frag.marcacoes).match(/\b\d{2}:\d{2}\b/g) || [];
+        for (let i = 0; i < Math.min(8, times.length); i += 1) {
+            const pair = Math.floor(i / 2) + 1;
+            const key = i % 2 === 0 ? `ent_${pair}` : `sai_${pair}`;
+            out[key] = times[i];
+        }
+    }
+    return out;
+};
+
+const espelhoPunchTableRows = computed(() => {
+    const imp = expandedImportDetail.value;
+    if (!imp?.days?.length) {
+        return [];
+    }
+    const rows = [];
+    for (const d of imp.days) {
+        const rj = d.row_json || {};
+        const colabs = Array.isArray(rj.colaboradores) ? rj.colaboradores : [];
+        if (!colabs.length) {
+            rows.push({ ref_date: d.ref_date, nome: '', fragment: {} });
+            continue;
+        }
+        for (const c of colabs) {
+            rows.push({
+                ref_date: d.ref_date,
+                nome: (c.nome && String(c.nome).trim()) || '—',
+                fragment: c,
+            });
+        }
+    }
+    return rows;
+});
+
+const parseStatusLabel = (s) => {
+    if (s === 'ok') {
+        return 'Concluido';
+    }
+    if (s === 'pending') {
+        return 'Processando';
+    }
+    if (s === 'failed') {
+        return 'Erro';
+    }
+    return s ?? '—';
+};
 
 const displayName = computed(() => pickRhidPersonDisplayName(detail.value ?? {}));
 const bankRow = computed(() => {
@@ -112,12 +192,50 @@ const loadBank = async () => {
     }
 };
 
+const loadEspelhoImports = async () => {
+    if (!props.configured) {
+        return;
+    }
+    espelhoListLoading.value = true;
+    try {
+        const { data } = await axios.get(route('client.rhid.api.espelhos.imports.index'), {
+            params: { id_person: props.personId, per_page: 30 },
+        });
+        espelhoImportsPage.value = data;
+    } catch (e) {
+        handleError(e);
+    } finally {
+        espelhoListLoading.value = false;
+    }
+};
+
+const toggleEspelhoMarcacoes = async (importId) => {
+    if (expandedImportId.value === importId) {
+        expandedImportId.value = null;
+        expandedImportDetail.value = null;
+        return;
+    }
+    expandedImportId.value = importId;
+    expandedImportDetail.value = null;
+    espelhoDetailLoading.value = true;
+    clearErr();
+    try {
+        const { data } = await axios.get(route('client.rhid.api.espelhos.imports.show', importId));
+        expandedImportDetail.value = data.import;
+    } catch (e) {
+        handleError(e);
+        expandedImportId.value = null;
+    } finally {
+        espelhoDetailLoading.value = false;
+    }
+};
+
 onMounted(async () => {
     if (!props.configured) {
         return;
     }
     await loadDetail();
-    await loadBank();
+    await Promise.all([loadBank(), loadEspelhoImports()]);
 });
 </script>
 
@@ -246,6 +364,123 @@ onMounted(async () => {
                     {{ formatRhidBankBalanceDisplay(bankRow) }}
                 </p>
                 <p v-else-if="bankPack && !loading" class="text-sm text-slate-500">Nenhum retorno de saldo para esta data.</p>
+            </div>
+
+            <div v-if="detail" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 class="mb-2 text-sm font-semibold text-slate-800">Espelho de ponto importado no Talents</h3>
+                <p class="mb-3 text-xs text-slate-500">
+                    Periodos importados pela area Compliance (aba Marcacoes espelho), vinculados a este ID no RHID.
+                </p>
+                <p v-if="espelhoListLoading" class="text-sm text-slate-500">Carregando importacoes…</p>
+                <p v-else-if="!espelhoImportsPage?.data?.length" class="text-sm text-slate-500">
+                    Nenhum espelho importado ainda para este colaborador.
+                </p>
+                <div v-else class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm">
+                        <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-600">
+                            <tr>
+                                <th class="p-2">Periodo</th>
+                                <th class="p-2">Leitura</th>
+                                <th class="p-2">Importado em</th>
+                                <th class="p-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-for="row in espelhoImportsPage.data" :key="row.id">
+                                <tr class="border-t border-slate-100">
+                                    <td class="p-2 whitespace-nowrap">
+                                        {{ row.period_ini }} — {{ row.period_fim }}
+                                    </td>
+                                    <td class="p-2">
+                                        <span
+                                            :class="{
+                                                'text-emerald-700': row.parse_status === 'ok',
+                                                'text-amber-700': row.parse_status === 'pending',
+                                                'text-red-700': row.parse_status === 'failed',
+                                            }"
+                                        >
+                                            {{ parseStatusLabel(row.parse_status) }}
+                                        </span>
+                                    </td>
+                                    <td class="p-2 text-slate-600">{{ row.created_at?.slice?.(0, 10) ?? '—' }}</td>
+                                    <td class="p-2 whitespace-nowrap">
+                                        <a
+                                            :href="route('client.rhid.api.espelhos.imports.file', row.id)"
+                                            class="mr-2 text-xs font-medium text-talents-800 hover:underline"
+                                            target="_blank"
+                                            rel="noopener"
+                                        >
+                                            PDF
+                                        </a>
+                                        <SecondaryButton
+                                            type="button"
+                                            class="!px-2 !py-1 text-xs"
+                                            @click="toggleEspelhoMarcacoes(row.id)"
+                                        >
+                                            {{
+                                                expandedImportId === row.id
+                                                    ? 'Ocultar'
+                                                    : row.parse_status === 'ok'
+                                                      ? 'Ver marcacoes'
+                                                      : 'Ver detalhes'
+                                            }}
+                                        </SecondaryButton>
+                                    </td>
+                                </tr>
+                                <tr v-if="expandedImportId === row.id" class="border-t border-slate-100 bg-slate-50/80">
+                                    <td colspan="4" class="p-3">
+                                        <p v-if="espelhoDetailLoading" class="text-sm text-slate-500">Carregando…</p>
+                                        <p
+                                            v-else-if="expandedImportDetail?.parse_status === 'pending'"
+                                            class="text-sm text-amber-800"
+                                        >
+                                            Leitura do PDF ainda em fila; atualize a pagina em instantes.
+                                        </p>
+                                        <p v-else-if="expandedImportDetail?.parse_error" class="text-sm text-red-700">
+                                            {{ expandedImportDetail.parse_error }}
+                                        </p>
+                                        <div
+                                            v-else-if="espelhoPunchTableRows.length"
+                                            class="max-h-80 overflow-auto rounded border border-slate-200 bg-white"
+                                        >
+                                            <table class="min-w-full text-xs">
+                                                <thead class="sticky top-0 bg-slate-50">
+                                                    <tr>
+                                                        <th class="p-2 text-left">Data</th>
+                                                        <th
+                                                            v-for="col in espelhoSlotColumns"
+                                                            :key="col.key"
+                                                            class="p-2 text-left"
+                                                        >
+                                                            {{ col.label }}
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr
+                                                        v-for="(pr, prIdx) in espelhoPunchTableRows"
+                                                        :key="prIdx"
+                                                        class="border-t border-slate-100"
+                                                    >
+                                                        <td class="whitespace-nowrap p-2 text-slate-700">{{ pr.ref_date }}</td>
+                                                        <td
+                                                            v-for="col in espelhoSlotColumns"
+                                                            :key="col.key"
+                                                            class="p-2 tabular-nums text-slate-800"
+                                                        >
+                                                            {{ espelhoMarcacaoSlots(pr.fragment)[col.key] || '—' }}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <p v-else class="text-sm text-slate-500">Sem marcacoes extraidas neste periodo.</p>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </ClientLayout>
