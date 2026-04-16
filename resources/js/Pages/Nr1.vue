@@ -115,6 +115,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <span class="font-semibold not-italic">É processo.</span>
                     </blockquote>
 
+                    <nav
+                        class="mt-8 flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-200/80 pt-6 text-sm text-slate-600"
+                        aria-label="Seções desta página"
+                    >
+                        <a href="#metodologia" class="font-medium text-talents-700 hover:underline">Metodologia</a>
+                        <span class="text-slate-300" aria-hidden="true">·</span>
+                        <a href="#pesquisa" class="font-medium text-talents-700 hover:underline">A pesquisa</a>
+                        <span class="text-slate-300" aria-hidden="true">·</span>
+                        <a href="#relatorios" class="font-medium text-talents-700 hover:underline">Relatórios e parecer</a>
+                        <span class="text-slate-300" aria-hidden="true">·</span>
+                        <a href="#plano-acao" class="font-medium text-talents-700 hover:underline">Plano de ação</a>
+                        <span class="text-slate-300" aria-hidden="true">·</span>
+                        <a href="#ciclo-nr1" class="font-medium text-talents-700 hover:underline">Ciclo em 5 passos</a>
+                    </nav>
+
                     <div class="mt-8 flex flex-wrap gap-4">
                         <button
                             type="button"
@@ -131,8 +146,226 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
-                <div class="mx-auto max-w-[1600px] px-4">
+            <section id="metodologia" class="scroll-mt-24 border-y border-white/30 bg-white/50 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Metodologia: método repetível, não achismo</h2>
+                    <p class="mt-4 max-w-3xl text-lg text-slate-600">
+                        A NR-1 pede identificação, avaliação e controle de riscos psicossociais com base em critérios técnicos. Na
+                        Talents isso vira um <strong>ciclo guiado</strong>: você define o escopo, aplica instrumentos com respaldo
+                        metodológico, interpreta com clareza e deixa rastro documental para o PGR — em vez de “uma pesquisa solta”
+                        que ninguém sabe repetir no ano seguinte.
+                    </p>
+                    <div class="mt-10 grid gap-6 md:grid-cols-2">
+                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Base técnica e consistência</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Modelos de questionário alinhados a boas práticas internacionais e ao que a organização precisa
+                                demonstrar: fatores de risco psicossocial mensuráveis, comparáveis entre áreas e ao longo do tempo.
+                            </p>
+                        </div>
+                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Governança do processo</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Campanhas com janela de resposta, acompanhamento de participação e regras de privacidade — para que
+                                o dado seja útil à decisão e defensável em auditoria, sem expor quem respondeu.
+                            </p>
+                        </div>
+                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Da leitura à priorização</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Resultados agregados por corte (área, unidade etc., conforme configurado) mostram onde o risco se
+                                concentra — não só uma média global que esconde pontos críticos.
+                            </p>
+                        </div>
+                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Conteúdo de capacitação e metodologia no produto</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Materiais e trilhas de metodologia ajudam RH e SESMT a alinhar linguagem, responsabilidades e
+                                rituais de revisão — para o ciclo não depender de uma única pessoa.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="pesquisa" class="scroll-mt-24 mx-auto max-w-6xl px-4 py-16">
+                <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Como a pesquisa é feita, na prática</h2>
+                <p class="mt-4 max-w-3xl text-slate-600">
+                    A coleta é o momento em que o colaborador registra a percepção sobre fatores psicossociais. O sistema cuida do
+                    fluxo para que isso seja <strong>seguro, simples e mensurável</strong>.
+                </p>
+                <ol class="mt-10 space-y-8">
+                    <li class="flex gap-5">
+                        <span
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                            >1</span
+                        >
+                        <div>
+                            <h3 class="font-semibold text-slate-900">Configuração da campanha</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Você define período de abertura e encerramento, vincula à estrutura da empresa (áreas/unidades) e
+                                escolhe o instrumento adequado. O objetivo é que a amostra reflita a realidade operacional — e que
+                                os cortes de análise façam sentido para liderança e SESMT.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="flex gap-5">
+                        <span
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                            >2</span
+                        >
+                        <div>
+                            <h3 class="font-semibold text-slate-900">Divulgação e acesso</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Os colaboradores acessam por link seguro, no próprio ritmo. A plataforma acompanha taxa de
+                                participação para você saber se o recado chegou — e onde pode precisar reforçar comunicação.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="flex gap-5">
+                        <span
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                            >3</span
+                        >
+                        <div>
+                            <h3 class="font-semibold text-slate-900">Anonimato e agregação</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Respostas são tratadas com regras de agregação: só entram em relatório grupos com tamanho mínimo,
+                                reduzindo risco de identificação indevida. Isso aumenta a confiança no instrumento e a qualidade do
+                                dado para gestão de risco.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="flex gap-5">
+                        <span
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                            >4</span
+                        >
+                        <div>
+                            <h3 class="font-semibold text-slate-900">Processamento e indicadores</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Ao encerrar a janela, os resultados são consolidados em indicadores e visualizações por corte.
+                                Quando aplicável, é possível recalcular ou aprofundar análises para sustentar a discussão técnica
+                                com o time de SST.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="flex gap-5">
+                        <span
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                            >5</span
+                        >
+                        <div>
+                            <h3 class="font-semibold text-slate-900">Exportação e continuidade</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Os dados podem ser exportados para cruzamento externo ou arquivo de evidências. Assim a pesquisa
+                                não morre no gráfico: vira insumo para relatório, comitê e próxima rodada de monitoramento.
+                            </p>
+                        </div>
+                    </li>
+                </ol>
+            </section>
+
+            <section id="relatorios" class="scroll-mt-24 border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Relatórios e parecer técnico</h2>
+                    <p class="mt-4 max-w-3xl text-slate-600">
+                        Depois da coleta, a organização precisa <strong>interpretar</strong> e <strong>formalizar</strong> o achado
+                        para integrar ao PGR e às instâncias de decisão. A Talents oferece saídas em formatos distintos para cada
+                        público — sem misturar “slide para diretoria” com “detalhe para SST”.
+                    </p>
+                    <div class="mt-10 grid gap-6 lg:grid-cols-2">
+                        <div class="surface-card p-6 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Relatório executivo</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Leitura para gestão e comitês</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Síntese dos principais achados, tendências e prioridades visíveis nos cortes configurados. Serve para
+                                alinhar patrocínio, orçamento e cronologia de medidas — em linguagem acessível, sem abrir mão da
+                                mensagem central sobre onde está o risco.
+                            </p>
+                        </div>
+                        <div class="surface-card p-6 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Relatório técnico</p>
+                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Subsídio ao parecer e ao PGR</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Detalhamento metodológico e resultados segmentados para sustentar o <strong>parecer técnico</strong> e
+                                o registro no Programa de Gerenciamento de Riscos: o “porquê” e o “como foi medido”, com base no
+                                que a plataforma consolidou a partir da pesquisa.
+                            </p>
+                            <p class="mt-3 text-xs text-slate-500">
+                                O profissional legalmente habilitado mantém a responsabilidade técnica pelo parecer; a Talents
+                                fornece a estrutura de dados, documentação do ciclo e relatórios para embasar essa etapa.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mt-8 rounded-xl border border-talents-200 bg-talents-50/80 p-6 text-sm text-slate-700">
+                        <p class="font-semibold text-slate-900">Análise assistida (quando disponível no seu plano)</p>
+                        <p class="mt-2 leading-relaxed">
+                            Em alguns cenários é possível gerar análises com apoio de IA sobre os resultados da pesquisa — sempre
+                            como apoio à leitura humana, não como substituto do julgamento técnico ou legal.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="plano-acao" class="scroll-mt-24 mx-auto max-w-6xl px-4 py-16">
+                <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Plano de ação: do diagnóstico à medida</h2>
+                <p class="mt-4 max-w-3xl text-slate-600">
+                    Identificar risco psicossocial sem agir é o mesmo que documentar um problema e empurrá-lo para frente. O
+                    <strong>plano de ação</strong> na Talents liga o resultado da pesquisa a medidas concretas — com rastreio do
+                    que foi combinado e do que foi feito.
+                </p>
+                <ul class="mt-8 grid gap-4 sm:grid-cols-2">
+                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <div>
+                            <p class="font-semibold text-slate-900">Priorização a partir dos achados</p>
+                            <p class="mt-1 text-sm text-slate-600">
+                                Itens ligados aos fatores e cortes mais críticos — para que esforço e orçamento sigam o risco, não o
+                                ruído.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <div>
+                            <p class="font-semibold text-slate-900">Responsáveis e prazos</p>
+                            <p class="mt-1 text-sm text-slate-600">
+                                Cada medida com dono visível reduz o “empurra-empurra” entre RH, SESMT e liderança.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <div>
+                            <p class="font-semibold text-slate-900">Acompanhamento e revisão</p>
+                            <p class="mt-1 text-sm text-slate-600">
+                                Status e histórico mostram evolução — essencial para monitorar o ciclo NR-1 e provar melhoria
+                                contínua.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <div>
+                            <p class="font-semibold text-slate-900">Conexão com o PGR</p>
+                            <p class="mt-1 text-sm text-slate-600">
+                                O que foi combinado pode ser referenciado na formalização das medidas de prevenção integradas ao
+                                gerenciamento de riscos da organização.
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+
+            <section id="ciclo-nr1" class="scroll-mt-24 border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">O ciclo NR-1 em cinco passos</h2>
+                    <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+                        Visão resumida do que a norma espera em riscos psicossociais — e como a Talents apoia cada etapa.
+                    </p>
+                </div>
+                <div class="mx-auto mt-10 max-w-[1600px] px-4">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-5">
                         <article class="surface-card flex h-full flex-col border-t-4 border-talents-600 p-5 shadow-md sm:p-6">
                             <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">
