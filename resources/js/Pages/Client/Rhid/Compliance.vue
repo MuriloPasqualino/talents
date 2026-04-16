@@ -87,6 +87,10 @@ const schedulePrefBatchIds = ref('');
 const schedulePrefBatchSecond = ref(false);
 const schedulePrefBatchSaving = ref(false);
 const schedulePrefBatchMsg = ref(null);
+const schedulePrefListLoading = ref(false);
+const schedulePrefPeopleFilter = ref('');
+/** IDs selecionados na lista por nome */
+const schedulePrefBatchPicked = ref([]);
 
 const bankDateHtml = ref(todayHtmlDate());
 const bankResult = ref(null);
@@ -407,6 +411,49 @@ const rhidPersonId = (row) => {
     }
     const n = Number(id);
     return Number.isFinite(n) ? n : null;
+};
+
+/** Colaboradores para o lote de intervalo de almoco (nome + id), com filtro */
+const schedulePrefPeopleFiltered = computed(() => {
+    const q = String(schedulePrefPeopleFilter.value || '')
+        .trim()
+        .toLowerCase();
+    const out = [];
+    for (const row of peopleRows.value) {
+        const id = rhidPersonId(row);
+        if (id == null) {
+            continue;
+        }
+        const name = String(personDisplayName(row) || '').trim() || `ID ${id}`;
+        if (q && !name.toLowerCase().includes(q)) {
+            continue;
+        }
+        out.push({ id, name, row });
+    }
+    out.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    return out;
+});
+
+const schedulePrefPickedSet = computed(() => new Set(schedulePrefBatchPicked.value));
+
+const toggleSchedulePrefPick = (id) => {
+    const cur = [...schedulePrefBatchPicked.value];
+    const i = cur.indexOf(id);
+    if (i >= 0) {
+        cur.splice(i, 1);
+    } else {
+        cur.push(id);
+    }
+    schedulePrefBatchPicked.value = cur;
+};
+
+const selectAllSchedulePrefVisible = () => {
+    const ids = schedulePrefPeopleFiltered.value.map((p) => p.id);
+    schedulePrefBatchPicked.value = [...new Set([...schedulePrefBatchPicked.value, ...ids])];
+};
+
+const clearSchedulePrefPicks = () => {
+    schedulePrefBatchPicked.value = [];
 };
 
 /** RHID: 1 = ativo, 2 = inativo (mesmo conceito do filtro do espelho). */
@@ -1107,13 +1154,36 @@ const savePunchScheduleSettings = async () => {
     }
 };
 
+const loadPeopleForScheduleBatch = async () => {
+    if (!props.configured) {
+        return;
+    }
+    schedulePrefListLoading.value = true;
+    schedulePrefBatchMsg.value = null;
+    clearErr();
+    try {
+        const { data } = await axios.get(route('client.rhid.api.people.index'), {
+            params: { page: 0, maxSize: 500 },
+        });
+        peopleList.value = data;
+        schedulePrefBatchMsg.value = 'Lista carregada. Marque os colaboradores abaixo e aplique.';
+    } catch (e) {
+        handleError(e);
+    } finally {
+        schedulePrefListLoading.value = false;
+    }
+};
+
 const submitSchedulePreferenceBatch = async () => {
     if (!props.configured) {
         return;
     }
-    const ids = parseIdList(schedulePrefBatchIds.value);
-    if (!ids?.length) {
-        schedulePrefBatchMsg.value = 'Informe ao menos um ID RHID (um por linha ou separados por virgula).';
+    const fromNames = [...schedulePrefBatchPicked.value];
+    const fromText = parseIdList(schedulePrefBatchIds.value) ?? [];
+    const merged = [...new Set([...fromNames, ...fromText])];
+    if (!merged.length) {
+        schedulePrefBatchMsg.value =
+            'Selecione ao menos um colaborador na lista (por nome) ou informe IDs no campo opcional.';
         return;
     }
     schedulePrefBatchSaving.value = true;
@@ -1121,7 +1191,7 @@ const submitSchedulePreferenceBatch = async () => {
     clearErr();
     try {
         const { data } = await axios.post(route('client.rhid.api.people.schedule-preferences.batch'), {
-            id_people: ids,
+            id_people: merged,
             use_second_lunch_interval: schedulePrefBatchSecond.value,
         });
         schedulePrefBatchMsg.value = `Atualizado: ${data.updated} colaborador(es).`;
@@ -2918,36 +2988,116 @@ const justStatusBarChart = computed(() => {
                         >
                             <h4 class="text-sm font-semibold text-slate-800">Intervalo de almoco por colaborador (lote)</h4>
                             <p class="mt-1 text-xs text-slate-600">
-                                Defina quem usa o <span class="font-medium">segundo intervalo</span> (horarios
-                                <span class="font-medium">Inicio 2º / Fim 2º</span> por dia, com
-                                <span class="font-medium">Segundo intervalo de almoco</span> ativo acima). Os demais usam
-                                saida/volta do primeiro intervalo. IDs sao os do RHID (mesmo da lista de colaboradores).
+                                Escolha <span class="font-medium">quem participa</span> do horario (por nome). Exige
+                                <span class="font-medium">Segundo intervalo de almoco</span> ativo e horarios &quot;Inicio 2º /
+                                Fim 2º&quot; nos dias uteis quando for aplicar o 2º intervalo.
                             </p>
-                            <div class="mt-3">
-                                <InputLabel value="IDs RHID (varios)" />
+                            <div class="mt-4 space-y-3 rounded-md border border-slate-200 bg-white p-3">
+                                <p class="text-xs font-medium text-slate-700">O que aplicar aos selecionados</p>
+                                <label class="flex cursor-pointer items-start gap-2 text-sm text-slate-800">
+                                    <input
+                                        v-model="schedulePrefBatchSecond"
+                                        type="checkbox"
+                                        class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-600"
+                                    />
+                                    <span>
+                                        <span class="font-medium">Segundo intervalo de almoco</span>
+                                        (comparar batidas com Inicio 2º / Fim 2º). Desmarque para voltar todos os
+                                        selecionados ao <span class="font-medium">primeiro intervalo</span> (saida/volta
+                                        do almoco).
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="mt-4">
+                                <SecondaryButton
+                                    type="button"
+                                    :disabled="schedulePrefListLoading || scheduleLoading"
+                                    @click="loadPeopleForScheduleBatch"
+                                >
+                                    {{
+                                        peopleRows.length
+                                            ? 'Recarregar lista de colaboradores'
+                                            : 'Carregar lista de colaboradores'
+                                    }}
+                                </SecondaryButton>
+                                <span v-if="schedulePrefListLoading" class="ml-2 text-xs text-slate-500">Carregando…</span>
+                            </div>
+                            <template v-if="peopleRows.length">
+                                <p
+                                    v-if="schedulePrefBatchSecond && !scheduleForm.segundo_almoco"
+                                    class="mt-3 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900"
+                                >
+                                    Ative tambem <span class="font-medium">Segundo intervalo de almoco</span> acima para
+                                    que o 2º horario exista na escala.
+                                </p>
+                                <div class="mt-3">
+                                    <InputLabel value="Filtrar por nome" />
+                                    <input
+                                        v-model="schedulePrefPeopleFilter"
+                                        type="search"
+                                        class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                                        placeholder="Digite parte do nome..."
+                                    />
+                                </div>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        class="text-xs font-medium text-talents-800 underline"
+                                        @click="selectAllSchedulePrefVisible"
+                                    >
+                                        Marcar todos (filtrados)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="text-xs font-medium text-slate-600 underline"
+                                        @click="clearSchedulePrefPicks"
+                                    >
+                                        Limpar selecao
+                                    </button>
+                                    <span class="text-xs text-slate-500">
+                                        {{ schedulePrefBatchPicked.length }} selecionado(s) ·
+                                        {{ schedulePrefPeopleFiltered.length }} na lista
+                                    </span>
+                                </div>
+                                <div
+                                    class="mt-2 max-h-64 overflow-y-auto rounded border border-slate-200 bg-white p-2 text-sm"
+                                >
+                                    <label
+                                        v-for="p in schedulePrefPeopleFiltered"
+                                        :key="p.id"
+                                        class="flex cursor-pointer items-center gap-2 border-b border-slate-50 py-1.5 last:border-b-0"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
+                                            :checked="schedulePrefPickedSet.has(p.id)"
+                                            @click.prevent="toggleSchedulePrefPick(p.id)"
+                                        />
+                                        <span class="min-w-0 flex-1 font-medium text-slate-800">{{ p.name }}</span>
+                                        <span class="shrink-0 font-mono text-xs text-slate-500">{{ p.id }}</span>
+                                    </label>
+                                    <p v-if="!schedulePrefPeopleFiltered.length" class="py-4 text-center text-xs text-slate-500">
+                                        Nenhum nome corresponde ao filtro.
+                                    </p>
+                                </div>
+                            </template>
+                            <div class="mt-4">
+                                <InputLabel value="Opcional: IDs RHID (colecao com a selecao acima)" />
                                 <textarea
                                     v-model="schedulePrefBatchIds"
-                                    rows="4"
-                                    class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-sm shadow-sm"
-                                    placeholder="Ex.: 1001&#10;1002, 1003"
+                                    rows="2"
+                                    class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs shadow-sm"
+                                    placeholder="Um ou mais IDs extra, separados por virgula ou linha"
                                 />
                             </div>
-                            <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-800">
-                                <input
-                                    v-model="schedulePrefBatchSecond"
-                                    type="checkbox"
-                                    class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
-                                />
-                                Usar segundo intervalo de almoco (marque) / primeiro intervalo (desmarque e aplicar)
-                            </label>
-                            <p v-if="schedulePrefBatchMsg" class="mt-2 text-xs text-emerald-800">{{ schedulePrefBatchMsg }}</p>
+                            <p v-if="schedulePrefBatchMsg" class="mt-3 text-xs text-emerald-800">{{ schedulePrefBatchMsg }}</p>
                             <PrimaryButton
                                 type="button"
                                 class="mt-3"
-                                :disabled="schedulePrefBatchSaving || scheduleLoading"
+                                :disabled="schedulePrefBatchSaving || scheduleLoading || schedulePrefListLoading"
                                 @click="submitSchedulePreferenceBatch"
                             >
-                                Aplicar em lote
+                                Aplicar em lote aos selecionados
                             </PrimaryButton>
                         </div>
 
