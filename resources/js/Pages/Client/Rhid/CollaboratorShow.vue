@@ -7,6 +7,8 @@ import { Head, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import { computed, onMounted, ref } from 'vue';
 import {
+    formatApiDatePtBr,
+    formatPeriodPtBr,
     formatRhidBankBalanceDisplay,
     formatRhidDotNetDate,
     pickRhidPersonDisplayName,
@@ -93,13 +95,13 @@ const espelhoPunchTableRows = computed(() => {
 
 const parseStatusLabel = (s) => {
     if (s === 'ok') {
-        return 'Concluido';
+        return 'Pronto';
     }
     if (s === 'pending') {
-        return 'Processando';
+        return 'Em processamento';
     }
     if (s === 'failed') {
-        return 'Erro';
+        return 'Com erro';
     }
     return s ?? '—';
 };
@@ -367,9 +369,9 @@ onMounted(async () => {
             </div>
 
             <div v-if="detail" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-2 text-sm font-semibold text-slate-800">Espelho de ponto importado no Talents</h3>
+                <h3 class="mb-2 text-sm font-semibold text-slate-800">Espelhos importados</h3>
                 <p class="mb-3 text-xs text-slate-500">
-                    Periodos importados pela area Compliance (aba Marcacoes espelho), vinculados a este ID no RHID.
+                    Dados trazidos do RHID pela area Compliance; o periodo abaixo esta no calendario brasileiro.
                 </p>
                 <p v-if="espelhoListLoading" class="text-sm text-slate-500">Carregando importacoes…</p>
                 <p v-else-if="!espelhoImportsPage?.data?.length" class="text-sm text-slate-500">
@@ -377,11 +379,11 @@ onMounted(async () => {
                 </p>
                 <div v-else class="overflow-x-auto">
                     <table class="min-w-full text-left text-sm">
-                        <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-600">
+                        <thead class="border-b border-slate-200 bg-slate-50 text-xs text-slate-600">
                             <tr>
-                                <th class="p-2">Periodo</th>
+                                <th class="p-2">Período</th>
                                 <th class="p-2">Leitura</th>
-                                <th class="p-2">Importado em</th>
+                                <th class="p-2">Quando</th>
                                 <th class="p-2"></th>
                             </tr>
                         </thead>
@@ -389,7 +391,7 @@ onMounted(async () => {
                             <template v-for="row in espelhoImportsPage.data" :key="row.id">
                                 <tr class="border-t border-slate-100">
                                     <td class="p-2 whitespace-nowrap">
-                                        {{ row.period_ini }} — {{ row.period_fim }}
+                                        {{ formatPeriodPtBr(row.period_ini, row.period_fim) }}
                                     </td>
                                     <td class="p-2">
                                         <span
@@ -402,7 +404,7 @@ onMounted(async () => {
                                             {{ parseStatusLabel(row.parse_status) }}
                                         </span>
                                     </td>
-                                    <td class="p-2 text-slate-600">{{ row.created_at?.slice?.(0, 10) ?? '—' }}</td>
+                                    <td class="p-2 text-slate-600">{{ formatApiDatePtBr(row.created_at) }}</td>
                                     <td class="p-2 whitespace-nowrap">
                                         <a
                                             :href="route('client.rhid.api.espelhos.imports.file', row.id)"
@@ -419,10 +421,10 @@ onMounted(async () => {
                                         >
                                             {{
                                                 expandedImportId === row.id
-                                                    ? 'Ocultar'
+                                                    ? 'Fechar'
                                                     : row.parse_status === 'ok'
-                                                      ? 'Ver marcacoes'
-                                                      : 'Ver detalhes'
+                                                      ? 'Marcacoes'
+                                                      : 'Detalhes'
                                             }}
                                         </SecondaryButton>
                                     </td>

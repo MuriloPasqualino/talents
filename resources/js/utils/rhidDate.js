@@ -72,6 +72,34 @@ export function todayHtmlDate() {
 }
 
 /**
+ * Data vinda da API (YYYY-MM-DD ou ISO) para exibicao DD/MM/AAAA.
+ * @param {unknown} val
+ * @returns {string}
+ */
+export function formatApiDatePtBr(val) {
+    if (val == null || val === '') {
+        return '—';
+    }
+    const s = String(val);
+    const ymd = s.slice(0, 10);
+    const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) {
+        return '—';
+    }
+    return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+/**
+ * Periodo (inicio e fim) para telas do espelho importado.
+ * @param {unknown} ini
+ * @param {unknown} fim
+ * @returns {string}
+ */
+export function formatPeriodPtBr(ini, fim) {
+    return `${formatApiDatePtBr(ini)} — ${formatApiDatePtBr(fim)}`;
+}
+
+/**
  * Formata datas no formato Microsoft JSON: /Date(1647918000000-0300)/
  * @param {unknown} val
  * @returns {string} data local pt-BR ou string vazia se invalido
