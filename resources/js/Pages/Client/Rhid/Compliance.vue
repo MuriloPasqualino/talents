@@ -2395,6 +2395,18 @@ const justStatusBarChart = computed(() => {
                     >
                         Configuracao de horarios
                     </button>
+                    <button
+                        type="button"
+                        class="rounded-md px-3 py-1.5 text-sm font-medium"
+                        :class="
+                            punchesSubTab === 'adherence'
+                                ? 'bg-talents-700 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        "
+                        @click="punchesSubTab = 'adherence'"
+                    >
+                        Aderencia (espelho vs horarios)
+                    </button>
                 </div>
 
                 <div v-show="punchesSubTab === 'dashboard'" class="space-y-4">
@@ -2680,6 +2692,137 @@ const justStatusBarChart = computed(() => {
                                 Restaurar
                             </SecondaryButton>
                         </div>
+                    </div>
+                </div>
+
+                <div v-show="punchesSubTab === 'adherence'" class="space-y-4">
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="text-sm font-semibold text-slate-800">Aderencia: espelho importado vs horarios da empresa</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                            Compara os PDFs de espelho ja importados e processados (aba
+                            <span class="font-medium">Marcacoes (espelho)</span>) com os horarios definidos na subaba
+                            <span class="font-medium">Configuracao de horarios</span> desta mesma area. Convencao de 4
+                            batidas por dia (ENT.1 / SAI.1 / ENT.2 / SAI.2). Dias sem quatro horarios extraidos ou sem dia
+                            util configurado sao ignorados ou contados como insuficientes. A tolerancia (minutos) vem da
+                            configuracao de horarios. Em caso de varios imports para o mesmo dia, usa-se o mais recente.
+                        </p>
+                        <div class="mt-3 flex flex-wrap items-end gap-3">
+                            <div>
+                                <InputLabel value="Data inicial" />
+                                <input
+                                    v-model="espelhoAdherenceIni"
+                                    type="date"
+                                    class="mt-1 block rounded-md border border-slate-300 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Data final" />
+                                <input
+                                    v-model="espelhoAdherenceFim"
+                                    type="date"
+                                    class="mt-1 block rounded-md border border-slate-300 text-sm"
+                                />
+                            </div>
+                            <PrimaryButton
+                                type="button"
+                                :disabled="espelhoAdherenceLoading"
+                                @click="loadEspelhoScheduleAdherence"
+                            >
+                                Analisar aderencia
+                            </PrimaryButton>
+                        </div>
+                        <p v-if="espelhoAdherenceLoading" class="mt-2 text-sm text-slate-500">Calculando…</p>
+                        <template v-else-if="espelhoAdherenceResult?.resumo">
+                            <p class="mt-2 text-xs text-slate-600">
+                                Periodo: {{ espelhoAdherenceResult.resumo.ini }} a {{ espelhoAdherenceResult.resumo.fim }} ·
+                                Tolerancia: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min · Dias analisados:
+                                {{ espelhoAdherenceResult.resumo.dias_registro_analisados }}
+                            </p>
+                            <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                                <div>
+                                    <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">
+                                        Maiores atrasos (entrada)
+                                    </h4>
+                                    <div class="overflow-x-auto rounded border border-slate-200 text-sm">
+                                        <table class="min-w-full text-left">
+                                            <thead class="bg-slate-50 text-xs">
+                                                <tr>
+                                                    <th class="p-2">Nome</th>
+                                                    <th class="p-2">ID</th>
+                                                    <th class="p-2">Total min</th>
+                                                    <th class="p-2">Pior dia min</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="(row, ri) in espelhoAdherenceResult.ranking_atrasos_entrada"
+                                                    :key="'ae-' + ri"
+                                                    class="border-t border-slate-100"
+                                                >
+                                                    <td class="p-2">
+                                                        <Link
+                                                            :href="route('client.rhid.collaborators.show', row.id_person)"
+                                                            class="text-talents-800 hover:underline"
+                                                        >
+                                                            {{ row.nome }}
+                                                        </Link>
+                                                    </td>
+                                                    <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
+                                                    <td class="p-2">{{ row.total_atraso_entrada_minutos }}</td>
+                                                    <td class="p-2">{{ row.maior_atraso_entrada_minutos }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p
+                                        v-if="!espelhoAdherenceResult.ranking_atrasos_entrada?.length"
+                                        class="mt-1 text-xs text-slate-500"
+                                    >
+                                        Nenhum dia analisavel no periodo (importe espelhos e configure dias uteis).
+                                    </p>
+                                </div>
+                                <div>
+                                    <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">Infracoes de almoco</h4>
+                                    <div class="overflow-x-auto rounded border border-slate-200 text-sm">
+                                        <table class="min-w-full text-left">
+                                            <thead class="bg-slate-50 text-xs">
+                                                <tr>
+                                                    <th class="p-2">Nome</th>
+                                                    <th class="p-2">ID</th>
+                                                    <th class="p-2">Dias c/ problema</th>
+                                                    <th class="p-2">Pts</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="(row, ri) in espelhoAdherenceResult.ranking_infracoes_almoco"
+                                                    :key="'al-' + ri"
+                                                    class="border-t border-slate-100"
+                                                >
+                                                    <td class="p-2">
+                                                        <Link
+                                                            :href="route('client.rhid.collaborators.show', row.id_person)"
+                                                            class="text-talents-800 hover:underline"
+                                                        >
+                                                            {{ row.nome }}
+                                                        </Link>
+                                                    </td>
+                                                    <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
+                                                    <td class="p-2">{{ row.dias_com_infracao_almoco }}</td>
+                                                    <td class="p-2">{{ row.pontos_almoco }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p
+                                        v-if="!espelhoAdherenceResult.ranking_infracoes_almoco?.length"
+                                        class="mt-1 text-xs text-slate-500"
+                                    >
+                                        Nenhum dia analisavel ou sem infracoes no ranking.
+                                    </p>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -3176,128 +3319,6 @@ const justStatusBarChart = computed(() => {
                     Gere o espelho de ponto no periodo escolhido, baixe o PDF ou importe para o Talents. A leitura das
                     marcacoes continua em segundo plano apos o PDF ser salvo. Periodo de ate 31 dias.
                 </p>
-
-                <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <h3 class="text-sm font-semibold text-slate-800">Aderencia: espelho importado vs horarios da empresa</h3>
-                    <p class="mt-1 text-xs leading-relaxed text-slate-600">
-                        Compara os PDFs ja importados e processados com os horarios definidos em Marcacoes &gt; Configuracao
-                        de horarios. Usa a convencao de 4 batidas por dia (ENT.1 / SAI.1 / ENT.2 / SAI.2). Dias sem quatro
-                        horarios extraidos ou sem dia util configurado sao ignorados ou contados como insuficientes. A
-                        tolerancia (minutos) vem da mesma configuracao. Em caso de varios imports para o mesmo dia, usa-se
-                        o mais recente.
-                    </p>
-                    <div class="mt-3 flex flex-wrap items-end gap-3">
-                        <div>
-                            <InputLabel value="Data inicial" />
-                            <input
-                                v-model="espelhoAdherenceIni"
-                                type="date"
-                                class="mt-1 block rounded-md border border-slate-300 text-sm"
-                            />
-                        </div>
-                        <div>
-                            <InputLabel value="Data final" />
-                            <input
-                                v-model="espelhoAdherenceFim"
-                                type="date"
-                                class="mt-1 block rounded-md border border-slate-300 text-sm"
-                            />
-                        </div>
-                        <PrimaryButton type="button" :disabled="espelhoAdherenceLoading" @click="loadEspelhoScheduleAdherence">
-                            Analisar aderencia
-                        </PrimaryButton>
-                    </div>
-                    <p v-if="espelhoAdherenceLoading" class="mt-2 text-sm text-slate-500">Calculando…</p>
-                    <template v-else-if="espelhoAdherenceResult?.resumo">
-                        <p class="mt-2 text-xs text-slate-600">
-                            Periodo: {{ espelhoAdherenceResult.resumo.ini }} a {{ espelhoAdherenceResult.resumo.fim }} ·
-                            Tolerancia: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min · Dias analisados:
-                            {{ espelhoAdherenceResult.resumo.dias_registro_analisados }}
-                        </p>
-                        <div class="mt-4 grid gap-4 lg:grid-cols-2">
-                            <div>
-                                <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">Maiores atrasos (entrada)</h4>
-                                <div class="overflow-x-auto rounded border border-slate-200 text-sm">
-                                    <table class="min-w-full text-left">
-                                        <thead class="bg-slate-50 text-xs">
-                                            <tr>
-                                                <th class="p-2">Nome</th>
-                                                <th class="p-2">ID</th>
-                                                <th class="p-2">Total min</th>
-                                                <th class="p-2">Pior dia min</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="(row, ri) in espelhoAdherenceResult.ranking_atrasos_entrada"
-                                                :key="'ae-' + ri"
-                                                class="border-t border-slate-100"
-                                            >
-                                                <td class="p-2">
-                                                    <Link
-                                                        :href="route('client.rhid.collaborators.show', row.id_person)"
-                                                        class="text-talents-800 hover:underline"
-                                                    >
-                                                        {{ row.nome }}
-                                                    </Link>
-                                                </td>
-                                                <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
-                                                <td class="p-2">{{ row.total_atraso_entrada_minutos }}</td>
-                                                <td class="p-2">{{ row.maior_atraso_entrada_minutos }}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p
-                                    v-if="!espelhoAdherenceResult.ranking_atrasos_entrada?.length"
-                                    class="mt-1 text-xs text-slate-500"
-                                >
-                                    Nenhum dia analisavel no periodo (importe espelhos e configure dias uteis).
-                                </p>
-                            </div>
-                            <div>
-                                <h4 class="mb-2 text-xs font-semibold uppercase text-slate-700">Infracoes de almoco</h4>
-                                <div class="overflow-x-auto rounded border border-slate-200 text-sm">
-                                    <table class="min-w-full text-left">
-                                        <thead class="bg-slate-50 text-xs">
-                                            <tr>
-                                                <th class="p-2">Nome</th>
-                                                <th class="p-2">ID</th>
-                                                <th class="p-2">Dias c/ problema</th>
-                                                <th class="p-2">Pts</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr
-                                                v-for="(row, ri) in espelhoAdherenceResult.ranking_infracoes_almoco"
-                                                :key="'al-' + ri"
-                                                class="border-t border-slate-100"
-                                            >
-                                                <td class="p-2">
-                                                    <Link
-                                                        :href="route('client.rhid.collaborators.show', row.id_person)"
-                                                        class="text-talents-800 hover:underline"
-                                                    >
-                                                        {{ row.nome }}
-                                                    </Link>
-                                                </td>
-                                                <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
-                                                <td class="p-2">{{ row.dias_com_infracao_almoco }}</td>
-                                                <td class="p-2">{{ row.pontos_almoco }}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p
-                                    v-if="!espelhoAdherenceResult.ranking_infracoes_almoco?.length"
-                                    class="mt-1 text-xs text-slate-500"
-                                >
-                                    Nenhum dia analisavel ou sem infracoes no ranking.
-                                </p>
-                            </div>
-                        </div>
-                    </template>
-                </div>
 
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
