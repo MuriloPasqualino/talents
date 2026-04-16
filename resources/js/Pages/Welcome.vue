@@ -50,44 +50,39 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 </script>
 
 <template>
-    <Head title="Talents — NR-1 e gestão de riscos psicossociais" />
+    <Head title="Talents — Gestão de Pessoas e NR-1" />
 
     <div class="app-shell min-h-screen scroll-smooth text-slate-900">
-        <header class="sticky top-0 z-30 border-b border-white/20 bg-slate-950/85 text-white shadow-lg backdrop-blur-md">
-            <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
-                <img src="/images/logo.png" alt="Talents" class="h-10 w-auto brightness-0 invert" />
-                <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-                    <a
-                        href="#contato"
-                        class="rounded-full border border-white/30 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10 sm:text-sm"
-                    >
-                        Fale conosco
-                    </a>
+        <header class="sticky top-0 z-20 border-b border-white/40 bg-white/70 shadow-sm backdrop-blur-md">
+            <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+                <img src="/images/logo.png" alt="Talents" class="h-10 w-auto" />
+                <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
+                    <a href="#contato" class="text-sm font-semibold text-talents-700 hover:underline"> Fale conosco </a>
                     <button
                         type="button"
-                        class="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-talents-800 shadow hover:bg-talents-50 sm:text-sm"
+                        class="text-sm font-semibold text-talents-700 hover:underline"
                         @click="showContactModal = true"
                     >
-                        Entre em contato
+                        Formulário rápido
                     </button>
                     <Link
                         v-if="canRegister && !$page.props.auth.user"
                         :href="route('register')"
-                        class="hidden text-sm font-semibold text-talents-200 hover:underline sm:inline"
+                        class="text-sm font-semibold text-talents-700 hover:underline"
                     >
                         Criar conta
                     </Link>
                     <Link
                         v-if="canLogin && !$page.props.auth.user"
                         :href="route('login')"
-                        class="rounded-full bg-talents-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-talents-400 sm:text-sm"
+                        class="rounded-full bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-talents-700"
                     >
                         Entrar
                     </Link>
                     <Link
                         v-if="$page.props.auth.user"
                         :href="route('dashboard')"
-                        class="text-sm font-semibold text-talents-200 hover:underline"
+                        class="text-sm font-semibold text-talents-700 hover:underline"
                     >
                         Painel
                     </Link>
@@ -96,64 +91,111 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </header>
 
         <main>
-            <!-- Hero NR-1 -->
-            <section class="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-16 text-white md:py-24">
-                <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-talents-900/40 via-transparent to-transparent" />
-                <div class="relative mx-auto max-w-4xl text-center">
-                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-talents-300 md:text-sm">NR-1 · Saúde e segurança no trabalho</p>
-                    <h1 class="mt-4 text-3xl font-bold leading-tight md:text-5xl">
-                        A Talents ajuda sua empresa a caminhar rumo à <span class="text-talents-300">conformidade com a NR-1</span> na gestão de riscos psicossociais
+            <!-- Hero (layout original: largura contida, fundo do app-shell) -->
+            <section class="mx-auto max-w-6xl px-4 py-16 md:py-20">
+                <div class="max-w-3xl">
+                    <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
+                        NR-1 · Para quem leva pessoas a sério
+                    </p>
+                    <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
+                        A Talents ajuda empresas a caminhar rumo à
+                        <span class="text-talents-700">conformidade com a NR-1</span> na gestão de riscos psicossociais
                     </h1>
-                    <p class="mx-auto mt-4 max-w-2xl text-lg text-slate-300 md:text-xl">
-                        Com <strong class="text-white">método</strong>, <strong class="text-white">ciência</strong> e
-                        <strong class="text-white">estratégia</strong> — da identificação ao monitoramento, com rastreabilidade para o
-                        PGR.
+                    <p class="mt-6 text-lg text-slate-600">
+                        Com <strong>método</strong>, <strong>ciência</strong> e <strong>estratégia</strong> — da identificação ao
+                        monitoramento, com rastreabilidade para o PGR.
                     </p>
 
-                    <div
-                        class="mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-2 text-sm font-bold md:text-base"
-                    >
-                        <span class="rounded-lg border-l-4 border-red-500 bg-white/5 px-3 py-2 shadow-sm">IDENTIFICAR</span>
-                        <span class="text-talents-200">→</span>
-                        <span class="rounded-lg border-l-4 border-amber-400 bg-white/5 px-3 py-2 shadow-sm">📊 AVALIAR</span>
-                        <span class="text-talents-200">→</span>
-                        <span class="rounded-lg border-l-4 border-emerald-500 bg-white/5 px-3 py-2 shadow-sm">⚙️ IMPLEMENTAR</span>
-                        <span class="text-talents-200">→</span>
-                        <span class="rounded-lg border-l-4 border-blue-500 bg-white/5 px-3 py-2 shadow-sm">📈 MONITORAR</span>
+                    <div class="mt-6 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-800 md:text-base">
+                        <span class="rounded-md border-l-4 border-red-500 bg-white/80 px-2 py-1 shadow-sm">IDENTIFICAR</span>
+                        <span class="text-slate-400">→</span>
+                        <span class="rounded-md border-l-4 border-amber-400 bg-white/80 px-2 py-1 shadow-sm">📊 AVALIAR</span>
+                        <span class="text-slate-400">→</span>
+                        <span class="rounded-md border-l-4 border-emerald-500 bg-white/80 px-2 py-1 shadow-sm">⚙️ IMPLEMENTAR</span>
+                        <span class="text-slate-400">→</span>
+                        <span class="rounded-md border-l-4 border-blue-500 bg-white/80 px-2 py-1 shadow-sm">📈 MONITORAR</span>
                     </div>
 
-                    <blockquote class="mx-auto mt-10 max-w-2xl border-l-4 border-talents-400 pl-4 text-left text-lg italic text-slate-200">
-                        Gestão de risco psicossocial não é evento. <span class="font-semibold not-italic text-white">É processo.</span>
+                    <blockquote class="mt-6 border-l-4 border-talents-600 pl-4 text-lg italic text-slate-700">
+                        Gestão de risco psicossocial não é evento.
+                        <span class="font-semibold not-italic">É processo.</span>
                     </blockquote>
 
-                    <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
-                        <a
-                            href="#contato"
-                            class="rounded-full bg-talents-500 px-8 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-talents-400"
-                        >
-                            Solicitar conversa
-                        </a>
-                        <button
-                            type="button"
-                            class="rounded-full border-2 border-white/40 px-8 py-3 text-sm font-bold text-white hover:bg-white/10"
-                            @click="showContactModal = true"
-                        >
-                            Formulário rápido
-                        </button>
+                    <div class="mt-8 flex flex-wrap gap-4">
                         <Link
                             v-if="canLogin && !$page.props.auth.user"
                             :href="route('login')"
-                            class="text-sm font-semibold text-talents-200 underline hover:text-white"
+                            class="rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-talents-700"
                         >
-                            Já sou cliente — entrar
+                            Ver na prática
                         </Link>
+                        <Link
+                            v-if="canRegister && !$page.props.auth.user"
+                            :href="route('register')"
+                            class="rounded-full border-2 border-talents-600 px-6 py-3 text-sm font-bold text-talents-700 transition hover:bg-talents-50"
+                        >
+                            Começar agora
+                        </Link>
+                        <a
+                            href="#contato"
+                            class="rounded-full border-2 border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:bg-slate-50"
+                        >
+                            Fale conosco
+                        </a>
+                        <button
+                            type="button"
+                            class="rounded-full border-2 border-talents-600 px-6 py-3 text-sm font-bold text-talents-700 transition hover:bg-talents-50"
+                            @click="showContactModal = true"
+                        >
+                            Abrir formulário
+                        </button>
+                    </div>
+                    <p class="mt-6 text-sm text-slate-500">
+                        Pesquisas com anonimato protegido · Resultados prontos para decisão · Adequação às exigências de saúde e
+                        segurança do trabalho
+                    </p>
+                </div>
+            </section>
+
+            <!-- Bloco original: o que você ganha -->
+            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">O que você ganha no dia a dia</h2>
+                    <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+                        Ferramentas pensadas para RH, SESMT e liderança — linguagem humana, números que importam.
+                    </p>
+                    <div class="mt-12 grid gap-8 md:grid-cols-3">
+                        <div class="surface-card p-8 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Decisões</p>
+                            <h3 class="mt-2 text-xl font-semibold text-slate-900">Saiba onde agir primeiro</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Painéis e cortes por área mostram prioridades reais — não só “nota média” genérica. Você apresenta
+                                números para diretoria e comitê com confiança.
+                            </p>
+                        </div>
+                        <div class="surface-card p-8 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Confiança</p>
+                            <h3 class="mt-2 text-xl font-semibold text-slate-900">Colaboradores respondem com segurança</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Fluxo anônimo e regras de agregação que protegem quem fala. Mais participação, feedback mais honesto,
+                                menos medo de retaliação.
+                            </p>
+                        </div>
+                        <div class="surface-card p-8 shadow-md">
+                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Tranquilidade</p>
+                            <h3 class="mt-2 text-xl font-semibold text-slate-900">Organização que sustenta auditoria</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                                Campanhas, histórico e relatórios em um só lugar. Menos corre atrás na hora de mostrar evolução ou
+                                atender fiscalização.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Orientação técnica -->
-            <section class="border-y border-slate-200 bg-white py-14">
-                <div class="mx-auto max-w-4xl px-4">
+            <!-- NR-1: orientação -->
+            <section class="mx-auto max-w-6xl px-4 py-16">
+                <div class="max-w-3xl">
                     <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Buscar orientação técnica especializada</h2>
                     <p class="mt-4 text-lg leading-relaxed text-slate-600">
                         A NR-1 exige <strong>método e estrutura</strong>. Ter apoio especializado reduz improviso, fortalece decisões e
@@ -162,9 +204,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <!-- Etapas detalhadas -->
-            <section class="bg-slate-50 py-14">
-                <div class="mx-auto max-w-4xl space-y-12 px-4">
+            <!-- Etapas IDENTIFICAR … MONITORAR -->
+            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-6xl space-y-8 px-4">
                     <article class="surface-card border-l-4 border-red-500 p-6 shadow-md md:p-8">
                         <h3 class="text-xl font-bold text-slate-900">2 · IDENTIFICAR</h3>
                         <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
@@ -174,7 +216,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             <li>Lacunas no PGR</li>
                         </ul>
                     </article>
-
                     <article class="surface-card border-l-4 border-amber-500 p-6 shadow-md md:p-8">
                         <h3 class="text-xl font-bold text-slate-900">3 · AVALIAR</h3>
                         <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
@@ -183,7 +224,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             <li>Avaliar impacto organizacional</li>
                         </ul>
                     </article>
-
                     <article class="surface-card border-l-4 border-emerald-600 p-6 shadow-md md:p-8">
                         <h3 class="text-xl font-bold text-slate-900">4 · IMPLEMENTAR</h3>
                         <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
@@ -192,7 +232,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             <li>Formalização no PGR</li>
                         </ul>
                     </article>
-
                     <article class="surface-card border-l-4 border-blue-600 p-6 shadow-md md:p-8">
                         <h3 class="text-xl font-bold text-slate-900">5 · MONITORAR</h3>
                         <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
@@ -204,15 +243,84 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <!-- Checklist maturidade -->
-            <section class="bg-white py-14">
+            <!-- Simples de implantar (layout original) -->
+            <section class="mx-auto max-w-6xl px-4 py-16">
+                <div class="grid gap-12 md:grid-cols-2 md:items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Simples de implantar</h2>
+                        <ol class="mt-8 space-y-6">
+                            <li class="flex gap-4">
+                                <span
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                                    >1</span
+                                >
+                                <div>
+                                    <p class="font-semibold text-slate-900">Configure a pesquisa</p>
+                                    <p class="mt-1 text-sm text-slate-600">
+                                        Modelos prontos alinhados a boas práticas internacionais — você adapta ao seu contexto.
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex gap-4">
+                                <span
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                                    >2</span
+                                >
+                                <div>
+                                    <p class="font-semibold text-slate-900">Divulgue o link</p>
+                                    <p class="mt-1 text-sm text-slate-600">
+                                        Os colaboradores respondem no tempo deles; você acompanha taxa de participação.
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex gap-4">
+                                <span
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                                    >3</span
+                                >
+                                <div>
+                                    <p class="font-semibold text-slate-900">Aja com dados</p>
+                                    <p class="mt-1 text-sm text-slate-600">
+                                        Exporte, compartilhe com o PGR e transforme achados em plano de ação mensurável.
+                                    </p>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+                    <div class="surface-glass border-talents-200/50 p-8 md:p-10">
+                        <p class="text-lg font-semibold text-slate-900">Pronto para reduzir o ruído entre RH e operação?</p>
+                        <p class="mt-4 text-sm leading-relaxed text-slate-600">
+                            Se sua equipe já perde horas montando formulários e cruzando planilhas, o Talents centraliza o ciclo
+                            inteiro — da coleta ao relatório que sustenta decisões e conformidade.
+                        </p>
+                        <div class="mt-8 flex flex-wrap gap-3">
+                            <Link
+                                v-if="canLogin && !$page.props.auth.user"
+                                :href="route('login')"
+                                class="rounded-full bg-talents-600 px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-talents-700"
+                            >
+                                Acessar a plataforma
+                            </Link>
+                            <a
+                                href="#contato"
+                                class="rounded-full border-2 border-talents-600 px-5 py-2.5 text-sm font-bold text-talents-700 transition hover:bg-talents-50"
+                            >
+                                Fale conosco
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Checklist -->
+            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
                 <div class="mx-auto max-w-3xl px-4">
                     <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Checklist de maturidade</h2>
                     <p class="mx-auto mt-3 max-w-xl text-center text-slate-600">
                         Marque o que já existe na sua organização (apenas orientativo).
                     </p>
 
-                    <div class="surface-card mt-8 space-y-4 p-6 shadow-md md:p-8">
+                    <div class="surface-card mt-8 space-y-4 p-6 shadow-md sm:p-8">
                         <label class="flex cursor-pointer gap-3 text-slate-700">
                             <input v-model="maturity.responsavel" type="checkbox" class="mt-1 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
                             <span>Possui responsável pela gestão de riscos psicossociais?</span>
@@ -267,12 +375,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <!-- Formulário -->
-            <section id="contato" class="border-t border-slate-200 bg-gradient-to-b from-slate-100 to-white py-16">
+            <!-- Formulário (estilo original da seção de contato) -->
+            <section id="contato" class="border-t border-white/30 bg-white/30 py-16 backdrop-blur-sm">
                 <div class="mx-auto max-w-2xl px-4">
-                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Fale com a Talents</h2>
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Quer conhecer mais a Talents?</h2>
                     <p class="mx-auto mt-3 max-w-xl text-center text-slate-600">
-                        Conte quem você é e como podemos ajudar. Inclua telefone/WhatsApp se quiser retorno mais rápido.
+                        Deixe seus dados (telefone/WhatsApp ajuda no retorno) e, se quiser, uma mensagem.
                     </p>
 
                     <div
@@ -288,7 +396,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         {{ $page.props.flash.error }}
                     </div>
 
-                    <form class="surface-card mt-8 space-y-5 p-6 shadow-lg sm:p-8" @submit.prevent="submitInterest">
+                    <form class="surface-card mt-8 space-y-5 p-6 shadow-md sm:p-8" @submit.prevent="submitInterest">
                         <div>
                             <label class="block text-sm font-medium text-slate-700" for="interest-name">Nome</label>
                             <input
@@ -349,7 +457,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 v-model="form.message"
                                 rows="4"
                                 class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                placeholder="Contexto, número de colaboradores, dúvidas sobre NR-1…"
+                                placeholder="Conte um pouco do que você busca ou deixe em branco."
                             />
                             <p v-if="form.errors.message" class="mt-1 text-sm text-red-600">{{ form.errors.message }}</p>
                         </div>
@@ -359,7 +467,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 class="w-full rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-talents-700 disabled:opacity-60 sm:w-auto"
                                 :disabled="form.processing"
                             >
-                                {{ form.processing ? 'Enviando…' : 'Enviar' }}
+                                {{ form.processing ? 'Enviando…' : 'Enviar interesse' }}
                             </button>
                         </div>
                     </form>
@@ -367,15 +475,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </section>
         </main>
 
-        <footer class="border-t border-slate-200 bg-slate-950 py-10 text-center text-xs text-slate-400">
-            <p class="font-semibold text-slate-300">Talents — Gestão de pessoas e conformidade em NR-1</p>
-            <p class="mt-2 max-w-lg mx-auto px-4">
-                As informações desta página têm caráter educativo e comercial. A adequação legal depende do seu PGR, documentação e
-                contexto — consulte sempre um profissional habilitado.
-            </p>
+        <footer class="border-t border-white/30 py-8 text-center text-xs text-slate-500 backdrop-blur-sm">
+            Talents &mdash; Gestão de Pessoas
         </footer>
 
-        <!-- Modal contato -->
         <Teleport to="body">
             <div
                 v-if="showContactModal"
