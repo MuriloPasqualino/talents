@@ -50,6 +50,11 @@ class Company extends Model
         return $this->hasMany(RhidEspelhoImport::class);
     }
 
+    public function rhidScheduleSetting(): HasOne
+    {
+        return $this->hasOne(CompanyRhidScheduleSetting::class);
+    }
+
     public function rhidConfigured(): bool
     {
         return filled($this->rhid_email) && filled($this->rhid_password);

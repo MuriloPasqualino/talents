@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Client;
 use App\Exceptions\RhidApiException;
 use App\Exceptions\RhidDomainChoiceRequiredException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Client\UpdatePunchScheduleSettingsRequest;
 use App\Jobs\ProcessRhidEspelhoBatchJob;
 use App\Jobs\ProcessRhidEspelhoParseJob;
 use App\Models\Company;
 use App\Models\RhidEspelhoBatch;
 use App\Models\RhidEspelhoImport;
 use App\Services\Rhid\EspelhoPdfIngestService;
+use App\Services\Rhid\PunchScheduleSettingsService;
 use App\Services\Rhid\RhidAuthService;
 use App\Services\Rhid\RhidComplianceService;
 use App\Services\Rhid\RhidDeviceService;
@@ -480,6 +482,24 @@ class RhidApiController extends Controller
         $company = $this->company($request);
 
         return $this->jsonOrError(fn () => $monitoring->ultimasMarcacoes($company, $request->user()));
+    }
+
+    public function punchScheduleSettings(Request $request, PunchScheduleSettingsService $schedule): JsonResponse
+    {
+        $company = $this->company($request);
+        $settings = $schedule->getForCompany($company);
+
+        return response()->json(['settings' => $settings]);
+    }
+
+    public function updatePunchScheduleSettings(UpdatePunchScheduleSettingsRequest $request, PunchScheduleSettingsService $schedule): JsonResponse
+    {
+        $company = $this->company($request);
+        /** @var array<string, mixed> $validated */
+        $validated = $request->validated();
+        $schedule->saveForCompany($company, $validated);
+
+        return response()->json(['settings' => $schedule->getForCompany($company)]);
     }
 
     public function devices(Request $request, RhidDeviceService $devices): JsonResponse|Response

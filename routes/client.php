@@ -90,6 +90,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
             Route::get('espelhos/imports/{import}/file', [RhidApiController::class, 'downloadEspelhoImportFile'])->name('espelhos.imports.file')->whereNumber('import');
             Route::post('afd/export', [RhidApiController::class, 'exportAfd'])->name('afd.export');
             Route::get('last-punches', [RhidApiController::class, 'lastPunches'])->name('last-punches');
+            Route::get('punch-schedule-settings', [RhidApiController::class, 'punchScheduleSettings'])->name('punch-schedule-settings.show');
+            Route::put('punch-schedule-settings', [RhidApiController::class, 'updatePunchScheduleSettings'])->name('punch-schedule-settings.update');
             Route::get('devices', [RhidApiController::class, 'devices'])->name('devices.index');
             Route::post('devices', [RhidApiController::class, 'storeDevice'])->name('devices.store');
             Route::put('devices', [RhidApiController::class, 'updateDevice'])->name('devices.update');
