@@ -12,6 +12,13 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/nr-1', function () {
+    return Inertia::render('Nr1', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.nr1');
+
 Route::post('/interesse', [LandingInterestController::class, 'store'])
     ->middleware('throttle:public-landing-interest')
     ->name('landing.interest');

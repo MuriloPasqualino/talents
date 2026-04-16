@@ -7,11 +7,22 @@ use App\Models\LandingInterestSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class LandingInterestTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_nr1_landing_page_renders(): void
+    {
+        $this->get('/nr-1')
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Nr1')
+                ->has('canLogin')
+                ->has('canRegister'));
+    }
 
     public function test_landing_interest_sends_mail_and_redirects_with_success(): void
     {

@@ -38,13 +38,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 </script>
 
 <template>
-    <Head title="Talents — Gestão de Pessoas e NR-1" />
+    <Head title="Talents — Gestão de Pessoas" />
 
     <div class="app-shell min-h-screen scroll-smooth text-slate-900">
         <header class="sticky top-0 z-20 border-b border-white/40 bg-white/70 shadow-sm backdrop-blur-md">
             <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
                 <img src="/images/logo.png" alt="Talents" class="h-10 w-auto" />
                 <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
+                    <Link
+                        :href="route('landing.nr1')"
+                        class="text-sm font-semibold text-talents-700 hover:underline"
+                    >
+                        NR-1
+                    </Link>
                     <Link
                         v-if="canRegister && !$page.props.auth.user"
                         :href="route('register')"
@@ -71,49 +77,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </header>
 
         <main>
-            <!-- Hero (layout original: largura contida, fundo do app-shell) -->
             <section class="mx-auto max-w-6xl px-4 py-16 md:py-20">
                 <div class="max-w-3xl">
                     <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
-                        NR-1 · Para quem leva pessoas a sério
+                        Para quem leva pessoas a sério
                     </p>
                     <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
-                        A Talents ajuda empresas a caminhar rumo à
-                        <span class="text-talents-700">conformidade com a NR-1</span> na gestão de riscos psicossociais
+                        Menos improviso. Mais clareza sobre o clima e os riscos na sua empresa.
                     </h1>
                     <p class="mt-6 text-lg text-slate-600">
-                        Com <strong>método</strong>, <strong>ciência</strong> e <strong>estratégia</strong> — da identificação ao
-                        monitoramento, com rastreabilidade para o PGR.
+                        A Talents ajuda você a ouvir o time com segurança, enxergar onde investir em bem-estar e documentar o que a
+                        lei exige — sem planilhas intermináveis nem relatórios que ninguém usa.
                     </p>
 
-                    <div class="mt-6 flex flex-wrap items-center gap-2 md:gap-3">
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >IDENTIFICAR</span
-                        >
-                        <span class="text-talents-400">→</span>
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >📊 AVALIAR</span
-                        >
-                        <span class="text-talents-400">→</span>
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >⚙️ IMPLEMENTAR</span
-                        >
-                        <span class="text-talents-400">→</span>
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >📈 MONITORAR</span
-                        >
-                    </div>
-
-                    <blockquote class="mt-6 border-l-4 border-talents-600 pl-4 text-lg italic text-slate-700">
-                        Gestão de risco psicossocial não é evento.
-                        <span class="font-semibold not-italic">É processo.</span>
-                    </blockquote>
-
-                    <div class="mt-8 flex flex-wrap gap-4">
+                    <div class="mt-8 flex flex-wrap gap-3">
                         <button
                             type="button"
                             class="rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-talents-700"
@@ -121,11 +98,81 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         >
                             Ver na prática
                         </button>
+                        <Link
+                            v-if="canRegister && !$page.props.auth.user"
+                            :href="route('register')"
+                            class="rounded-full border-2 border-talents-600 bg-white px-6 py-3 text-sm font-bold text-talents-800 shadow-sm transition hover:bg-talents-50"
+                        >
+                            Criar conta
+                        </Link>
+                        <Link
+                            :href="route('landing.nr1')"
+                            class="rounded-full border border-slate-200 bg-white/80 px-6 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-talents-300 hover:bg-talents-50"
+                        >
+                            NR-1 e riscos psicossociais
+                        </Link>
                     </div>
                     <p class="mt-6 text-sm text-slate-500">
-                        Pesquisas com anonimato protegido · Resultados prontos para decisão · Adequação às exigências de saúde e
-                        segurança do trabalho
+                        Pesquisas, resultados, plano de ação, denúncias e conformidade — em um só lugar.
                     </p>
+                </div>
+            </section>
+
+            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+                <div class="mx-auto max-w-6xl px-4">
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">O que você encontra na plataforma</h2>
+                    <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
+                        Funcionalidades pensadas para RH, SESMT e liderança — da coleta à decisão e ao registro para auditoria.
+                    </p>
+                    <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="surface-card p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Pesquisas e campanhas</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Modelos alinhados a boas práticas, participação acompanhada e anonimato protegido por regras de
+                                agregação.
+                            </p>
+                        </div>
+                        <div class="surface-card p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Resultados e prioridades</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Painéis e cortes por área para saber onde agir primeiro — não só média genérica. Exportação para
+                                análise e relatórios executivo e técnico.
+                            </p>
+                        </div>
+                        <div class="surface-card p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Plano de ação</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Estruture medidas, responsáveis e prazos a partir dos achados e acompanhe evolução no tempo.
+                            </p>
+                        </div>
+                        <div class="surface-card p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">NR-1 e PGR</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Apoio ao ciclo de riscos psicossociais com rastreabilidade para integrar ao Programa de Gerenciamento
+                                de Riscos.
+                            </p>
+                            <Link
+                                :href="route('landing.nr1')"
+                                class="mt-3 inline-block text-sm font-semibold text-talents-700 hover:underline"
+                            >
+                                Ver página NR-1 →
+                            </Link>
+                        </div>
+                        <div class="surface-card p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Canal de denúncias</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Conforme a Lei nº 14.457/2022, quando habilitado para a empresa — fluxo estruturado e rastreável para
+                                o comitê.
+                            </p>
+                        </div>
+                        <div class="surface-card p-6 shadow-md">
+                            <h3 class="text-lg font-semibold text-slate-900">Metodologia e calendário</h3>
+                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                Conteúdo de capacitação, metodologia aplicável por empresa e calendário estratégico para organizar o
+                                ciclo ao longo do ano.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -161,61 +208,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 atender fiscalização.
                             </p>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- NR-1: cinco cards lado a lado (grade responsiva) -->
-            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
-                <div class="mx-auto max-w-[1600px] px-4">
-                    <div
-                        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-5"
-                    >
-                        <article class="surface-card flex h-full flex-col border-t-4 border-talents-600 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">
-                                1️⃣ Buscar orientação técnica especializada
-                            </h3>
-                            <p class="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
-                                A NR-1 exige método e estrutura. Ter apoio especializado evita improviso e exposição jurídica.
-                            </p>
-                        </article>
-
-                        <article class="surface-card flex h-full flex-col border-t-4 border-red-500 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">2️⃣ IDENTIFICAR</h3>
-                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
-                                <li>Sobrecarga e pressão excessiva</li>
-                                <li>Conflitos recorrentes</li>
-                                <li>Liderança despreparada</li>
-                                <li>Lacunas no PGR</li>
-                            </ul>
-                        </article>
-
-                        <article class="surface-card flex h-full flex-col border-t-4 border-amber-500 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">3️⃣ AVALIAR</h3>
-                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
-                                <li>Classificar nível de exposição (baixo, médio, alto)</li>
-                                <li>Definir prioridades</li>
-                                <li>Avaliar impacto organizacional</li>
-                            </ul>
-                        </article>
-
-                        <article class="surface-card flex h-full flex-col border-t-4 border-emerald-600 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">4️⃣ IMPLEMENTAR</h3>
-                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
-                                <li>Estruturar plano de ação</li>
-                                <li>Treinamentos e ajustes organizacionais</li>
-                                <li>Formalização no PGR</li>
-                            </ul>
-                        </article>
-
-                        <article class="surface-card flex h-full flex-col border-t-4 border-blue-600 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">5️⃣ MONITORAR</h3>
-                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
-                                <li>Acompanhar indicadores humanos</li>
-                                <li>Reavaliar periodicamente</li>
-                                <li>Atualizar plano de ação</li>
-                            </ul>
-                        </article>
                     </div>
                 </div>
             </section>
