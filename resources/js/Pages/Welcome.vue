@@ -177,53 +177,58 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <!-- NR-1: orientação -->
-            <section class="mx-auto max-w-6xl px-4 py-16">
-                <div class="max-w-3xl">
-                    <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Buscar orientação técnica especializada</h2>
-                    <p class="mt-4 text-lg leading-relaxed text-slate-600">
-                        A NR-1 exige <strong>método e estrutura</strong>. Ter apoio especializado reduz improviso, fortalece decisões e
-                        ajuda a evitar exposição jurídica desnecessária ao formalizar riscos, prioridades e plano de ação no PGR.
-                    </p>
-                </div>
-            </section>
-
-            <!-- Etapas IDENTIFICAR … MONITORAR -->
+            <!-- NR-1: cinco cards lado a lado (grade responsiva) -->
             <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
-                <div class="mx-auto max-w-6xl space-y-8 px-4">
-                    <article class="surface-card border-l-4 border-red-500 p-6 shadow-md md:p-8">
-                        <h3 class="text-xl font-bold text-slate-900">2 · IDENTIFICAR</h3>
-                        <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
-                            <li>Sobrecarga e pressão excessiva</li>
-                            <li>Conflitos recorrentes</li>
-                            <li>Liderança despreparada</li>
-                            <li>Lacunas no PGR</li>
-                        </ul>
-                    </article>
-                    <article class="surface-card border-l-4 border-amber-500 p-6 shadow-md md:p-8">
-                        <h3 class="text-xl font-bold text-slate-900">3 · AVALIAR</h3>
-                        <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
-                            <li>Classificar nível de exposição (baixo, médio, alto)</li>
-                            <li>Definir prioridades</li>
-                            <li>Avaliar impacto organizacional</li>
-                        </ul>
-                    </article>
-                    <article class="surface-card border-l-4 border-emerald-600 p-6 shadow-md md:p-8">
-                        <h3 class="text-xl font-bold text-slate-900">4 · IMPLEMENTAR</h3>
-                        <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
-                            <li>Estruturar plano de ação</li>
-                            <li>Treinamentos e ajustes organizacionais</li>
-                            <li>Formalização no PGR</li>
-                        </ul>
-                    </article>
-                    <article class="surface-card border-l-4 border-blue-600 p-6 shadow-md md:p-8">
-                        <h3 class="text-xl font-bold text-slate-900">5 · MONITORAR</h3>
-                        <ul class="mt-4 list-inside list-disc space-y-2 text-slate-600">
-                            <li>Acompanhar indicadores humanos</li>
-                            <li>Reavaliar periodicamente</li>
-                            <li>Atualizar plano de ação</li>
-                        </ul>
-                    </article>
+                <div class="mx-auto max-w-[1600px] px-4">
+                    <div
+                        class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-5"
+                    >
+                        <article class="surface-card flex h-full flex-col border-t-4 border-talents-600 p-5 shadow-md sm:p-6">
+                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">
+                                1️⃣ Buscar orientação técnica especializada
+                            </h3>
+                            <p class="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
+                                A NR-1 exige método e estrutura. Ter apoio especializado evita improviso e exposição jurídica.
+                            </p>
+                        </article>
+
+                        <article class="surface-card flex h-full flex-col border-t-4 border-red-500 p-5 shadow-md sm:p-6">
+                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">2️⃣ IDENTIFICAR</h3>
+                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
+                                <li>Sobrecarga e pressão excessiva</li>
+                                <li>Conflitos recorrentes</li>
+                                <li>Liderança despreparada</li>
+                                <li>Lacunas no PGR</li>
+                            </ul>
+                        </article>
+
+                        <article class="surface-card flex h-full flex-col border-t-4 border-amber-500 p-5 shadow-md sm:p-6">
+                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">3️⃣ AVALIAR</h3>
+                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
+                                <li>Classificar nível de exposição (baixo, médio, alto)</li>
+                                <li>Definir prioridades</li>
+                                <li>Avaliar impacto organizacional</li>
+                            </ul>
+                        </article>
+
+                        <article class="surface-card flex h-full flex-col border-t-4 border-emerald-600 p-5 shadow-md sm:p-6">
+                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">4️⃣ IMPLEMENTAR</h3>
+                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
+                                <li>Estruturar plano de ação</li>
+                                <li>Treinamentos e ajustes organizacionais</li>
+                                <li>Formalização no PGR</li>
+                            </ul>
+                        </article>
+
+                        <article class="surface-card flex h-full flex-col border-t-4 border-blue-600 p-5 shadow-md sm:p-6">
+                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">5️⃣ MONITORAR</h3>
+                            <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
+                                <li>Acompanhar indicadores humanos</li>
+                                <li>Reavaliar periodicamente</li>
+                                <li>Atualizar plano de ação</li>
+                            </ul>
+                        </article>
+                    </div>
                 </div>
             </section>
 
@@ -300,9 +305,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <!-- Checklist -->
             <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
                 <div class="mx-auto max-w-3xl px-4">
-                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Checklist de maturidade</h2>
-                    <p class="mx-auto mt-3 max-w-xl text-center text-slate-600">
-                        Marque o que já existe na sua organização (apenas orientativo).
+                    <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">CHECKLIST DE MATURIDADE</h2>
+                    <p class="mx-auto mt-3 max-w-xl text-center text-sm text-slate-500">
+                        Marque o que se aplica à sua organização.
                     </p>
 
                     <div class="surface-card mt-8 space-y-4 p-6 shadow-md sm:p-8">
@@ -338,7 +343,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             v-if="maturityVulnerable"
                             class="rounded-lg bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-900"
                         >
-                            Se marcou menos de 6 itens, sua empresa ainda pode estar vulnerável. Vamos conversar.
+                            Se marcou menos de 6 itens, sua empresa ainda está vulnerável.
                         </p>
 
                         <div class="mt-6 flex justify-center">
