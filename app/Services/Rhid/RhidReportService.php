@@ -68,32 +68,61 @@ class RhidReportService
      * Baixa arquivo gerado (PDF/CSV/HTML).
      *
      * O save_file do RHID costuma exigir POST com corpo JSON (ex.: []) e cabecalhos de portal;
-     * sem isso a resposta pode vir 200 com corpo vazio. Para HTML, tenta variantes de format e
-     * pequenas esperas (corrida apos percent 100).
+     * sem isso a resposta pode vir 200 com corpo vazio. Apos o GUID chegar a 100%, o PDF pode
+     * demorar alguns segundos para ficar disponivel; em lote, tentativas curtas demais falham
+     * no 2º colaborador. Usa variantes de format (HTML e PDF/PDF2) e backoff entre tentativas.
      */
     public function downloadSaveFile(Company $company, ?User $user, string $format, string $guid): Response
     {
-        $formats = strtoupper($format) === 'HTML'
-            ? ['HTML', 'Html', 'html']
-            : [$format];
+        [$response] = $this->downloadSaveFileWithFormatUsed($company, $user, $format, $guid);
+
+        return $response;
+    }
+
+    /**
+     * @return array{0: Response, 1: string}
+     */
+    public function downloadSaveFileWithFormatUsed(Company $company, ?User $user, string $format, string $guid): array
+    {
+        $formatUpper = strtoupper($format);
+        $formats = match ($formatUpper) {
+            'HTML' => ['HTML', 'Html', 'html'],
+            'PDF' => ['PDF', 'Pdf', 'pdf', 'PDF2'],
+            'PDF2' => ['PDF2', 'PDF', 'Pdf', 'pdf'],
+            default => [$format],
+        };
+
+        $maxAttempts = (int) config('rhid.save_file_max_attempts_per_format', 12);
+        if ($maxAttempts < 1) {
+            $maxAttempts = 1;
+        }
+        $baseMs = (int) config('rhid.save_file_retry_base_ms', 400);
+        if ($baseMs < 50) {
+            $baseMs = 50;
+        }
 
         $last = null;
+        $lastFmt = $format;
         foreach ($formats as $fmt) {
-            for ($attempt = 0; $attempt < 3; $attempt++) {
+            $lastFmt = $fmt;
+            for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
                 $last = $this->saveFileRequest($company, $user, $fmt, $guid);
                 if ($last->failed()) {
                     break;
                 }
                 if (trim((string) $last->body()) !== '') {
-                    return $last;
+                    return [$last, $fmt];
                 }
-                if ($attempt < 2) {
-                    usleep(500_000);
+                if ($attempt < $maxAttempts - 1) {
+                    $sleepMs = $baseMs + (int) ($attempt * 350);
+                    usleep($sleepMs * 1000);
                 }
             }
         }
 
-        return $last ?? $this->saveFileRequest($company, $user, $format, $guid);
+        $fallback = $last ?? $this->saveFileRequest($company, $user, $format, $guid);
+
+        return [$fallback, $lastFmt];
     }
 
     /**
@@ -109,7 +138,11 @@ class RhidReportService
         }
         $raw = (string) $r->body();
         if (trim($raw) === '') {
-            throw new RhidApiException('Arquivo vazio retornado pelo RHID (save_file).', $r->status());
+            throw new RhidApiException(
+                'Arquivo vazio retornado pelo RHID (save_file). Aguarde alguns segundos apos 100% e tente de novo; '
+                .'em lote, aumente RHID_SAVE_FILE_MAX_ATTEMPTS ou RHID_SAVE_FILE_RETRY_BASE_MS no .env.',
+                $r->status(),
+            );
         }
 
         return $this->unwrapSaveFilePayload($raw);

@@ -1124,6 +1124,8 @@ const gerarEspelhoGuidByPersonId = async (idPerson) => {
         });
         const p = Number(data.percent);
         if (p === 100) {
+            /* RHID pode marcar 100% antes do save_file servir o PDF; pausa reduz falha em lote. */
+            await new Promise((r) => setTimeout(r, 2000));
             return guid;
         }
         if (data.error) {
@@ -1174,6 +1176,9 @@ const saveEspelhoTodosToTalents = async () => {
             });
             espelhoLastImport.value = data.import;
             await pollEspelhoImportUntilDone(data.import.id);
+            if (i < total - 1) {
+                await new Promise((r) => setTimeout(r, 800));
+            }
         }
         espelhoBatchProgress.value = `Concluido: ${total} colaborador(es) processado(s).`;
         await loadEspelhoImports();

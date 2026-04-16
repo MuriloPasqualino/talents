@@ -23,6 +23,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | save_file (PDF/HTML após GUID em 100%)
+    |--------------------------------------------------------------------------
+    |
+    | Alguns tenants devolvem 200 com corpo vazio se o arquivo ainda não está
+    | pronto ou sob carga. Aumente se o lote "Salvar todos" falhar no 2º+ item.
+    |
+    */
+    'save_file_max_attempts_per_format' => (int) env('RHID_SAVE_FILE_MAX_ATTEMPTS', 12),
+
+    'save_file_retry_base_ms' => (int) env('RHID_SAVE_FILE_RETRY_BASE_MS', 400),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache do token (login retorna ~4h; renovamos antes)
     |--------------------------------------------------------------------------
     */
