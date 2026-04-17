@@ -404,12 +404,17 @@ const personMatricula = (row) =>
 const bankDisplayName = pickRhidPersonDisplayName;
 const bankDisplayValue = formatRhidBankBalanceDisplay;
 
+/**
+ * ID do colaborador no RHID (mesmo usado em GET person.svc/a/{id} e na rota do perfil).
+ * Preferir `id` na raiz: na lista de pessoas o link do perfil usa `row.id`; `idPerson` pode
+ * divergir em alguns payloads e o lote de preferencia gravaria outro id_person.
+ */
 const rhidPersonId = (row) => {
-    const id = row?.idPerson ?? row?.id;
-    if (id == null || id === '') {
+    const raw = row?.id != null && row?.id !== '' ? row.id : row?.idPerson;
+    if (raw == null || raw === '') {
         return null;
     }
-    const n = Number(id);
+    const n = Number(raw);
     return Number.isFinite(n) ? n : null;
 };
 
@@ -4299,12 +4304,12 @@ const justStatusBarChart = computed(() => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(row, i) in peopleRows" :key="row.id ?? i" class="border-t border-slate-100">
-                                <td class="p-2 font-mono text-xs">{{ row.id }}</td>
+                            <tr v-for="(row, i) in peopleRows" :key="rhidPersonId(row) ?? row.id ?? i" class="border-t border-slate-100">
+                                <td class="p-2 font-mono text-xs">{{ rhidPersonId(row) ?? '—' }}</td>
                                 <td class="p-2">
                                     <Link
-                                        v-if="row.id != null"
-                                        :href="route('client.rhid.collaborators.show', row.id)"
+                                        v-if="rhidPersonId(row) != null"
+                                        :href="route('client.rhid.collaborators.show', rhidPersonId(row))"
                                         class="font-medium text-talents-800 hover:underline"
                                     >
                                         {{ personDisplayName(row) }}
