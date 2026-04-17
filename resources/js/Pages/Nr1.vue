@@ -1,4 +1,13 @@
 <script setup>
+import {
+    ArrowTrendingUpIcon,
+    ChartBarSquareIcon,
+    CheckIcon,
+    ChevronRightIcon,
+    Cog6ToothIcon,
+    MagnifyingGlassIcon,
+    XMarkIcon,
+} from '@heroicons/vue/24/outline';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref } from 'vue';
 
@@ -76,39 +85,70 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <main>
             <section class="mx-auto max-w-6xl px-4 py-16 md:py-20">
                 <div class="max-w-3xl">
-                    <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
+                    <p class="text-sm font-medium uppercase tracking-wide text-talents-600">
                         NR-1 · Para quem leva pessoas a sério
                     </p>
-                    <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
+                    <h1
+                        class="mt-5 text-4xl font-bold leading-snug tracking-tight text-slate-900 md:text-5xl md:leading-[1.1]"
+                    >
                         A Talents ajuda empresas a caminhar rumo à
-                        <span class="text-talents-700">conformidade com a NR-1</span> na gestão de riscos psicossociais
+                        <span
+                            class="bg-gradient-to-r from-talents-700 to-talents-600 bg-clip-text text-transparent"
+                            >conformidade com a NR-1</span
+                        >
+                        na gestão de riscos psicossociais
                     </h1>
-                    <p class="mt-6 text-lg text-slate-600">
+                    <p class="mt-6 text-base leading-relaxed text-slate-600 md:text-lg">
                         Com <strong>método</strong>, <strong>ciência</strong> e <strong>estratégia</strong> — da identificação ao
                         monitoramento, com rastreabilidade para o PGR.
                     </p>
 
-                    <div class="mt-6 flex flex-wrap items-center gap-2 md:gap-3">
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >IDENTIFICAR</span
-                        >
-                        <span class="text-talents-400">→</span>
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >📊 AVALIAR</span
-                        >
-                        <span class="text-talents-400">→</span>
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >⚙️ IMPLEMENTAR</span
-                        >
-                        <span class="text-talents-400">→</span>
-                        <span
-                            class="inline-flex items-center rounded-full border-2 border-talents-600 bg-talents-50 px-4 py-2 text-sm font-bold text-talents-800 shadow-sm"
-                            >📈 MONITORAR</span
-                        >
-                    </div>
+                    <ol
+                        class="mt-8 flex list-none flex-nowrap items-center gap-1.5 overflow-x-auto scroll-smooth pb-1 pl-0 [-ms-overflow-style:none] [scrollbar-width:none] snap-x md:flex-wrap md:gap-3 md:overflow-visible md:snap-none [&::-webkit-scrollbar]:hidden"
+                        aria-label="Ciclo de gestão: identificar, avaliar, implementar e monitorar riscos psicossociais"
+                    >
+                        <li class="flex shrink-0 snap-start list-none">
+                            <span
+                                class="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/80 px-3.5 py-2 text-xs font-medium uppercase tracking-wide text-talents-800 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm transition hover:border-talents-200/80 hover:bg-white"
+                            >
+                                <MagnifyingGlassIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
+                                Identificar
+                            </span>
+                        </li>
+                        <li class="flex shrink-0 list-none items-center text-slate-300" aria-hidden="true">
+                            <ChevronRightIcon class="h-4 w-4" />
+                        </li>
+                        <li class="flex shrink-0 snap-start list-none">
+                            <span
+                                class="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/80 px-3.5 py-2 text-xs font-medium uppercase tracking-wide text-talents-800 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm transition hover:border-talents-200/80 hover:bg-white"
+                            >
+                                <ChartBarSquareIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
+                                Avaliar
+                            </span>
+                        </li>
+                        <li class="flex shrink-0 list-none items-center text-slate-300" aria-hidden="true">
+                            <ChevronRightIcon class="h-4 w-4" />
+                        </li>
+                        <li class="flex shrink-0 snap-start list-none">
+                            <span
+                                class="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/80 px-3.5 py-2 text-xs font-medium uppercase tracking-wide text-talents-800 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm transition hover:border-talents-200/80 hover:bg-white"
+                            >
+                                <Cog6ToothIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
+                                Implementar
+                            </span>
+                        </li>
+                        <li class="flex shrink-0 list-none items-center text-slate-300" aria-hidden="true">
+                            <ChevronRightIcon class="h-4 w-4" />
+                        </li>
+                        <li class="flex shrink-0 snap-start list-none">
+                            <span
+                                class="inline-flex items-center gap-2 rounded-full border border-slate-200/90 bg-white/80 px-3.5 py-2 text-xs font-medium uppercase tracking-wide text-talents-800 shadow-sm ring-1 ring-slate-200/50 backdrop-blur-sm transition hover:border-talents-200/80 hover:bg-white"
+                            >
+                                <ArrowTrendingUpIcon class="h-4 w-4 shrink-0 text-talents-600" aria-hidden="true" />
+                                Monitorar
+                            </span>
+                        </li>
+                    </ol>
 
                     <blockquote class="mt-6 border-l-4 border-talents-600 pl-4 text-lg italic text-slate-700">
                         Gestão de risco psicossocial não é evento.
@@ -317,7 +357,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </p>
                 <ul class="mt-8 grid gap-4 sm:grid-cols-2">
                     <li class="surface-card flex gap-3 p-5 shadow-md">
-                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Priorização a partir dos achados</p>
                             <p class="mt-1 text-sm text-slate-600">
@@ -327,7 +367,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         </div>
                     </li>
                     <li class="surface-card flex gap-3 p-5 shadow-md">
-                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Responsáveis e prazos</p>
                             <p class="mt-1 text-sm text-slate-600">
@@ -336,7 +376,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         </div>
                     </li>
                     <li class="surface-card flex gap-3 p-5 shadow-md">
-                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Acompanhamento e revisão</p>
                             <p class="mt-1 text-sm text-slate-600">
@@ -346,7 +386,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         </div>
                     </li>
                     <li class="surface-card flex gap-3 p-5 shadow-md">
-                        <span class="text-xl" aria-hidden="true">✓</span>
+                        <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Conexão com o PGR</p>
                             <p class="mt-1 text-sm text-slate-600">
@@ -368,16 +408,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <div class="mx-auto mt-10 max-w-[1600px] px-4">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-5">
                         <article class="surface-card flex h-full flex-col border-t-4 border-talents-600 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">
-                                1️⃣ Buscar orientação técnica especializada
-                            </h3>
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
+                                    >1</span
+                                >
+                                <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">
+                                    Buscar orientação técnica especializada
+                                </h3>
+                            </div>
                             <p class="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
                                 A NR-1 exige método e estrutura. Ter apoio especializado evita improviso e exposição jurídica.
                             </p>
                         </article>
 
                         <article class="surface-card flex h-full flex-col border-t-4 border-red-500 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">2️⃣ IDENTIFICAR</h3>
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white"
+                                    >2</span
+                                >
+                                <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">Identificar</h3>
+                            </div>
                             <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
                                 <li>Sobrecarga e pressão excessiva</li>
                                 <li>Conflitos recorrentes</li>
@@ -387,7 +439,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         </article>
 
                         <article class="surface-card flex h-full flex-col border-t-4 border-amber-500 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">3️⃣ AVALIAR</h3>
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white"
+                                    >3</span
+                                >
+                                <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">Avaliar</h3>
+                            </div>
                             <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
                                 <li>Classificar nível de exposição (baixo, médio, alto)</li>
                                 <li>Definir prioridades</li>
@@ -396,7 +454,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         </article>
 
                         <article class="surface-card flex h-full flex-col border-t-4 border-emerald-600 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">4️⃣ IMPLEMENTAR</h3>
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white"
+                                    >4</span
+                                >
+                                <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">Implementar</h3>
+                            </div>
                             <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
                                 <li>Estruturar plano de ação</li>
                                 <li>Treinamentos e ajustes organizacionais</li>
@@ -405,7 +469,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         </article>
 
                         <article class="surface-card flex h-full flex-col border-t-4 border-blue-600 p-5 shadow-md sm:p-6">
-                            <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">5️⃣ MONITORAR</h3>
+                            <div class="flex items-start gap-3">
+                                <span
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white"
+                                    >5</span
+                                >
+                                <h3 class="text-base font-bold leading-snug text-slate-900 md:text-lg">Monitorar</h3>
+                            </div>
                             <ul class="mt-3 list-inside list-disc space-y-1.5 text-sm text-slate-600">
                                 <li>Acompanhar indicadores humanos</li>
                                 <li>Reavaliar periodicamente</li>
@@ -544,7 +614,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             aria-label="Fechar"
                             @click="showContactModal = false"
                         >
-                            ✕
+                            <XMarkIcon class="h-5 w-5" />
                         </button>
                     </div>
                     <form class="space-y-4 px-5 py-5" @submit.prevent="submitInterest">
