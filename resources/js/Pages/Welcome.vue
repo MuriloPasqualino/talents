@@ -464,49 +464,34 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </section>
 
             <section class="py-16">
-                <div class="mx-auto grid max-w-6xl gap-8 px-4 lg:grid-cols-2 lg:items-center">
-                    <div class="surface-card-soft p-8">
-                        <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Prazer, Suzane Pasqualino</p>
-                        <h2 class="mt-2 text-2xl font-bold text-slate-900 md:text-3xl">Consultoria com ciência e estratégia</h2>
-                        <p class="mt-4 text-sm leading-relaxed text-slate-600">
-                            Psicóloga (2013), especialista em comportamento humano, CEO da Talents e Diretora de RH no Pasqualino.
-                            A trajetória é guiada por escuta ativa, acolhimento e construção de ambientes mais conscientes e
-                            estratégicos.
+                <div class="mx-auto max-w-3xl space-y-6 px-4">
+                    <div class="surface-card-soft p-6">
+                        <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Banco de Vagas</p>
+                        <h3 class="mt-2 text-lg font-semibold text-slate-900">Conectamos talentos às melhores oportunidades</h3>
+                        <p class="mt-3 text-sm leading-relaxed text-slate-600">
+                            Explore oportunidades por área, localização e nível de experiência na plataforma de vagas da Talents.
                         </p>
-                        <p class="mt-4 text-sm leading-relaxed text-slate-600">
-                            Missão: Conectar talentos e transformar negócios. Visão: ser referência no desenvolvimento de talentos.
-                            Valores: família, honestidade, confiança e excelência.
-                        </p>
+                        <a
+                            href="https://talents.vagas.solides.com.br/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="mt-4 inline-block text-sm font-semibold text-talents-700 hover:underline"
+                        >
+                            Acessar banco de vagas →
+                        </a>
                     </div>
-                    <div class="space-y-6">
-                        <div class="surface-card-soft p-6">
-                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Banco de Vagas</p>
-                            <h3 class="mt-2 text-lg font-semibold text-slate-900">Conectamos talentos às melhores oportunidades</h3>
-                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
-                                Explore oportunidades por área, localização e nível de experiência na plataforma de vagas da Talents.
-                            </p>
-                            <a
-                                href="https://talents.vagas.solides.com.br/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="mt-4 inline-block text-sm font-semibold text-talents-700 hover:underline"
-                            >
-                                Acessar banco de vagas →
-                            </a>
-                        </div>
-                        <div class="surface-card-soft p-6">
-                            <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Canais de contato</p>
-                            <p class="mt-2 text-sm text-slate-600">contato@talentsgestao.com</p>
-                            <p class="mt-1 text-sm text-slate-600">Várzea Paulista • SP</p>
-                            <a
-                                href="https://wa.me/5511975703032"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="btn-primary mt-4 px-5 py-2.5"
-                            >
-                                Falar com a Talents no WhatsApp
-                            </a>
-                        </div>
+                    <div class="surface-card-soft p-6">
+                        <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Canais de contato</p>
+                        <p class="mt-2 text-sm text-slate-600">contato@talentsgestao.com</p>
+                        <p class="mt-1 text-sm text-slate-600">Várzea Paulista • SP</p>
+                        <a
+                            href="https://wa.me/5511975703032"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="btn-primary mt-4 px-5 py-2.5"
+                        >
+                            Falar com a Talents no WhatsApp
+                        </a>
                     </div>
                 </div>
             </section>
