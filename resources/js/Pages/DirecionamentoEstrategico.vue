@@ -41,24 +41,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     <Head title="Talents — Direcionamento Estratégico" />
 
     <div class="app-shell min-h-screen scroll-smooth text-slate-900">
-        <header class="sticky top-0 z-20 border-b border-white/40 bg-white/70 shadow-sm backdrop-blur-md">
+        <header class="landing-header">
             <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
                 <Link href="/" class="inline-flex items-center gap-3">
                     <img src="/images/logo.png" alt="Talents" class="h-16 w-auto md:h-20" />
                 </Link>
                 <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
-                    <Link href="/" class="text-sm font-semibold text-talents-700 hover:underline"> Início </Link>
-                    <Link :href="route('landing.diagnostico')" class="text-sm font-semibold text-talents-700 hover:underline">
+                    <Link href="/" class="landing-nav-link"> Início </Link>
+                    <Link :href="route('landing.diagnostico')" class="landing-nav-link">
                         Diagnóstico Comportamental
                     </Link>
-                    <Link :href="route('landing.contratacao')" class="text-sm font-semibold text-talents-700 hover:underline">
+                    <Link :href="route('landing.contratacao')" class="landing-nav-link">
                         Contratação de Talentos
                     </Link>
-                    <Link :href="route('landing.nr1')" class="text-sm font-semibold text-talents-700 hover:underline"> NR-1 </Link>
+                    <Link :href="route('landing.nr1')" class="landing-nav-link"> NR-1 </Link>
                     <Link
                         v-if="canLogin && !$page.props.auth.user"
                         :href="route('login')"
-                        class="rounded-full bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-talents-700"
+                        class="btn-primary px-4 py-2"
                     >
                         Entrar
                     </Link>
@@ -78,7 +78,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <div class="mt-8 flex flex-wrap gap-3">
                         <button
                             type="button"
-                            class="rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-talents-700"
+                            class="btn-primary"
                             @click="showContactModal = true"
                         >
                             Falar com especialista
@@ -87,7 +87,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+            <section class="py-16">
                 <div class="mx-auto max-w-6xl px-4">
                     <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Por que contratar</h2>
                     <div class="mx-auto mt-10 max-w-4xl rounded-xl border border-talents-200 bg-white p-8 shadow-md">
@@ -123,7 +123,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <section class="border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+            <section class="py-16">
                 <div class="mx-auto max-w-6xl px-4">
                     <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Resultados</h2>
                     <div class="mt-10 grid gap-6 md:grid-cols-3">
@@ -143,14 +143,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <section id="contato" class="border-t border-white/30 bg-white/30 py-16 backdrop-blur-sm">
+            <section id="contato" class="py-16">
                 <div class="mx-auto max-w-2xl px-4">
                     <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Pronto para evoluir sua estratégia?</h2>
                     <p class="mx-auto mt-3 max-w-xl text-center text-slate-600">
                         Deixe seus dados e a Talents entra em contato para mapear prioridades com você.
                     </p>
 
-                    <form class="surface-card mt-8 space-y-5 p-6 shadow-md sm:p-8" @submit.prevent="submitInterest">
+                    <form class="surface-card-soft mt-8 space-y-5 p-6 sm:p-8" @submit.prevent="submitInterest">
                         <div>
                             <label class="block text-sm font-medium text-slate-700" for="strat-name">Nome</label>
                             <input
@@ -158,7 +158,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 v-model="form.name"
                                 type="text"
                                 required
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                         </div>
                         <div>
@@ -168,7 +168,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 v-model="form.email"
                                 type="email"
                                 required
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                         </div>
                         <div>
@@ -177,12 +177,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 id="strat-phone"
                                 v-model="form.phone"
                                 type="tel"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                         </div>
                         <button
                             type="submit"
-                            class="w-full rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-talents-700 disabled:opacity-60"
+                            class="btn-primary w-full disabled:opacity-60"
                             :disabled="form.processing"
                         >
                             {{ form.processing ? 'Enviando…' : 'Enviar interesse' }}
@@ -214,24 +214,24 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             type="text"
                             required
                             placeholder="Nome"
-                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            class="field-input w-full"
                         />
                         <input
                             v-model="form.email"
                             type="email"
                             required
                             placeholder="E-mail"
-                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            class="field-input w-full"
                         />
                         <input
                             v-model="form.phone"
                             type="tel"
                             placeholder="Telefone / WhatsApp"
-                            class="w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            class="field-input w-full"
                         />
                         <button
                             type="submit"
-                            class="w-full rounded-full bg-talents-600 py-3 text-sm font-bold text-white shadow hover:bg-talents-700 disabled:opacity-60"
+                            class="btn-primary w-full disabled:opacity-60"
                             :disabled="form.processing"
                         >
                             {{ form.processing ? 'Enviando…' : 'Enviar' }}

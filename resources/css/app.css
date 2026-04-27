@@ -44,6 +44,10 @@
         @apply rounded-3xl border border-slate-200/80 bg-white shadow-sm;
     }
 
+    .surface-card-soft {
+        @apply rounded-3xl border border-white/70 bg-white/80 shadow-sm backdrop-blur-sm;
+    }
+
     /** Destaque escuro (hero / blocos de contraste) */
     .surface-card-dark {
         @apply rounded-3xl border border-slate-700/50 bg-gradient-to-br from-slate-800 via-slate-900 to-talents-900 text-slate-100 shadow-lg;
@@ -63,5 +67,29 @@
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
         }
+    }
+
+    .landing-header {
+        @apply sticky top-0 z-20 border-b border-white/60 bg-white/80 backdrop-blur-md;
+    }
+
+    .landing-nav-link {
+        @apply rounded-full px-3 py-1.5 text-sm font-semibold text-talents-700 transition hover:bg-talents-50;
+    }
+
+    .btn-primary {
+        @apply inline-flex items-center justify-center rounded-full bg-talents-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center rounded-full border border-talents-300 bg-white px-6 py-3 text-sm font-semibold text-talents-700 shadow-sm transition hover:bg-talents-50;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/90 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-talents-300 hover:bg-talents-50;
+    }
+
+    .field-input {
+        @apply mt-1 w-full rounded-xl border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500;
     }
 }

@@ -50,31 +50,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     <Head title="Talents — NR-1 e riscos psicossociais" />
 
     <div class="app-shell min-h-screen scroll-smooth text-slate-900">
-        <header class="sticky top-0 z-20 border-b border-white/40 bg-white/70 shadow-sm backdrop-blur-md">
+        <header class="landing-header">
             <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
                 <Link href="/" class="inline-flex items-center gap-3">
                     <img src="/images/logo.png" alt="Talents" class="h-16 w-auto md:h-20" />
                 </Link>
                 <nav class="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
-                    <Link href="/" class="text-sm font-semibold text-talents-700 hover:underline"> Início </Link>
+                    <Link href="/" class="landing-nav-link"> Início </Link>
                     <Link
                         v-if="canRegister && !$page.props.auth.user"
                         :href="route('register')"
-                        class="text-sm font-semibold text-talents-700 hover:underline"
+                        class="landing-nav-link"
                     >
                         Criar conta
                     </Link>
                     <Link
                         v-if="canLogin && !$page.props.auth.user"
                         :href="route('login')"
-                        class="rounded-full bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-talents-700"
+                        class="btn-primary px-4 py-2"
                     >
                         Entrar
                     </Link>
                     <Link
                         v-if="$page.props.auth.user"
                         :href="route('dashboard')"
-                        class="text-sm font-semibold text-talents-700 hover:underline"
+                        class="landing-nav-link"
                     >
                         Painel
                     </Link>
@@ -173,7 +173,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     <div class="mt-8 flex flex-wrap gap-4">
                         <button
                             type="button"
-                            class="rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-talents-700"
+                            class="btn-primary"
                             @click="showContactModal = true"
                         >
                             Ver na prática
@@ -186,7 +186,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <section id="metodologia" class="scroll-mt-24 border-y border-white/30 bg-white/50 py-16 backdrop-blur-sm">
+            <section id="metodologia" class="scroll-mt-24 py-16">
                 <div class="mx-auto max-w-6xl px-4">
                     <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Metodologia: método repetível, não achismo</h2>
                     <p class="mt-4 max-w-3xl text-lg text-slate-600">
@@ -196,28 +196,28 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         que ninguém sabe repetir no ano seguinte.
                     </p>
                     <div class="mt-10 grid gap-6 md:grid-cols-2">
-                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                        <div class="surface-card-soft border-l-4 border-talents-600 p-6">
                             <h3 class="text-lg font-semibold text-slate-900">Base técnica e consistência</h3>
                             <p class="mt-2 text-sm leading-relaxed text-slate-600">
                                 Modelos de questionário alinhados a boas práticas internacionais e ao que a organização precisa
                                 demonstrar: fatores de risco psicossocial mensuráveis, comparáveis entre áreas e ao longo do tempo.
                             </p>
                         </div>
-                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                        <div class="surface-card-soft border-l-4 border-talents-600 p-6">
                             <h3 class="text-lg font-semibold text-slate-900">Governança do processo</h3>
                             <p class="mt-2 text-sm leading-relaxed text-slate-600">
                                 Campanhas com período de resposta, acompanhamento de participação e regras de privacidade — para que
                                 o dado seja útil à decisão e defensável em auditoria, sem expor quem respondeu.
                             </p>
                         </div>
-                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                        <div class="surface-card-soft border-l-4 border-talents-600 p-6">
                             <h3 class="text-lg font-semibold text-slate-900">Da leitura à priorização</h3>
                             <p class="mt-2 text-sm leading-relaxed text-slate-600">
                                 Resultados agregados por corte (área, unidade etc., conforme configurado) mostram onde o risco se
                                 concentra — não só uma média global que esconde pontos críticos.
                             </p>
                         </div>
-                        <div class="surface-card border-l-4 border-talents-600 p-6 shadow-md">
+                        <div class="surface-card-soft border-l-4 border-talents-600 p-6">
                             <h3 class="text-lg font-semibold text-slate-900">Conteúdo de capacitação e metodologia no produto</h3>
                             <p class="mt-2 text-sm leading-relaxed text-slate-600">
                                 Materiais e trilhas de metodologia ajudam RH e SESMT a alinhar linguagem, responsabilidades e
@@ -306,7 +306,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </ol>
             </section>
 
-            <section id="relatorios" class="scroll-mt-24 border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+            <section id="relatorios" class="scroll-mt-24 py-16">
                 <div class="mx-auto max-w-6xl px-4">
                     <h2 class="text-2xl font-bold text-slate-900 md:text-3xl">Relatórios e parecer técnico</h2>
                     <p class="mt-4 max-w-3xl text-slate-600">
@@ -315,7 +315,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         público — sem misturar “slide para diretoria” com “detalhe para SST”.
                     </p>
                     <div class="mt-10 grid gap-6 lg:grid-cols-2">
-                        <div class="surface-card p-6 shadow-md">
+                        <div class="surface-card-soft p-6">
                             <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Relatório executivo</p>
                             <h3 class="mt-2 text-lg font-semibold text-slate-900">Leitura para gestão e comitês</h3>
                             <p class="mt-3 text-sm leading-relaxed text-slate-600">
@@ -324,7 +324,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 mensagem central sobre onde está o risco.
                             </p>
                         </div>
-                        <div class="surface-card p-6 shadow-md">
+                        <div class="surface-card-soft p-6">
                             <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Relatório técnico</p>
                             <h3 class="mt-2 text-lg font-semibold text-slate-900">Subsídio ao parecer e ao PGR</h3>
                             <p class="mt-3 text-sm leading-relaxed text-slate-600">
@@ -349,7 +349,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     que foi combinado e do que foi feito.
                 </p>
                 <ul class="mt-8 grid gap-4 sm:grid-cols-2">
-                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                    <li class="surface-card-soft flex gap-3 p-5">
                         <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Priorização a partir dos resultados</p>
@@ -359,7 +359,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </p>
                         </div>
                     </li>
-                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                    <li class="surface-card-soft flex gap-3 p-5">
                         <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Responsáveis e prazos</p>
@@ -368,7 +368,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </p>
                         </div>
                     </li>
-                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                    <li class="surface-card-soft flex gap-3 p-5">
                         <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Acompanhamento e revisão</p>
@@ -378,7 +378,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </p>
                         </div>
                     </li>
-                    <li class="surface-card flex gap-3 p-5 shadow-md">
+                    <li class="surface-card-soft flex gap-3 p-5">
                         <CheckIcon class="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                         <div>
                             <p class="font-semibold text-slate-900">Conexão com o PGR</p>
@@ -391,7 +391,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </ul>
             </section>
 
-            <section id="ciclo-nr1" class="scroll-mt-24 border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+            <section id="ciclo-nr1" class="scroll-mt-24 py-16">
                 <div class="mx-auto max-w-6xl px-4">
                     <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">O ciclo NR-1 em cinco passos</h2>
                     <p class="mx-auto mt-3 max-w-2xl text-center text-slate-600">
@@ -400,7 +400,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
                 <div class="mx-auto mt-10 max-w-[1600px] px-4">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 xl:gap-5">
-                        <article class="surface-card flex h-full flex-col border-t-4 border-talents-600 p-5 shadow-md sm:p-6">
+                        <article class="surface-card-soft flex h-full flex-col border-t-4 border-talents-600 p-5 sm:p-6">
                             <div class="flex items-start gap-3">
                                 <span
                                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-talents-600 text-sm font-bold text-white"
@@ -415,7 +415,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </p>
                         </article>
 
-                        <article class="surface-card flex h-full flex-col border-t-4 border-red-500 p-5 shadow-md sm:p-6">
+                        <article class="surface-card-soft flex h-full flex-col border-t-4 border-red-500 p-5 sm:p-6">
                             <div class="flex items-start gap-3">
                                 <span
                                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white"
@@ -431,7 +431,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </ul>
                         </article>
 
-                        <article class="surface-card flex h-full flex-col border-t-4 border-amber-500 p-5 shadow-md sm:p-6">
+                        <article class="surface-card-soft flex h-full flex-col border-t-4 border-amber-500 p-5 sm:p-6">
                             <div class="flex items-start gap-3">
                                 <span
                                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white"
@@ -446,7 +446,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </ul>
                         </article>
 
-                        <article class="surface-card flex h-full flex-col border-t-4 border-emerald-600 p-5 shadow-md sm:p-6">
+                        <article class="surface-card-soft flex h-full flex-col border-t-4 border-emerald-600 p-5 sm:p-6">
                             <div class="flex items-start gap-3">
                                 <span
                                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white"
@@ -461,7 +461,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </ul>
                         </article>
 
-                        <article class="surface-card flex h-full flex-col border-t-4 border-blue-600 p-5 shadow-md sm:p-6">
+                        <article class="surface-card-soft flex h-full flex-col border-t-4 border-blue-600 p-5 sm:p-6">
                             <div class="flex items-start gap-3">
                                 <span
                                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white"
@@ -479,7 +479,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
             </section>
 
-            <section class="scroll-mt-24 border-y border-white/30 bg-white/40 py-16 backdrop-blur-sm">
+            <section class="scroll-mt-24 py-16">
                 <div class="mx-auto max-w-6xl px-4">
                     <h2 class="text-center text-2xl font-bold text-slate-900 md:text-3xl">Por que contratar, benefícios e resultados</h2>
                     <p class="mx-auto mt-3 max-w-3xl text-center text-slate-600">
@@ -487,7 +487,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         decisões práticas para RH, SESMT e liderança.
                     </p>
                     <div class="mt-10 grid gap-6 md:grid-cols-3">
-                        <article class="surface-card p-6 shadow-md">
+                        <article class="surface-card-soft p-6">
                             <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Por que contratar</p>
                             <h3 class="mt-2 text-lg font-semibold text-slate-900">Condução técnica com clareza</h3>
                             <p class="mt-3 text-sm leading-relaxed text-slate-600">
@@ -495,7 +495,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 facilita o alinhamento entre áreas técnicas e gestão.
                             </p>
                         </article>
-                        <article class="surface-card p-6 shadow-md">
+                        <article class="surface-card-soft p-6">
                             <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Benefícios</p>
                             <h3 class="mt-2 text-lg font-semibold text-slate-900">Rotina de gestão mais organizada</h3>
                             <p class="mt-3 text-sm leading-relaxed text-slate-600">
@@ -503,7 +503,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 aceleram a tomada de decisão sobre as medidas mais críticas.
                             </p>
                         </article>
-                        <article class="surface-card p-6 shadow-md">
+                        <article class="surface-card-soft p-6">
                             <p class="text-sm font-bold uppercase tracking-wide text-talents-600">Resultados</p>
                             <h3 class="mt-2 text-lg font-semibold text-slate-900">Evidências para ação contínua</h3>
                             <p class="mt-3 text-sm leading-relaxed text-slate-600">
@@ -535,7 +535,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         {{ $page.props.flash.error }}
                     </div>
 
-                    <form class="surface-card mt-8 space-y-5 p-6 shadow-md sm:p-8" @submit.prevent="submitInterest">
+                    <form class="surface-card-soft mt-8 space-y-5 p-6 sm:p-8" @submit.prevent="submitInterest">
                         <div>
                             <label class="block text-sm font-medium text-slate-700" for="nr1-interest-name">Nome</label>
                             <input
@@ -544,7 +544,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 type="text"
                                 required
                                 autocomplete="name"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                             <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
                         </div>
@@ -556,7 +556,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 type="email"
                                 required
                                 autocomplete="email"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                             <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
                         </div>
@@ -570,7 +570,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 type="tel"
                                 autocomplete="tel"
                                 placeholder="DDD + número"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                             <p v-if="form.errors.phone" class="mt-1 text-sm text-red-600">{{ form.errors.phone }}</p>
                         </div>
@@ -583,7 +583,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 v-model="form.company"
                                 type="text"
                                 autocomplete="organization"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                             <p v-if="form.errors.company" class="mt-1 text-sm text-red-600">{{ form.errors.company }}</p>
                         </div>
@@ -595,7 +595,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 id="nr1-interest-message"
                                 v-model="form.message"
                                 rows="4"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                                 placeholder="Conte um pouco do que você busca ou deixe em branco."
                             />
                             <p v-if="form.errors.message" class="mt-1 text-sm text-red-600">{{ form.errors.message }}</p>
@@ -603,7 +603,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         <div class="pt-2">
                             <button
                                 type="submit"
-                                class="w-full rounded-full bg-talents-600 px-6 py-3 text-sm font-bold text-white shadow-md transition hover:bg-talents-700 disabled:opacity-60 sm:w-auto"
+                                class="btn-primary w-full disabled:opacity-60 sm:w-auto"
                                 :disabled="form.processing"
                             >
                                 {{ form.processing ? 'Enviando…' : 'Enviar interesse' }}
@@ -655,7 +655,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 type="text"
                                 required
                                 autocomplete="name"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                             <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
                         </div>
@@ -667,7 +667,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 type="email"
                                 required
                                 autocomplete="email"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                             <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
                         </div>
@@ -680,7 +680,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 v-model="form.phone"
                                 type="tel"
                                 autocomplete="tel"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                             <p v-if="form.errors.phone" class="mt-1 text-sm text-red-600">{{ form.errors.phone }}</p>
                         </div>
@@ -690,7 +690,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 id="nr1-modal-company"
                                 v-model="form.company"
                                 type="text"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                         </div>
                         <div>
@@ -699,12 +699,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                                 id="nr1-modal-message"
                                 v-model="form.message"
                                 rows="3"
-                                class="mt-1 w-full rounded-lg border-slate-200 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                class="field-input"
                             />
                         </div>
                         <button
                             type="submit"
-                            class="w-full rounded-full bg-talents-600 py-3 text-sm font-bold text-white shadow hover:bg-talents-700 disabled:opacity-60"
+                            class="btn-primary w-full disabled:opacity-60"
                             :disabled="form.processing"
                         >
                             {{ form.processing ? 'Enviando…' : 'Enviar' }}
