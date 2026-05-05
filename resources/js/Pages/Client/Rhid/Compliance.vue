@@ -942,15 +942,6 @@ const punchDashboardRows = computed(() => {
     });
 });
 
-const punchDistinctCollaborators = computed(() => {
-    const keys = new Set();
-    for (const r of punchDashboardRows.value) {
-        const k = r.personId != null ? `id:${r.personId}` : `nome:${r.nome}`;
-        keys.add(k);
-    }
-    return keys.size;
-});
-
 const overviewPunchRows = computed(() => normalizeLastPunchesPayload(overviewPunchesSample.value));
 const overviewPunchDistinct = computed(() => {
     const keys = new Set();
@@ -2995,19 +2986,11 @@ const justDeptBarChart = computed(() => {
                         </p>
                     </div>
 
-                    <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="grid gap-3 sm:grid-cols-2">
                         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                             <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Linhas retornadas</p>
                             <p class="mt-1 text-2xl font-semibold text-slate-900">
                                 {{ punchDashboardRows.length }}
-                            </p>
-                        </div>
-                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Colaboradores distintos
-                            </p>
-                            <p class="mt-1 text-2xl font-semibold text-slate-900">
-                                {{ punchDistinctCollaborators }}
                             </p>
                         </div>
                         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
