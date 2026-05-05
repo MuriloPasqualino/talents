@@ -2525,68 +2525,6 @@ const justDeptBarChart = computed(() => {
     };
 });
 
-const justStatusSlices = computed(() => {
-    const rows = justAnalyticsRows.value;
-    const map = new Map();
-    for (const row of rows) {
-        const st = justificationApprovalLabel(row);
-        if (!map.has(st)) {
-            map.set(st, { label: st, rows: [] });
-        }
-        map.get(st).rows.push(row);
-    }
-    return [...map.values()].sort((a, b) => b.rows.length - a.rows.length);
-});
-
-const openJustDrilldownFromStatus = (_event, _chartContext, config) => {
-    const i = config?.dataPointIndex;
-    if (i == null || i < 0) {
-        return;
-    }
-    const s = justStatusSlices.value[i];
-    if (!s) {
-        return;
-    }
-    const lines = s.rows.map(justRowToDrillLine).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
-    justChartDrilldown.value = {
-        title: `Status: ${s.label}`,
-        subtitle: `${s.rows.length} registro(s)`,
-        lines,
-    };
-};
-
-const justStatusBarChart = computed(() => {
-    const slices = justStatusSlices.value.slice(0, 12);
-    const categories = slices.map((s) => (s.label.length > 24 ? `${s.label.slice(0, 22)}…` : s.label));
-    const data = slices.map((s) => s.rows.length);
-    const options = {
-        chart: {
-            type: 'bar',
-            toolbar: { show: false },
-            fontFamily: 'Figtree, sans-serif',
-            foreColor: '#334155',
-            events: { dataPointSelection: openJustDrilldownFromStatus },
-        },
-        plotOptions: {
-            bar: { horizontal: true, borderRadius: 4, barHeight: '65%', dataLabels: { position: 'right' } },
-        },
-        colors: ['#4f46e5'],
-        dataLabels: {
-            enabled: true,
-            formatter: (val) => String(val),
-            style: { fontSize: '11px', colors: ['#334155'] },
-        },
-        xaxis: { categories },
-        tooltip: { y: { formatter: (val) => `${val} — clique para listar` } },
-        yaxis: { labels: { maxWidth: 200 } },
-        states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
-    };
-    return {
-        series: [{ name: 'Quantidade', data }],
-        options,
-        empty: data.length === 0,
-    };
-});
 </script>
 
 <template>
@@ -3651,18 +3589,6 @@ const justStatusBarChart = computed(() => {
                             :height="Math.max(280, (justDeptBarChart.series[0]?.data?.length ?? 0) * 36)"
                             :options="justDeptBarChart.options"
                             :series="justDeptBarChart.series"
-                        />
-                        <p v-else class="text-sm text-slate-500">Sem dados.</p>
-                    </div>
-                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
-                        <h3 class="mb-1 text-sm font-semibold text-slate-800">Por status de aprovacao</h3>
-                        <p class="mb-3 text-xs text-slate-500">Distribuicao pelo status retornado pela API.</p>
-                        <apexchart
-                            v-if="!justStatusBarChart.empty"
-                            type="bar"
-                            :height="Math.max(240, (justStatusBarChart.series[0]?.data?.length ?? 0) * 36)"
-                            :options="justStatusBarChart.options"
-                            :series="justStatusBarChart.series"
                         />
                         <p v-else class="text-sm text-slate-500">Sem dados.</p>
                     </div>
