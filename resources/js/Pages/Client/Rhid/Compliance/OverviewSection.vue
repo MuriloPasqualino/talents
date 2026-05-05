@@ -1,0 +1,136 @@
+<script setup>
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { Link } from '@inertiajs/vue3';
+
+defineProps({
+    overviewLoading: { type: Boolean, required: true },
+    overviewLoadedAt: { type: Object, default: null },
+    overviewPunchRowsLength: { type: Number, required: true },
+    overviewPunchDistinct: { type: Number, required: true },
+    overviewBankNumericRowsLength: { type: Number, required: true },
+    overviewBankAvgMinutes: { type: [Number, null], default: null },
+    overviewBankWorstThree: { type: Array, required: true },
+    overviewAdherence: { type: [Object, null], default: null },
+    overviewAdherenceWorstEntrada: { type: Array, required: true },
+    overviewJustTotal: { type: [Number, null], default: null },
+    overviewJustAtestados: { type: [Number, null], default: null },
+    overviewJustNote: { type: String, default: '' },
+    isAdmin: { type: Boolean, required: true },
+    formatRhidBankBalanceMinutes: { type: Function, required: true },
+    bankDisplayName: { type: Function, required: true },
+    bankDisplayValue: { type: Function, required: true },
+    rhidPersonId: { type: Function, required: true },
+});
+
+const emit = defineEmits([
+    'refresh',
+    'go-punches-dashboard',
+    'go-punches-adherence',
+    'go-bank',
+    'go-justifications',
+    'go-espelho',
+]);
+</script>
+
+<template>
+    <div class="space-y-4">
+        <p class="text-sm text-slate-600">
+            Resumo do mes corrente e ultimas leituras. Use as abas abaixo para detalhar ou filtrar.
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+            <PrimaryButton type="button" :disabled="overviewLoading" @click="emit('refresh')">
+                Atualizar visao geral
+            </PrimaryButton>
+            <p v-if="overviewLoadedAt" class="text-xs text-slate-500">
+                Atualizado em
+                {{
+                    overviewLoadedAt.toLocaleString('pt-BR', {
+                        dateStyle: 'short',
+                        timeStyle: 'medium',
+                    })
+                }}
+            </p>
+        </div>
+        <p v-if="overviewLoading" class="text-sm text-slate-500">Carregando indicadores…</p>
+        <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-medium uppercase text-slate-500">Ultimas marcacoes (amostra)</p>
+                <p class="mt-1 text-2xl font-semibold text-slate-900">{{ overviewPunchRowsLength }}</p>
+                <p class="mt-1 text-sm text-slate-600">
+                    {{ overviewPunchDistinct }} colaborador(es) distintos na amostra
+                </p>
+                <PrimaryButton type="button" class="mt-3" @click="emit('go-punches-dashboard')">
+                    Ver painel de marcacoes
+                </PrimaryButton>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-medium uppercase text-slate-500">Banco de horas (hoje)</p>
+                <p v-if="overviewBankNumericRowsLength" class="mt-1 text-2xl font-semibold text-slate-900">
+                    {{ formatRhidBankBalanceMinutes(overviewBankAvgMinutes ?? 0) }}
+                </p>
+                <p v-else class="mt-1 text-sm text-slate-500">Sem saldos numericos na consulta rapida.</p>
+                <p class="mt-1 text-xs text-slate-500">Media entre colaboradores com saldo numerico</p>
+                <div v-if="overviewBankWorstThree.length" class="mt-2 text-sm text-slate-700">
+                    <p class="text-xs font-medium text-rose-800">Piores saldos</p>
+                    <ul class="mt-1 list-inside list-disc">
+                        <li v-for="(row, wi) in overviewBankWorstThree" :key="wi">
+                            <Link
+                                v-if="rhidPersonId(row) != null"
+                                :href="route('client.rhid.collaborators.show', rhidPersonId(row))"
+                                class="text-talents-800 hover:underline"
+                            >
+                                {{ bankDisplayName(row) }}
+                            </Link>
+                            <span v-else>{{ bankDisplayName(row) }}</span>
+                            — {{ bankDisplayValue(row) }}
+                        </li>
+                    </ul>
+                </div>
+                <PrimaryButton type="button" class="mt-3" @click="emit('go-bank')">Abrir banco de horas</PrimaryButton>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-medium uppercase text-slate-500">Aderencia (mes)</p>
+                <p v-if="overviewAdherence?.resumo" class="mt-1 text-sm text-slate-700">
+                    {{ overviewAdherence.resumo.dias_registro_analisados }} dia(s) de registro analisados ·
+                    {{ overviewAdherence.resumo.colaboradores_com_dados ?? '—' }} colaborador(es) com dados
+                </p>
+                <p v-else class="mt-1 text-sm text-slate-500">Importe espelhos e analise na sub-aba Aderencia.</p>
+                <ul v-if="overviewAdherenceWorstEntrada.length" class="mt-2 text-sm text-slate-700">
+                    <li v-for="(rw, ri) in overviewAdherenceWorstEntrada" :key="ri">
+                        {{ rw.nome }} — {{ rw.total_atraso_entrada_minutos ?? 0 }} min (atraso entrada)
+                    </li>
+                </ul>
+                <PrimaryButton type="button" class="mt-3" @click="emit('go-punches-adherence')">
+                    Ver aderencia
+                </PrimaryButton>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p class="text-xs font-medium uppercase text-slate-500">Justificativas (mes)</p>
+                <p class="mt-1 text-2xl font-semibold text-slate-900">
+                    {{ overviewJustTotal != null ? overviewJustTotal : '—' }}
+                </p>
+                <p class="mt-1 text-sm text-slate-600">
+                    Atestados (amostra): {{ overviewJustAtestados != null ? overviewJustAtestados : '—' }}
+                </p>
+                <p v-if="overviewJustNote" class="mt-1 text-xs text-amber-800">{{ overviewJustNote }}</p>
+                <PrimaryButton type="button" class="mt-3" @click="emit('go-justifications')">
+                    Ver justificativas
+                </PrimaryButton>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-2 xl:col-span-3">
+                <p class="text-sm font-medium text-slate-800">Atalhos</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <SecondaryButton type="button" @click="emit('go-espelho')">Importar espelho / PDF</SecondaryButton>
+                    <Link
+                        v-if="isAdmin"
+                        :href="route('client.rhid.settings.edit')"
+                        class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                        Configurar horarios da empresa
+                    </Link>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

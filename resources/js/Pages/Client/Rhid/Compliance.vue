@@ -1,5 +1,6 @@
 <script setup>
 import RhidResponsePanel from '@/Components/Rhid/RhidResponsePanel.vue';
+import OverviewSection from '@/Pages/Client/Rhid/Compliance/OverviewSection.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -7,7 +8,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
     extractListItems,
     formatRhidBankBalanceDisplay,
@@ -37,60 +38,17 @@ const props = defineProps({
     configured: { type: Boolean, required: true },
 });
 
-const tab = ref('punches');
+const tab = ref('overview');
 const err = ref(null);
 const loading = ref(false);
+/** Detalhes tecnicos (admin): endpoints, GUID, JSON bruto */
+const supportMode = ref(false);
 
 const lastPunches = ref([]);
 
-const PUNCH_DAY_ORDER = [
-    { key: 'seg', label: 'Segunda-feira' },
-    { key: 'ter', label: 'Terça-feira' },
-    { key: 'qua', label: 'Quarta-feira' },
-    { key: 'qui', label: 'Quinta-feira' },
-    { key: 'sex', label: 'Sexta-feira' },
-    { key: 'sab', label: 'Sábado' },
-    { key: 'dom', label: 'Domingo' },
-];
-
-const defaultScheduleForm = () => {
-    const dias = {};
-    for (const { key } of PUNCH_DAY_ORDER) {
-        dias[key] = {
-            ativo: false,
-            entrada: null,
-            saida_almoco: null,
-            volta_almoco: null,
-            saida: null,
-            almoco2_inicio: null,
-            almoco2_fim: null,
-            trabalho2_entrada: null,
-            trabalho2_saida: null,
-        };
-    }
-    return {
-        segundo_trabalho: false,
-        segundo_almoco: false,
-        tolerancia_minutos: 15,
-        dias,
-    };
-};
-
-/** Painel vs configuracao de horarios (aba Marcacoes) */
+/** Painel | aderencia | espelho | export (relatorios RHID) */
 const punchesSubTab = ref('dashboard');
 const lastPunchesUpdatedAt = ref(null);
-const scheduleForm = ref(defaultScheduleForm());
-const scheduleLoading = ref(false);
-const scheduleSaving = ref(false);
-/** Lote: segundo intervalo de almoco por ID RHID */
-const schedulePrefBatchIds = ref('');
-const schedulePrefBatchSecond = ref(false);
-const schedulePrefBatchSaving = ref(false);
-const schedulePrefBatchMsg = ref(null);
-const schedulePrefListLoading = ref(false);
-const schedulePrefPeopleFilter = ref('');
-/** IDs selecionados na lista por nome */
-const schedulePrefBatchPicked = ref([]);
 
 const bankDateHtml = ref(todayHtmlDate());
 const bankResult = ref(null);
@@ -100,6 +58,24 @@ const bankFilterCostcenters = ref('');
 const bankFilterDepartments = ref('');
 const bankFilterPerson = ref('');
 const bankFilterPersonroles = ref('');
+/** Filtros amigaveis (valores = id RHID ou '') */
+const bankSelDepartment = ref('');
+const bankSelPersonRole = ref('');
+const bankSelPerson = ref('');
+
+const rhidDepartmentsPayload = ref(null);
+const rhidPersonRolesPayload = ref(null);
+const rhidPeopleForFiltersPayload = ref(null);
+const rhidMetaLoading = ref(false);
+
+const overviewLoading = ref(false);
+const overviewLoadedAt = ref(null);
+const overviewPunchesSample = ref(null);
+const overviewBankRows = ref([]);
+const overviewAdherence = ref(null);
+const overviewJustTotal = ref(null);
+const overviewJustAtestados = ref(null);
+const overviewJustNote = ref('');
 
 const peopleList = ref(null);
 
@@ -311,11 +287,10 @@ const bankRows = computed(() => {
 const peopleRows = computed(() => extractListItems(peopleList.value));
 
 const tabs = [
-    { id: 'punches', label: 'Marcacoes' },
+    { id: 'overview', label: 'Visao geral' },
+    { id: 'punches', label: 'Marcacoes e aderencia' },
     { id: 'bank', label: 'Banco de horas' },
     { id: 'justifications', label: 'Justificativas' },
-    { id: 'espelho', label: 'Marcacoes (espelho)' },
-    { id: 'reports', label: 'Relatorios' },
     { id: 'collaborators', label: 'Colaboradores' },
 ];
 
@@ -330,6 +305,33 @@ const justFilterPersonroles = ref('');
 const justFilterPeople = ref('');
 const justFilterShifts = ref('');
 const justFilterJustificationTypes = ref('');
+/** Multi-select (ids RHID) sincronizados com justFilter* (string) */
+const justMultiDepartments = ref([]);
+const justMultiPersonroles = ref([]);
+const justMultiPeople = ref([]);
+
+watch(
+    justMultiDepartments,
+    (arr) => {
+        justFilterDepartments.value = Array.isArray(arr) && arr.length ? arr.join(', ') : '';
+    },
+    { deep: true },
+);
+watch(
+    justMultiPersonroles,
+    (arr) => {
+        justFilterPersonroles.value = Array.isArray(arr) && arr.length ? arr.join(', ') : '';
+    },
+    { deep: true },
+);
+watch(
+    justMultiPeople,
+    (arr) => {
+        justFilterPeople.value = Array.isArray(arr) && arr.length ? arr.join(', ') : '';
+    },
+    { deep: true },
+);
+
 const justResult = ref(null);
 /** Periodo completo (multi-pagina RHID); tabela e graficos derivam disto */
 const justAnalyticsRows = ref([]);
@@ -416,49 +418,6 @@ const rhidPersonId = (row) => {
     }
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
-};
-
-/** Colaboradores para o lote de intervalo de almoco (nome + id), com filtro */
-const schedulePrefPeopleFiltered = computed(() => {
-    const q = String(schedulePrefPeopleFilter.value || '')
-        .trim()
-        .toLowerCase();
-    const out = [];
-    for (const row of peopleRows.value) {
-        const id = rhidPersonId(row);
-        if (id == null) {
-            continue;
-        }
-        const name = String(personDisplayName(row) || '').trim() || `ID ${id}`;
-        if (q && !name.toLowerCase().includes(q)) {
-            continue;
-        }
-        out.push({ id, name, row });
-    }
-    out.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-    return out;
-});
-
-const schedulePrefPickedSet = computed(() => new Set(schedulePrefBatchPicked.value));
-
-const toggleSchedulePrefPick = (id) => {
-    const cur = [...schedulePrefBatchPicked.value];
-    const i = cur.indexOf(id);
-    if (i >= 0) {
-        cur.splice(i, 1);
-    } else {
-        cur.push(id);
-    }
-    schedulePrefBatchPicked.value = cur;
-};
-
-const selectAllSchedulePrefVisible = () => {
-    const ids = schedulePrefPeopleFiltered.value.map((p) => p.id);
-    schedulePrefBatchPicked.value = [...new Set([...schedulePrefBatchPicked.value, ...ids])];
-};
-
-const clearSchedulePrefPicks = () => {
-    schedulePrefBatchPicked.value = [];
 };
 
 /** RHID: 1 = ativo, 2 = inativo (mesmo conceito do filtro do espelho). */
@@ -984,6 +943,47 @@ const punchDistinctCollaborators = computed(() => {
     return keys.size;
 });
 
+const overviewPunchRows = computed(() => normalizeLastPunchesPayload(overviewPunchesSample.value));
+const overviewPunchDistinct = computed(() => {
+    const keys = new Set();
+    for (const r of overviewPunchRows.value) {
+        const nome = pickPunchNome(r);
+        const pid = pickPunchPersonId(r);
+        keys.add(pid != null ? `id:${pid}` : `nome:${nome}`);
+    }
+    return keys.size;
+});
+
+const overviewBankNumericRows = computed(() =>
+    overviewBankRows.value.filter((row) => parseRhidBankBalanceMinutes(row) !== null),
+);
+
+const overviewBankAvgMinutes = computed(() => {
+    const rows = overviewBankNumericRows.value;
+    if (!rows.length) {
+        return null;
+    }
+    const sum = rows.reduce((acc, row) => acc + (parseRhidBankBalanceMinutes(row) ?? 0), 0);
+    return Math.round(sum / rows.length);
+});
+
+const overviewBankWorstThree = computed(() =>
+    [...overviewBankRows.value]
+        .map((row) => ({ row, m: parseRhidBankBalanceMinutes(row) }))
+        .filter(({ m }) => m !== null && m < 0)
+        .sort((a, b) => a.m - b.m)
+        .slice(0, 3)
+        .map(({ row }) => row),
+);
+
+const overviewAdherenceWorstEntrada = computed(() => {
+    const r = overviewAdherence.value?.ranking_atrasos_entrada;
+    if (!Array.isArray(r)) {
+        return [];
+    }
+    return r.slice(0, 5);
+});
+
 const PUNCH_TOP_N = 10;
 const PUNCH_HOUR_BUCKET_LABELS = ['0h–5h', '6h–11h', '12h–17h', '18h–23h'];
 
@@ -1093,122 +1093,101 @@ const loadLastPunches = async () => {
     }
 };
 
-const loadPunchScheduleSettings = async () => {
+const rhidDepartmentRows = computed(() => extractListItems(rhidDepartmentsPayload.value));
+const rhidPersonRoleRows = computed(() => extractListItems(rhidPersonRolesPayload.value));
+const rhidPeopleFilterRows = computed(() => extractListItems(rhidPeopleForFiltersPayload.value));
+
+const rhidRowLabel = (row) => {
+    const n =
+        row?.name ??
+        row?.nome ??
+        row?.strName ??
+        row?.description ??
+        row?.departmentName ??
+        row?.roleName ??
+        '';
+    const id = row?.id ?? row?.Id;
+    const s = String(n || '').trim();
+    if (s && id != null) {
+        return `${s} (#${id})`;
+    }
+    if (id != null) {
+        return `#${id}`;
+    }
+    return s || '—';
+};
+
+const loadRhidFilterMeta = async () => {
     if (!props.configured) {
         return;
     }
-    scheduleLoading.value = true;
-    clearErr();
+    rhidMetaLoading.value = true;
     try {
-        const { data } = await axios.get(route('client.rhid.api.punch-schedule-settings.show'));
-        const s = data?.settings;
-        if (s && typeof s === 'object') {
-            const base = defaultScheduleForm();
-            base.segundo_trabalho = Boolean(s.segundo_trabalho);
-            base.segundo_almoco = Boolean(s.segundo_almoco);
-            const tm = Number(s.tolerancia_minutos);
-            base.tolerancia_minutos = Number.isFinite(tm) ? Math.min(120, Math.max(0, Math.round(tm))) : 15;
-            for (const { key } of PUNCH_DAY_ORDER) {
-                const incoming = s.dias?.[key];
-                if (incoming && typeof incoming === 'object') {
-                    base.dias[key] = { ...base.dias[key], ...incoming };
-                }
-            }
-            scheduleForm.value = base;
-        } else {
-            scheduleForm.value = defaultScheduleForm();
-        }
-    } catch (e) {
-        handleError(e);
-        scheduleForm.value = defaultScheduleForm();
-    } finally {
-        scheduleLoading.value = false;
-    }
-};
-
-const savePunchScheduleSettings = async () => {
-    if (!props.configured || !scheduleForm.value) {
-        return;
-    }
-    scheduleSaving.value = true;
-    clearErr();
-    try {
-        const { data } = await axios.put(
-            route('client.rhid.api.punch-schedule-settings.update'),
-            scheduleForm.value,
-        );
-        const s = data?.settings;
-        if (s && typeof s === 'object') {
-            const base = defaultScheduleForm();
-            base.segundo_trabalho = Boolean(s.segundo_trabalho);
-            base.segundo_almoco = Boolean(s.segundo_almoco);
-            const tm = Number(s.tolerancia_minutos);
-            base.tolerancia_minutos = Number.isFinite(tm) ? Math.min(120, Math.max(0, Math.round(tm))) : 15;
-            for (const { key } of PUNCH_DAY_ORDER) {
-                const incoming = s.dias?.[key];
-                if (incoming && typeof incoming === 'object') {
-                    base.dias[key] = { ...base.dias[key], ...incoming };
-                }
-            }
-            scheduleForm.value = base;
-        }
+        const [depRes, roleRes, peopleRes] = await Promise.all([
+            axios.get(route('client.rhid.api.departments.index'), { params: { page: 0, maxSize: 500 } }),
+            axios.get(route('client.rhid.api.person-roles.index'), { params: { page: 0, maxSize: 500 } }),
+            axios.get(route('client.rhid.api.people.index'), { params: { page: 0, maxSize: 500 } }),
+        ]);
+        rhidDepartmentsPayload.value = depRes.data;
+        rhidPersonRolesPayload.value = roleRes.data;
+        rhidPeopleForFiltersPayload.value = peopleRes.data;
     } catch (e) {
         handleError(e);
     } finally {
-        scheduleSaving.value = false;
+        rhidMetaLoading.value = false;
     }
 };
 
-const loadPeopleForScheduleBatch = async () => {
+const syncBankFiltersFromSelectors = () => {
+    bankFilterDepartments.value = String(bankSelDepartment.value ?? '').trim();
+    bankFilterPerson.value = String(bankSelPerson.value ?? '').trim();
+    bankFilterPersonroles.value = String(bankSelPersonRole.value ?? '').trim();
+};
+
+const loadOverviewData = async () => {
     if (!props.configured) {
         return;
     }
-    schedulePrefListLoading.value = true;
-    schedulePrefBatchMsg.value = null;
+    overviewLoading.value = true;
     clearErr();
     try {
-        const { data } = await axios.get(route('client.rhid.api.people.index'), {
-            params: { page: 0, maxSize: 500 },
+        const { first: mFirst, last: mLast } = monthRangeHtmlDates();
+        const dateParam = toRhidYmd(todayHtmlDate()) || todayHtmlDate();
+        const [punchRes, bankRes, adhRes, typesRes] = await Promise.all([
+            axios.get(route('client.rhid.api.last-punches')),
+            axios.get(route('client.rhid.api.person-bank-hours.all'), { params: { date: dateParam } }),
+            axios.get(route('client.rhid.api.espelhos.schedule-adherence'), {
+                params: { ini: mFirst, fim: mLast },
+            }),
+            axios.get(route('client.rhid.api.justification-types')),
+        ]);
+        overviewPunchesSample.value = punchRes.data;
+        overviewBankRows.value = Array.isArray(bankRes.data?.rows) ? bankRes.data.rows : [];
+        overviewAdherence.value = adhRes.data;
+
+        const iniStr = toRhidYmd(mFirst);
+        const fimStr = toRhidYmd(mLast);
+        const tmap = buildJustificationTypeMapFromPayload(typesRes.data);
+        const { data: jdata } = await axios.post(route('client.rhid.api.justifications.list'), {
+            ini: iniStr,
+            fim: fimStr,
+            page: 0,
+            maxSize: 500,
         });
-        peopleList.value = data;
-        schedulePrefBatchMsg.value = 'Lista carregada. Marque os colaboradores abaixo e aplique.';
+        const chunk = Array.isArray(jdata?.data) ? jdata.data : [];
+        const recordsTotal = typeof jdata?.recordsTotal === 'number' ? jdata.recordsTotal : chunk.length;
+        overviewJustTotal.value = recordsTotal;
+        overviewJustAtestados.value = chunk.filter((r) => isAtestadoHeuristic(r, tmap)).length;
+        overviewJustNote.value =
+            chunk.length >= 500 && recordsTotal > chunk.length
+                ? 'Atestados: contagem na primeira pagina da amostra; refine o periodo na aba Justificativas para o detalhe completo.'
+                : '';
+        overviewLoadedAt.value = new Date();
     } catch (e) {
         handleError(e);
     } finally {
-        schedulePrefListLoading.value = false;
+        overviewLoading.value = false;
     }
-};
-
-const submitSchedulePreferenceBatch = async () => {
-    if (!props.configured) {
-        return;
-    }
-    const fromNames = [...schedulePrefBatchPicked.value];
-    const fromText = parseIdList(schedulePrefBatchIds.value) ?? [];
-    const merged = [...new Set([...fromNames, ...fromText])];
-    if (!merged.length) {
-        schedulePrefBatchMsg.value =
-            'Selecione ao menos um colaborador na lista (por nome) ou informe IDs no campo opcional.';
-        return;
-    }
-    schedulePrefBatchSaving.value = true;
-    schedulePrefBatchMsg.value = null;
-    clearErr();
-    try {
-        const { data } = await axios.post(route('client.rhid.api.people.schedule-preferences.batch'), {
-            id_people: merged,
-            use_second_lunch_interval: schedulePrefBatchSecond.value,
-        });
-        schedulePrefBatchMsg.value = `Atualizado: ${data.updated} colaborador(es).`;
-    } catch (e) {
-        handleError(e);
-    } finally {
-        schedulePrefBatchSaving.value = false;
-    }
-};
-
-const restorePunchScheduleSettings = () => {
-    loadPunchScheduleSettings();
 };
 
 const loadEspelhoScheduleAdherence = async () => {
@@ -1499,17 +1478,43 @@ watch(
         }
         if (sub === 'dashboard') {
             loadLastPunches();
-        } else if (sub === 'config') {
-            loadPunchScheduleSettings();
+        }
+        if (sub === 'espelho') {
+            loadEspelhoImports();
         }
     },
     { immediate: true },
 );
 
+watch([tab, punchesSubTab], ([t, sub]) => {
+    if (!(t === 'punches' && sub === 'espelho')) {
+        espelhoBatchPollAbort.value = true;
+    }
+});
+
+watch(tab, (t) => {
+    if (t === 'overview') {
+        loadOverviewData();
+    }
+    if (t === 'bank' || t === 'justifications') {
+        loadRhidFilterMeta();
+    }
+});
+
+onMounted(() => {
+    if (props.configured) {
+        loadRhidFilterMeta();
+        if (tab.value === 'overview') {
+            loadOverviewData();
+        }
+    }
+});
+
 const loadBankHours = async () => {
     if (!props.configured) {
         return;
     }
+    syncBankFiltersFromSelectors();
     loading.value = true;
     clearErr();
     bankResult.value = null;
@@ -2044,14 +2049,6 @@ const showEspelhoImportRow = async (importId) => {
         handleError(e);
     }
 };
-
-watch(tab, (t) => {
-    if (t === 'espelho') {
-        loadEspelhoImports();
-    } else {
-        espelhoBatchPollAbort.value = true;
-    }
-});
 
 onBeforeUnmount(() => {
     espelhoBatchPollAbort.value = true;
@@ -2599,13 +2596,26 @@ const justStatusBarChart = computed(() => {
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <h2 class="text-xl font-semibold leading-tight text-talents-900">Compliance de ponto — RHID</h2>
-                <Link
-                    v-if="isAdmin"
-                    :href="route('client.rhid.settings.edit')"
-                    class="text-sm font-medium text-talents-700 hover:underline"
-                >
-                    Configuracao
-                </Link>
+                <div class="flex flex-wrap items-center gap-4">
+                    <label
+                        v-if="isAdmin"
+                        class="flex cursor-pointer items-center gap-2 text-sm text-slate-700"
+                    >
+                        <input
+                            v-model="supportMode"
+                            type="checkbox"
+                            class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
+                        />
+                        Modo suporte
+                    </label>
+                    <Link
+                        v-if="isAdmin"
+                        :href="route('client.rhid.settings.edit')"
+                        class="text-sm font-medium text-talents-700 hover:underline"
+                    >
+                        Configuracao RHID
+                    </Link>
+                </div>
             </div>
         </template>
 
@@ -2800,6 +2810,33 @@ const justStatusBarChart = computed(() => {
             <p v-if="err" class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ err }}</p>
             <p v-if="loading" class="text-sm text-slate-500">Carregando...</p>
 
+            <OverviewSection
+                v-show="tab === 'overview'"
+                :overview-loading="overviewLoading"
+                :overview-loaded-at="overviewLoadedAt"
+                :overview-punch-rows-length="overviewPunchRows.length"
+                :overview-punch-distinct="overviewPunchDistinct"
+                :overview-bank-numeric-rows-length="overviewBankNumericRows.length"
+                :overview-bank-avg-minutes="overviewBankAvgMinutes"
+                :overview-bank-worst-three="overviewBankWorstThree"
+                :overview-adherence="overviewAdherence"
+                :overview-adherence-worst-entrada="overviewAdherenceWorstEntrada"
+                :overview-just-total="overviewJustTotal"
+                :overview-just-atestados="overviewJustAtestados"
+                :overview-just-note="overviewJustNote"
+                :is-admin="isAdmin"
+                :format-rhid-bank-balance-minutes="formatRhidBankBalanceMinutes"
+                :bank-display-name="bankDisplayName"
+                :bank-display-value="bankDisplayValue"
+                :rhid-person-id="rhidPersonId"
+                @refresh="loadOverviewData"
+                @go-punches-dashboard="tab = 'punches'; punchesSubTab = 'dashboard'"
+                @go-punches-adherence="tab = 'punches'; punchesSubTab = 'adherence'"
+                @go-bank="tab = 'bank'"
+                @go-justifications="tab = 'justifications'"
+                @go-espelho="tab = 'punches'; punchesSubTab = 'espelho'"
+            />
+
             <div v-show="tab === 'punches'" class="space-y-4">
                 <div class="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
                     <button
@@ -2818,25 +2855,37 @@ const justStatusBarChart = computed(() => {
                         type="button"
                         class="rounded-md px-3 py-1.5 text-sm font-medium"
                         :class="
-                            punchesSubTab === 'config'
-                                ? 'bg-talents-700 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        "
-                        @click="punchesSubTab = 'config'"
-                    >
-                        Configuracao de horarios
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-md px-3 py-1.5 text-sm font-medium"
-                        :class="
                             punchesSubTab === 'adherence'
                                 ? 'bg-talents-700 text-white'
                                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         "
                         @click="punchesSubTab = 'adherence'"
                     >
-                        Aderencia (espelho vs horarios)
+                        Aderencia ao horario
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-md px-3 py-1.5 text-sm font-medium"
+                        :class="
+                            punchesSubTab === 'espelho'
+                                ? 'bg-talents-700 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        "
+                        @click="punchesSubTab = 'espelho'"
+                    >
+                        Espelho e importacao
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-md px-3 py-1.5 text-sm font-medium"
+                        :class="
+                            punchesSubTab === 'export'
+                                ? 'bg-talents-700 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        "
+                        @click="punchesSubTab = 'export'"
+                    >
+                        Exportar relatorio (RHID)
                     </button>
                 </div>
 
@@ -2874,8 +2923,11 @@ const justStatusBarChart = computed(() => {
                         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                             <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Painel</p>
                             <p class="mt-1 text-sm text-slate-700">
-                                Ultimas marcacoes do RHID (amostra do endpoint
-                                <code class="rounded bg-slate-100 px-1 text-xs">util.svc/ultimasmarcacoes</code>).
+                                Ultimas marcacoes registradas no RHID (amostra para acompanhamento rapido).
+                            </p>
+                            <p v-if="supportMode" class="mt-1 text-xs text-slate-500">
+                                Endpoint:
+                                <code class="rounded bg-slate-100 px-1">util.svc/ultimasmarcacoes</code>
                             </p>
                         </div>
                     </div>
@@ -2946,317 +2998,18 @@ const justStatusBarChart = computed(() => {
                     </div>
                 </div>
 
-                <div v-show="punchesSubTab === 'config'" class="space-y-4">
-                    <p class="text-sm text-slate-600">
-                        Defina, para a sua empresa no Talents, os horarios de referencia de jornada e intervalos. Estes
-                        dados ficam apenas no Talents; nesta fase nao sao enviados ao RHID e nao geram alertas de
-                        aderencia automaticos.
-                    </p>
-                    <p v-if="scheduleLoading" class="text-sm text-slate-500">Carregando configuracao...</p>
-                    <div v-else class="space-y-4">
-                        <div class="flex flex-wrap gap-6">
-                            <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
-                                <input
-                                    v-model="scheduleForm.segundo_trabalho"
-                                    type="checkbox"
-                                    class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
-                                />
-                                Segundo horario de trabalho no mesmo dia
-                            </label>
-                            <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-800">
-                                <input
-                                    v-model="scheduleForm.segundo_almoco"
-                                    type="checkbox"
-                                    class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
-                                />
-                                Segundo intervalo de almoco
-                            </label>
-                        </div>
-
-                        <div class="max-w-xs">
-                            <InputLabel value="Tolerancia (minutos)" />
-                            <input
-                                v-model.number="scheduleForm.tolerancia_minutos"
-                                type="number"
-                                min="0"
-                                max="120"
-                                class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            />
-                            <p class="mt-1 text-xs text-slate-500">
-                                Usada na analise de aderencia (atrasos em torno dos horarios de saida/volta do almoco e
-                                duracao do intervalo).
-                            </p>
-                        </div>
-
-                        <div
-                            class="max-w-2xl rounded-lg border border-slate-200 bg-slate-50/80 p-4"
-                        >
-                            <h4 class="text-sm font-semibold text-slate-800">Intervalo de almoco por colaborador (lote)</h4>
-                            <p class="mt-1 text-xs text-slate-600">
-                                Escolha <span class="font-medium">quem participa</span> do horario (por nome). Exige
-                                <span class="font-medium">Segundo intervalo de almoco</span> ativo e horarios &quot;Inicio 2º /
-                                Fim 2º&quot; nos dias uteis quando for aplicar o 2º intervalo.
-                            </p>
-                            <div class="mt-4 space-y-3 rounded-md border border-slate-200 bg-white p-3">
-                                <p class="text-xs font-medium text-slate-700">O que aplicar aos selecionados</p>
-                                <label class="flex cursor-pointer items-start gap-2 text-sm text-slate-800">
-                                    <input
-                                        v-model="schedulePrefBatchSecond"
-                                        type="checkbox"
-                                        class="mt-0.5 rounded border-slate-300 text-talents-700 focus:ring-talents-600"
-                                    />
-                                    <span>
-                                        <span class="font-medium">Segundo intervalo de almoco</span>
-                                        (comparar batidas com Inicio 2º / Fim 2º). Desmarque para voltar todos os
-                                        selecionados ao <span class="font-medium">primeiro intervalo</span> (saida/volta
-                                        do almoco).
-                                    </span>
-                                </label>
-                            </div>
-                            <div class="mt-4">
-                                <SecondaryButton
-                                    type="button"
-                                    :disabled="schedulePrefListLoading || scheduleLoading"
-                                    @click="loadPeopleForScheduleBatch"
-                                >
-                                    {{
-                                        peopleRows.length
-                                            ? 'Recarregar lista de colaboradores'
-                                            : 'Carregar lista de colaboradores'
-                                    }}
-                                </SecondaryButton>
-                                <span v-if="schedulePrefListLoading" class="ml-2 text-xs text-slate-500">Carregando…</span>
-                            </div>
-                            <template v-if="peopleRows.length">
-                                <p
-                                    v-if="schedulePrefBatchSecond && !scheduleForm.segundo_almoco"
-                                    class="mt-3 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900"
-                                >
-                                    Ative tambem <span class="font-medium">Segundo intervalo de almoco</span> acima para
-                                    que o 2º horario exista na escala.
-                                </p>
-                                <div class="mt-3">
-                                    <InputLabel value="Filtrar por nome" />
-                                    <input
-                                        v-model="schedulePrefPeopleFilter"
-                                        type="search"
-                                        class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                        placeholder="Digite parte do nome..."
-                                    />
-                                </div>
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        class="text-xs font-medium text-talents-800 underline"
-                                        @click="selectAllSchedulePrefVisible"
-                                    >
-                                        Marcar todos (filtrados)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="text-xs font-medium text-slate-600 underline"
-                                        @click="clearSchedulePrefPicks"
-                                    >
-                                        Limpar selecao
-                                    </button>
-                                    <span class="text-xs text-slate-500">
-                                        {{ schedulePrefBatchPicked.length }} selecionado(s) ·
-                                        {{ schedulePrefPeopleFiltered.length }} na lista
-                                    </span>
-                                </div>
-                                <div
-                                    class="mt-2 max-h-64 overflow-y-auto rounded border border-slate-200 bg-white p-2 text-sm"
-                                >
-                                    <label
-                                        v-for="p in schedulePrefPeopleFiltered"
-                                        :key="p.id"
-                                        class="flex cursor-pointer items-center gap-2 border-b border-slate-50 py-1.5 last:border-b-0"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
-                                            :checked="schedulePrefPickedSet.has(p.id)"
-                                            @click.prevent="toggleSchedulePrefPick(p.id)"
-                                        />
-                                        <span class="min-w-0 flex-1 font-medium text-slate-800">{{ p.name }}</span>
-                                        <span class="shrink-0 font-mono text-xs text-slate-500">{{ p.id }}</span>
-                                    </label>
-                                    <p v-if="!schedulePrefPeopleFiltered.length" class="py-4 text-center text-xs text-slate-500">
-                                        Nenhum nome corresponde ao filtro.
-                                    </p>
-                                </div>
-                            </template>
-                            <div class="mt-4">
-                                <InputLabel value="Opcional: IDs RHID (colecao com a selecao acima)" />
-                                <textarea
-                                    v-model="schedulePrefBatchIds"
-                                    rows="2"
-                                    class="mt-1 block w-full rounded-md border border-slate-300 font-mono text-xs shadow-sm"
-                                    placeholder="Um ou mais IDs extra, separados por virgula ou linha"
-                                />
-                            </div>
-                            <p v-if="schedulePrefBatchMsg" class="mt-3 text-xs text-emerald-800">{{ schedulePrefBatchMsg }}</p>
-                            <PrimaryButton
-                                type="button"
-                                class="mt-3"
-                                :disabled="schedulePrefBatchSaving || scheduleLoading || schedulePrefListLoading"
-                                @click="submitSchedulePreferenceBatch"
-                            >
-                                Aplicar em lote aos selecionados
-                            </PrimaryButton>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div
-                                v-for="day in PUNCH_DAY_ORDER"
-                                :key="day.key"
-                                class="rounded-lg border border-slate-200 bg-slate-50/80 p-4"
-                            >
-                                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                    <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-900">
-                                        <input
-                                            v-model="scheduleForm.dias[day.key].ativo"
-                                            type="checkbox"
-                                            class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
-                                        />
-                                        {{ day.label }}
-                                    </label>
-                                </div>
-                                <div
-                                    class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-                                    :class="scheduleForm.dias[day.key].ativo ? '' : 'opacity-60'"
-                                >
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Entrada</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].entrada || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="
-                                                scheduleForm.dias[day.key].entrada = $event.target.value || null
-                                            "
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Saida para almoco</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].saida_almoco || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="
-                                                scheduleForm.dias[day.key].saida_almoco = $event.target.value || null
-                                            "
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Volta do almoco</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].volta_almoco || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="
-                                                scheduleForm.dias[day.key].volta_almoco = $event.target.value || null
-                                            "
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Saida</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].saida || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="scheduleForm.dias[day.key].saida = $event.target.value || null"
-                                        />
-                                    </div>
-                                </div>
-                                <div
-                                    v-if="scheduleForm.segundo_almoco"
-                                    class="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2"
-                                >
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Inicio 2º almoco</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].almoco2_inicio || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="
-                                                scheduleForm.dias[day.key].almoco2_inicio = $event.target.value || null
-                                            "
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Fim 2º almoco</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].almoco2_fim || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="
-                                                scheduleForm.dias[day.key].almoco2_fim = $event.target.value || null
-                                            "
-                                        />
-                                    </div>
-                                </div>
-                                <div
-                                    v-if="scheduleForm.segundo_trabalho"
-                                    class="mt-3 grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2"
-                                >
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Entrada 2º trabalho</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].trabalho2_entrada || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="
-                                                scheduleForm.dias[day.key].trabalho2_entrada = $event.target.value || null
-                                            "
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-medium text-slate-600">Saida 2º trabalho</label>
-                                        <input
-                                            :value="scheduleForm.dias[day.key].trabalho2_saida || ''"
-                                            type="time"
-                                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                                            @input="
-                                                scheduleForm.dias[day.key].trabalho2_saida = $event.target.value || null
-                                            "
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2">
-                            <PrimaryButton
-                                type="button"
-                                :disabled="scheduleSaving || scheduleLoading"
-                                @click="savePunchScheduleSettings"
-                            >
-                                Salvar
-                            </PrimaryButton>
-                            <SecondaryButton
-                                type="button"
-                                :disabled="scheduleLoading"
-                                @click="restorePunchScheduleSettings"
-                            >
-                                Restaurar
-                            </SecondaryButton>
-                        </div>
-                    </div>
-                </div>
-
                 <div v-show="punchesSubTab === 'adherence'" class="space-y-4">
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <h3 class="text-sm font-semibold text-slate-800">Aderencia: espelho importado vs horarios da empresa</h3>
                         <p class="mt-1 text-xs leading-relaxed text-slate-600">
-                            Compara os PDFs de espelho ja importados e processados (aba
-                            <span class="font-medium">Marcacoes (espelho)</span>) com os horarios definidos na subaba
-                            <span class="font-medium">Configuracao de horarios</span> desta mesma area. Convencao de 4
-                            batidas por dia (ENT.1 / SAI.1 / ENT.2 / SAI.2). Dias sem quatro horarios extraidos ou sem dia
-                            util configurado sao ignorados ou contados como insuficientes. A tolerancia (minutos) vem da
-                            configuracao de horarios; o intervalo de almoco esperado (1º ou 2º) segue a preferencia definida
-                            no perfil do colaborador ou em lote nesta area. Em caso de varios imports para o mesmo dia,
-                            usa-se o mais recente. Clique no nome para ver as marcacoes do espelho no periodo.
+                            Compara os PDFs de espelho ja importados (sub-aba <span class="font-medium">Espelho e importacao</span>)
+                            com os horarios cadastrados em
+                            <Link
+                                v-if="isAdmin"
+                                :href="route('client.rhid.settings.edit')"
+                                class="font-medium text-talents-800 underline"
+                            >Configuracao RHID</Link><span v-else class="font-medium">Configuracao RHID</span>.
+                            Convencao de 4 batidas por dia. Clique no nome para ver as marcacoes do espelho no periodo.
                         </p>
                         <div class="mt-3 flex flex-wrap items-end gap-3">
                             <div>
@@ -3462,17 +3215,21 @@ const justStatusBarChart = computed(() => {
 
             <div v-show="tab === 'bank'" class="space-y-4">
                 <p class="text-sm text-slate-600">
-                    Consulta alinhada ao endpoint RHID
-                    <code class="rounded bg-slate-100 px-1 text-xs">GET customerdb/person.svc/person_banco_horas</code>
-                    (parametro <code class="text-xs">date</code> em YYYYMMDD; filtros opcionais abaixo). Sem filtros, o
-                    backend faz uma unica chamada <code class="text-xs">?date=</code> (comportamento da API). A agregacao
-                    por varias requisicoes so vale com <code class="text-xs">RHID_BANK_HOURS_AGGREGATE=true</code> no servidor.
-                    O saldo exibido segue o retorno da API (incl. texto <code class="text-xs">strSaldo*</code> ou cadastro
-                    em <code class="text-xs">person</code> quando existir); use a mesma data de referencia do espelho no RHID para comparar.
+                    Consulte o banco de horas na data de referencia. Sem filtros opcionais, todos os colaboradores retornados
+                    pela API sao agregados. Use os filtros para refinar por departamento, cargo ou colaborador.
                 </p>
+                <p v-if="supportMode" class="text-xs text-slate-500">
+                    API RHID person_banco_horas · parametro date (YYYYMMDD). Agregacao no servidor pode depender de
+                    RHID_BANK_HOURS_AGGREGATE.
+                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <SecondaryButton type="button" :disabled="rhidMetaLoading" @click="loadRhidFilterMeta">
+                        {{ rhidMetaLoading ? 'Carregando listas…' : 'Atualizar departamentos / cargos / pessoas' }}
+                    </SecondaryButton>
+                </div>
                 <div class="grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
-                        <InputLabel value="Data de referencia (date)" />
+                        <InputLabel value="Data de referencia" />
                         <input
                             v-model="bankDateHtml"
                             type="date"
@@ -3480,54 +3237,77 @@ const justStatusBarChart = computed(() => {
                         />
                     </div>
                     <div>
-                        <InputLabel value="Empresa (companies)" />
-                        <input
-                            v-model="bankFilterCompanies"
-                            type="number"
-                            min="0"
+                        <InputLabel value="Departamento" />
+                        <select
+                            v-model="bankSelDepartment"
                             class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
+                        >
+                            <option value="">Todos</option>
+                            <option
+                                v-for="d in rhidDepartmentRows"
+                                :key="d.id ?? d.idDepartment ?? rhidRowLabel(d)"
+                                :value="String(d.id ?? d.idDepartment ?? '')"
+                            >
+                                {{ rhidRowLabel(d) }}
+                            </option>
+                        </select>
                     </div>
                     <div>
-                        <InputLabel value="Centro de custo (costcenters)" />
-                        <input
-                            v-model="bankFilterCostcenters"
-                            type="number"
-                            min="0"
+                        <InputLabel value="Cargo" />
+                        <select
+                            v-model="bankSelPersonRole"
                             class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
+                        >
+                            <option value="">Todos</option>
+                            <option
+                                v-for="r in rhidPersonRoleRows"
+                                :key="r.id ?? r.idPersonRole ?? rhidRowLabel(r)"
+                                :value="String(r.id ?? r.idPersonRole ?? '')"
+                            >
+                                {{ rhidRowLabel(r) }}
+                            </option>
+                        </select>
                     </div>
                     <div>
-                        <InputLabel value="Departamento (departments)" />
-                        <input
-                            v-model="bankFilterDepartments"
-                            type="number"
-                            min="0"
+                        <InputLabel value="Colaborador" />
+                        <select
+                            v-model="bankSelPerson"
                             class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
+                        >
+                            <option value="">Todos</option>
+                            <option
+                                v-for="p in rhidPeopleFilterRows"
+                                :key="rhidPersonId(p) ?? p.id ?? rhidRowLabel(p)"
+                                :value="String(rhidPersonId(p) ?? p.id ?? '')"
+                            >
+                                {{ rhidRowLabel(p) }}
+                            </option>
+                        </select>
                     </div>
-                    <div>
-                        <InputLabel value="Funcionario (people)" />
-                        <input
-                            v-model="bankFilterPerson"
-                            type="number"
-                            min="0"
-                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
-                    </div>
-                    <div>
-                        <InputLabel value="Cargo (personroles)" />
-                        <input
-                            v-model="bankFilterPersonroles"
-                            type="number"
-                            min="0"
-                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
+                    <div v-if="supportMode" class="sm:col-span-2 lg:col-span-3">
+                        <p class="text-xs font-medium text-slate-700">Filtros avancados (ID numerico RHID)</p>
+                        <div class="mt-2 grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <InputLabel value="Empresa (companies)" />
+                                <input
+                                    v-model="bankFilterCompanies"
+                                    type="number"
+                                    min="0"
+                                    class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                                    placeholder="opcional"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Centro de custo (costcenters)" />
+                                <input
+                                    v-model="bankFilterCostcenters"
+                                    type="number"
+                                    min="0"
+                                    class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                                    placeholder="opcional"
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <PrimaryButton type="button" :disabled="loading" @click="loadBankHours">Consultar banco de horas</PrimaryButton>
@@ -3646,18 +3426,21 @@ const justStatusBarChart = computed(() => {
                     </table>
                 </div>
                 <p v-else-if="bankResult && !loading" class="text-sm text-slate-500">Nenhum registro retornado.</p>
-                <RhidResponsePanel v-if="bankResult" :data="bankResult" title="Resposta completa (suporte)" />
+                <RhidResponsePanel
+                    v-if="supportMode && bankResult"
+                    :data="bankResult"
+                    title="Resposta completa (suporte)"
+                />
             </div>
 
             <div v-show="tab === 'justifications'" class="space-y-4">
                 <p class="text-sm text-slate-600">
-                    Listagem alinhada ao endpoint RHID
-                    <code class="rounded bg-slate-100 px-1 text-xs">POST customerdb/justification.svc/list</code>
-                    — parametros <code class="text-xs">ini</code> e <code class="text-xs">fim</code> em formato AnoMesDia
-                    (YYYYMMDD no Talents; o backend converte para o RHID: padrao ISO yyyy-MM-dd, ou compact/br via
-                    RHID_JUSTIFICATION_LIST_INI_FIM_FORMAT). Filtros opcionais: IDs separados por virgula ou espaco.
-                    Se o RHID retornar erro de referencia nula, preencha Empresas (companies) ou configure no servidor
-                    RHID_JUSTIFICATION_LIST_DEFAULT_COMPANY_ID com o id da empresa no cadastro RHID.
+                    Liste justificativas do periodo, com graficos e tabela. Escolha datas e, se quiser, refine por
+                    departamento, cargo ou colaborador.
+                </p>
+                <p v-if="supportMode" class="text-xs text-slate-500">
+                    POST justification.svc/list · ini/fim YYYYMMDD. Erro de referencia nula: informe empresa (companies)
+                    ou RHID_JUSTIFICATION_LIST_DEFAULT_COMPANY_ID no servidor.
                 </p>
                 <div class="grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
@@ -3692,8 +3475,8 @@ const justStatusBarChart = computed(() => {
                             }}<span v-if="justRecordsTotal != null"> · Total {{ justRecordsTotal }} registro(s)</span>
                         </p>
                     </div>
-                    <div>
-                        <InputLabel value="Empresas (companies)" />
+                    <div v-if="supportMode">
+                        <InputLabel value="Empresas (IDs RHID)" />
                         <input
                             v-model="justFilterCompanies"
                             type="text"
@@ -3701,8 +3484,8 @@ const justStatusBarChart = computed(() => {
                             placeholder="ex.: 1 ou 1, 2"
                         />
                     </div>
-                    <div>
-                        <InputLabel value="Centros de custo (costcenters)" />
+                    <div v-if="supportMode">
+                        <InputLabel value="Centros de custo (IDs)" />
                         <input
                             v-model="justFilterCostcenters"
                             type="text"
@@ -3710,35 +3493,56 @@ const justStatusBarChart = computed(() => {
                             placeholder="opcional"
                         />
                     </div>
-                    <div>
-                        <InputLabel value="Departamentos (departments)" />
-                        <input
-                            v-model="justFilterDepartments"
-                            type="text"
-                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
+                    <div class="sm:col-span-2">
+                        <InputLabel value="Departamentos (Ctrl+clique para varios)" />
+                        <select
+                            v-model="justMultiDepartments"
+                            multiple
+                            class="mt-1 min-h-[5.5rem] w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                        >
+                            <option
+                                v-for="d in rhidDepartmentRows"
+                                :key="d.id ?? d.idDepartment ?? rhidRowLabel(d)"
+                                :value="String(d.id ?? d.idDepartment ?? '')"
+                            >
+                                {{ rhidRowLabel(d) }}
+                            </option>
+                        </select>
                     </div>
-                    <div>
-                        <InputLabel value="Cargos (personroles)" />
-                        <input
-                            v-model="justFilterPersonroles"
-                            type="text"
-                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
+                    <div class="sm:col-span-2">
+                        <InputLabel value="Cargos (Ctrl+clique para varios)" />
+                        <select
+                            v-model="justMultiPersonroles"
+                            multiple
+                            class="mt-1 min-h-[5.5rem] w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                        >
+                            <option
+                                v-for="r in rhidPersonRoleRows"
+                                :key="r.id ?? r.idPersonRole ?? rhidRowLabel(r)"
+                                :value="String(r.id ?? r.idPersonRole ?? '')"
+                            >
+                                {{ rhidRowLabel(r) }}
+                            </option>
+                        </select>
                     </div>
-                    <div>
-                        <InputLabel value="Funcionarios (people)" />
-                        <input
-                            v-model="justFilterPeople"
-                            type="text"
-                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
-                            placeholder="opcional"
-                        />
+                    <div class="sm:col-span-2">
+                        <InputLabel value="Colaboradores (Ctrl+clique para varios)" />
+                        <select
+                            v-model="justMultiPeople"
+                            multiple
+                            class="mt-1 min-h-[5.5rem] w-full rounded-md border border-slate-300 text-sm shadow-sm"
+                        >
+                            <option
+                                v-for="p in rhidPeopleFilterRows"
+                                :key="rhidPersonId(p) ?? p.id ?? rhidRowLabel(p)"
+                                :value="String(rhidPersonId(p) ?? p.id ?? '')"
+                            >
+                                {{ rhidRowLabel(p) }}
+                            </option>
+                        </select>
                     </div>
-                    <div>
-                        <InputLabel value="Horarios (shifts)" />
+                    <div v-if="supportMode">
+                        <InputLabel value="Horarios / turnos (IDs)" />
                         <input
                             v-model="justFilterShifts"
                             type="text"
@@ -3746,8 +3550,8 @@ const justStatusBarChart = computed(() => {
                             placeholder="opcional"
                         />
                     </div>
-                    <div>
-                        <InputLabel value="Tipos de justificativa (justificationTypes)" />
+                    <div v-if="supportMode">
+                        <InputLabel value="Tipos de justificativa (IDs)" />
                         <input
                             v-model="justFilterJustificationTypes"
                             type="text"
@@ -3776,7 +3580,10 @@ const justStatusBarChart = computed(() => {
                     <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                         <p class="text-xs font-medium uppercase text-slate-500">Total no periodo</p>
                         <p class="mt-1 text-2xl font-semibold text-slate-900">{{ justAnalyticsMeta.mergedTotal }}</p>
-                        <p v-if="justAnalyticsMeta.recordsTotalFromApi != null" class="mt-1 text-xs text-slate-500">
+                        <p
+                            v-if="supportMode && justAnalyticsMeta.recordsTotalFromApi != null"
+                            class="mt-1 text-xs text-slate-500"
+                        >
                             RHID recordsTotal: {{ justAnalyticsMeta.recordsTotalFromApi }}
                         </p>
                     </div>
@@ -3907,13 +3714,13 @@ const justStatusBarChart = computed(() => {
                     Nenhuma justificativa neste periodo ou filtros.
                 </p>
                 <RhidResponsePanel
-                    v-if="justListLoaded && justResult && tab === 'justifications'"
+                    v-if="supportMode && justListLoaded && justResult && tab === 'justifications'"
                     :data="justResult"
                     title="Resposta completa (suporte)"
                 />
             </div>
 
-            <div v-show="tab === 'espelho'" class="space-y-3">
+            <div v-show="tab === 'punches' && punchesSubTab === 'espelho'" class="space-y-3">
                 <div
                     v-if="espelhoShowProcessingBanner"
                     class="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm"
@@ -3992,7 +3799,10 @@ const justStatusBarChart = computed(() => {
                         </label>
                     </div>
                 </div>
-                <details class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                <details
+                    v-if="supportMode"
+                    class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm"
+                >
                     <summary class="cursor-pointer font-medium text-slate-800">Filtros opcionais por ID no RHID</summary>
                     <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
@@ -4079,7 +3889,10 @@ const justStatusBarChart = computed(() => {
                 <p v-if="espelhoBatchProgress && espelhoBatchPhase === 'idle'" class="text-sm text-slate-600">
                     {{ espelhoBatchProgress }}
                 </p>
-                <details v-if="espelhoGuid || espelhoPanelData" class="rounded-md border border-slate-100 bg-slate-50/80 p-2 text-xs text-slate-600">
+                <details
+                    v-if="supportMode && (espelhoGuid || espelhoPanelData)"
+                    class="rounded-md border border-slate-100 bg-slate-50/80 p-2 text-xs text-slate-600"
+                >
                     <summary class="cursor-pointer font-medium text-slate-700">Detalhes tecnicos (suporte)</summary>
                     <p v-if="espelhoGuid" class="mt-2">
                         Identificador da tarefa no RHID:
@@ -4227,7 +4040,7 @@ const justStatusBarChart = computed(() => {
                 </div>
             </div>
 
-            <div v-show="tab === 'reports'" class="space-y-3">
+            <div v-show="tab === 'punches' && punchesSubTab === 'export'" class="space-y-3">
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                         <InputLabel value="Formato de saida" />
@@ -4262,7 +4075,7 @@ const justStatusBarChart = computed(() => {
                         />
                     </div>
                 </div>
-                <details class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                <details v-if="supportMode" class="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
                     <summary class="cursor-pointer font-medium text-slate-800">JSON avancado (opcional)</summary>
                     <textarea
                         v-model="reportJsonOverride"
@@ -4278,12 +4091,15 @@ const justStatusBarChart = computed(() => {
                     </PrimaryButton>
                     <PrimaryButton type="button" :disabled="!reportGuid" @click="downloadReport">Download</PrimaryButton>
                 </div>
-                <p v-if="reportGuid" class="text-sm text-slate-600">
+                <p v-if="supportMode && reportGuid" class="text-sm text-slate-600">
                     GUID: <code class="rounded bg-slate-100 px-1">{{ reportGuid }}</code>
                     <span v-if="reportPercent !== null" class="ml-2">Percentual: {{ reportPercent }}%</span>
                 </p>
+                <p v-else-if="reportGuid" class="text-sm text-slate-600">
+                    Relatorio em processamento<span v-if="reportPercent !== null"> ({{ reportPercent }}%)</span>.
+                </p>
                 <RhidResponsePanel
-                    v-if="reportPanelData"
+                    v-if="supportMode && reportPanelData"
                     :data="reportPanelData"
                     title="Status / resposta"
                 />
@@ -4322,7 +4138,7 @@ const justStatusBarChart = computed(() => {
                     </table>
                 </div>
                 <RhidResponsePanel
-                    v-if="peopleList && tab === 'collaborators'"
+                    v-if="supportMode && peopleList && tab === 'collaborators'"
                     :data="peopleList"
                     title="Resposta bruta (suporte)"
                 />

@@ -19,6 +19,7 @@ class RhidSettingsController extends Controller
         $company = $request->user()->company()->firstOrFail();
 
         return Inertia::render('Client/Rhid/Settings', [
+            'configured' => $company->rhidConfigured(),
             'settings' => [
                 'rhid_base_url' => $company->rhid_base_url,
                 'rhid_email' => $company->rhid_email,
