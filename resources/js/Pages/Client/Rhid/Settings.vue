@@ -195,10 +195,10 @@ onMounted(() => {
                 v-if="configured"
                 class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
             >
-                <h3 class="text-lg font-semibold text-slate-900">Horarios da empresa (aderencia)</h3>
+                <h3 class="text-lg font-semibold text-slate-900">Horarios da empresa (aderência)</h3>
                 <p class="mt-2 text-sm text-slate-600">
                     Defina no Talents os horarios de referencia da jornada e intervalos. Esses dados ficam na plataforma e
-                    sao usados na analise de aderencia (espelho importado vs escala). Eles nao sao enviados ao RHID.
+                    sao usados na analise de aderência (espelho importado vs escala). Eles nao sao enviados ao RHID.
                 </p>
                 <p v-if="scheduleErr" class="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">{{ scheduleErr }}</p>
                 <p v-if="scheduleLoading" class="mt-3 text-sm text-slate-500">Carregando configuracao...</p>
@@ -232,7 +232,7 @@ onMounted(() => {
                             class="mt-1 block w-full rounded-md border border-slate-300 text-sm shadow-sm"
                         />
                         <p class="mt-1 text-xs text-slate-500">
-                            Usada na analise de aderencia (atrasos em torno dos horarios de saida/volta do almoco e
+                            Usada na analise de aderência (atrasos em torno dos horarios de saida/volta do almoco e
                             duracao do intervalo).
                         </p>
                     </div>

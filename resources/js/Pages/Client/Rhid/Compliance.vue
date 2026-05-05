@@ -46,7 +46,7 @@ const supportMode = ref(false);
 
 const lastPunches = ref([]);
 
-/** Painel | aderencia | espelho | export (relatorios RHID) */
+/** Painel | aderência | espelho | export (relatorios RHID) */
 const punchesSubTab = ref('dashboard');
 const lastPunchesUpdatedAt = ref(null);
 
@@ -124,7 +124,7 @@ const espelhoBatchRemote = ref(null);
 const espelhoBatchPollAbort = ref(false);
 const espelhoShowTechnicalPanel = ref(false);
 
-/** Aderencia espelho importado vs horarios da empresa */
+/** Aderência espelho importado vs horarios da empresa */
 const espelhoAdherenceIni = ref(monthFirst);
 const espelhoAdherenceFim = ref(monthLast);
 const espelhoAdherenceLoading = ref(false);
@@ -288,7 +288,7 @@ const peopleRows = computed(() => extractListItems(peopleList.value));
 
 const tabs = [
     { id: 'overview', label: 'Visao geral' },
-    { id: 'punches', label: 'Marcacoes e aderencia' },
+    { id: 'punches', label: 'Marcacoes e aderência' },
     { id: 'bank', label: 'Banco de horas' },
     { id: 'justifications', label: 'Justificativas' },
     { id: 'collaborators', label: 'Colaboradores' },
@@ -2799,7 +2799,7 @@ const justDeptBarChart = computed(() => {
                         "
                         @click="punchesSubTab = 'adherence'"
                     >
-                        Aderencia ao horario
+                        Aderência ao horario
                     </button>
                     <button
                         type="button"
@@ -2938,7 +2938,7 @@ const justDeptBarChart = computed(() => {
 
                 <div v-show="punchesSubTab === 'adherence'" class="space-y-4">
                     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <h3 class="text-sm font-semibold text-slate-800">Aderencia: espelho importado vs horarios da empresa</h3>
+                        <h3 class="text-sm font-semibold text-slate-800">Aderência: espelho importado vs horarios da empresa</h3>
                         <p class="mt-1 text-xs leading-relaxed text-slate-600">
                             Compara os PDFs de espelho ja importados (sub-aba <span class="font-medium">Espelho e importacao</span>)
                             com os horarios cadastrados em
@@ -2971,7 +2971,7 @@ const justDeptBarChart = computed(() => {
                                 :disabled="espelhoAdherenceLoading"
                                 @click="loadEspelhoScheduleAdherence"
                             >
-                                Analisar aderencia
+                                Analisar aderência
                             </PrimaryButton>
                         </div>
                         <p v-if="espelhoAdherenceLoading" class="mt-2 text-sm text-slate-500">Calculando…</p>

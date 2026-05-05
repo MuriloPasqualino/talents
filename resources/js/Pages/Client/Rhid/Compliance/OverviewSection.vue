@@ -90,19 +90,19 @@ const emit = defineEmits([
                 <PrimaryButton type="button" class="mt-3" @click="emit('go-bank')">Abrir banco de horas</PrimaryButton>
             </div>
             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Aderencia (mes)</p>
+                <p class="text-xs font-medium uppercase text-slate-500">Aderência (mes)</p>
                 <p v-if="overviewAdherence?.resumo" class="mt-1 text-sm text-slate-700">
                     {{ overviewAdherence.resumo.dias_registro_analisados }} dia(s) de registro analisados ·
                     {{ overviewAdherence.resumo.colaboradores_com_dados ?? '—' }} colaborador(es) com dados
                 </p>
-                <p v-else class="mt-1 text-sm text-slate-500">Importe espelhos e analise na sub-aba Aderencia.</p>
+                <p v-else class="mt-1 text-sm text-slate-500">Importe espelhos e analise na sub-aba Aderência.</p>
                 <ul v-if="overviewAdherenceWorstEntrada.length" class="mt-2 text-sm text-slate-700">
                     <li v-for="(rw, ri) in overviewAdherenceWorstEntrada" :key="ri">
                         {{ rw.nome }} — {{ rw.total_atraso_entrada_minutos ?? 0 }} min (atraso entrada)
                     </li>
                 </ul>
                 <PrimaryButton type="button" class="mt-3" @click="emit('go-punches-adherence')">
-                    Ver aderencia
+                    Ver aderência
                 </PrimaryButton>
             </div>
             <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

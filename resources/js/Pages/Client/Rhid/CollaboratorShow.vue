@@ -34,7 +34,7 @@ const expandedImportId = ref(null);
 const expandedImportDetail = ref(null);
 const espelhoDetailLoading = ref(false);
 
-/** Preferencia Talents: 1º vs 2º intervalo de almoco na aderencia */
+/** Preferencia Talents: 1º vs 2º intervalo de almoco na aderência */
 const schedulePrefSecond = ref(false);
 const schedulePrefSaving = ref(false);
 
@@ -376,9 +376,9 @@ onMounted(async () => {
                 v-if="detail"
                 class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
             >
-                <h3 class="mb-2 text-sm font-semibold text-slate-800">Aderencia (Talents)</h3>
+                <h3 class="mb-2 text-sm font-semibold text-slate-800">Aderência (Talents)</h3>
                 <p class="mb-3 text-xs text-slate-600">
-                    Na analise de aderencia (Compliance &gt; Marcacoes &gt; Aderencia), as batidas SAI.1 / ENT.2 sao
+                    Na analise de aderência (Compliance &gt; Marcacoes &gt; Aderência), as batidas SAI.1 / ENT.2 sao
                     comparadas ao horario de almoco esperado. Marque abaixo se este colaborador usa o
                     <span class="font-medium">segundo intervalo de almoco</span> definido na configuracao de horarios da
                     empresa (requer horarios &quot;Inicio 2º / Fim 2º&quot; por dia). Caso contrario, usa-se o primeiro
@@ -390,7 +390,7 @@ onMounted(async () => {
                         type="checkbox"
                         class="rounded border-slate-300 text-talents-700 focus:ring-talents-600"
                     />
-                    Usar segundo intervalo de almoco na aderencia
+                    Usar segundo intervalo de almoco na aderência
                 </label>
                 <div class="mt-3">
                     <PrimaryButton type="button" :disabled="schedulePrefSaving || loading" @click="saveSchedulePreference">

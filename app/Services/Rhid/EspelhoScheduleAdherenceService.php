@@ -150,7 +150,7 @@ class EspelhoScheduleAdherenceService
     }
 
     /**
-     * Marcacoes do espelho (import mais recente por dia) para um colaborador no periodo — ex.: modal de aderencia.
+     * Marcacoes do espelho (import mais recente por dia) para um colaborador no periodo — ex.: modal de aderência.
      *
      * @return array<string, mixed>
      */
