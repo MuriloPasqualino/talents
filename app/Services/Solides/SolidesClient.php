@@ -113,18 +113,65 @@ class SolidesClient
      * @param  array<string, mixed>  $query  data_inicial, data_final (dd/mm/aaaa), page, ocultar_foto
      * @return list<array<string, mixed>>
      */
-    public function getCurriculos(array $query = []): array
+    /**
+     * @param  array<string, mixed>  $query
+     * @return list<array<string, mixed>>
+     */
+    public function getCurriculos(array $query = [], ?int $timeoutSeconds = null): array
     {
         $query = array_merge(['ocultar_foto' => 'SIM'], array_filter(
             $query,
             fn ($v) => $v !== null && $v !== ''
         ));
 
-        $response = $this->request('GET', 'curriculos', ['query' => $query]);
+        $options = ['query' => $query];
+        if ($timeoutSeconds !== null) {
+            $options['timeout'] = $timeoutSeconds;
+        }
+
+        $response = $this->request('GET', 'curriculos', $options);
 
         if ($response->failed()) {
             throw new \RuntimeException(
                 'Sólides (currículos): HTTP '.$response->status().' — '.Str::limit($response->body(), 400)
+            );
+        }
+
+        $json = $response->json();
+        if (! is_array($json)) {
+            return [];
+        }
+
+        /** @var list<array<string, mixed>> $json */
+        return $json;
+    }
+
+    /**
+     * Lista passaportes (GET /candidatos).
+     *
+     * @param  array<string, mixed>  $query
+     * @return list<array<string, mixed>>
+     */
+    public function getPassaportes(array $query = [], ?int $timeoutSeconds = null): array
+    {
+        $query = array_filter(
+            $query,
+            fn ($v) => $v !== null && $v !== ''
+        );
+
+        $options = [];
+        if ($query !== []) {
+            $options['query'] = $query;
+        }
+        if ($timeoutSeconds !== null) {
+            $options['timeout'] = $timeoutSeconds;
+        }
+
+        $response = $this->request('GET', 'candidatos', $options);
+
+        if ($response->failed()) {
+            throw new \RuntimeException(
+                'Sólides (passaportes): HTTP '.$response->status().' — '.Str::limit($response->body(), 400)
             );
         }
 
