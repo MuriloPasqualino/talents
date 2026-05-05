@@ -108,7 +108,8 @@ class EspelhoScheduleAdherenceApiTest extends TestCase
                 'fim' => '2026-04-30',
             ]))
             ->assertOk()
-            ->assertJsonPath('resumo.dias_registro_analisados', 1);
+            ->assertJsonPath('resumo.dias_registro_analisados', 1)
+            ->assertJsonPath('resumo.dias_calendario_distintos', 1);
 
         $rows = $this->actingAs($admin)
             ->getJson(route('client.rhid.api.espelhos.schedule-adherence', [

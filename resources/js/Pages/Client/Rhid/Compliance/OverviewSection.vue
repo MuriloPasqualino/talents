@@ -34,6 +34,9 @@ defineProps({
     overviewBankAvgMinutes: { type: [Number, null], default: null },
     overviewBankWorstThree: { type: Array, required: true },
     overviewAdherence: { type: [Object, null], default: null },
+    /** Dias civis distintos com espelho analisável (backend: dias_calendario_distintos) */
+    overviewAdherenceDiasCalendario: { type: [Number, null], default: null },
+    overviewAdherencePreviousDiasCalendario: { type: [Number, null], default: null },
     overviewAdherenceWorstEntrada: { type: Array, required: true },
     overviewJustTotal: { type: [Number, null], default: null },
     overviewJustAtestados: { type: [Number, null], default: null },
@@ -78,7 +81,9 @@ const signedIntTxt = (n) => {
         <p class="text-xs leading-relaxed text-slate-500">
             <span class="font-medium text-slate-600">Comparação com o mês anterior:</span>
             justificativas e aderência usam o <span class="font-medium">mês civil anterior completo</span>
-            ({{ overviewPreviousCalendarRangeLabel }}). No banco de horas, comparamos a média de
+            ({{ overviewPreviousCalendarRangeLabel }}). Em aderência, <span class="font-medium">Δ dias civis</span> compara
+            quantos <span class="font-medium">dias de calendário</span> tiveram espelho analisável, não a soma de
+            colaboradores. No banco de horas, comparamos a média de
             <span class="font-medium">hoje</span> com a média do <span class="font-medium">último dia</span> desse mês
             anterior (referência fixa — não é média do mês inteiro).
         </p>
@@ -193,7 +198,10 @@ const signedIntTxt = (n) => {
                 <p class="text-xs font-medium uppercase text-slate-500">Aderência (mês corrente)</p>
                 <p class="mt-1 text-xs text-slate-500">Período: {{ overviewCalendarRangeLabel }}</p>
                 <p v-if="overviewAdherence?.resumo" class="mt-2 text-sm text-slate-700">
-                    {{ overviewAdherence.resumo.dias_registro_analisados }} dia(s) de registro analisados ·
+                    <template v-if="overviewAdherenceDiasCalendario != null">
+                        {{ overviewAdherenceDiasCalendario }} dia(s) civis com jornada analisável ·
+                    </template>
+                    <template v-else> — dia(s) civis (resposta sem campo novo; atualize a visão geral) · </template>
                     {{ overviewAdherence.resumo.colaboradores_com_dados ?? '—' }} colaborador(es) com dados
                 </p>
                 <p v-else class="mt-2 text-sm text-slate-500">
@@ -203,7 +211,10 @@ const signedIntTxt = (n) => {
                     <p class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-600">
                         <span class="font-medium text-slate-700">Mês anterior</span>
                         ({{ overviewPreviousCalendarRangeLabel }}):
-                        {{ overviewAdherencePrevious.resumo.dias_registro_analisados }} dia(s) ·
+                        <template v-if="overviewAdherencePreviousDiasCalendario != null">
+                            {{ overviewAdherencePreviousDiasCalendario }} dia(s) civis ·
+                        </template>
+                        <template v-else> — dia(s) civis · </template>
                         {{ overviewAdherencePrevious.resumo.colaboradores_com_dados ?? '—' }} colaborador(es)
                     </p>
                     <p
@@ -211,7 +222,7 @@ const signedIntTxt = (n) => {
                         class="mt-1 text-xs font-medium text-slate-700"
                     >
                         <template v-if="overviewAdherenceDiasMomDelta != null">
-                            Δ dias: {{ signedIntTxt(overviewAdherenceDiasMomDelta) }}
+                            Δ dias civis: {{ signedIntTxt(overviewAdherenceDiasMomDelta) }}
                         </template>
                         <template v-if="overviewAdherenceDiasMomDelta != null && overviewAdherenceColabsMomDelta != null">
                             ·

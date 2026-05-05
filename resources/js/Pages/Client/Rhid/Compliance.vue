@@ -1070,9 +1070,24 @@ const overviewJustAtestadosMomDelta = computed(() => {
     return cur - prev;
 });
 
+/** Dias civis distintos no período (espelho analisável); não confundir com a soma por colaborador em dias_registro_analisados */
+const adherenceResumoDiasCalendario = (resumo) => {
+    if (!resumo || typeof resumo !== 'object') {
+        return null;
+    }
+    const d = resumo.dias_calendario_distintos;
+    return typeof d === 'number' ? d : null;
+};
+
+const overviewAdherenceDiasCalendario = computed(() => adherenceResumoDiasCalendario(overviewAdherence.value?.resumo));
+
+const overviewAdherencePreviousDiasCalendario = computed(() =>
+    adherenceResumoDiasCalendario(overviewAdherencePrevious.value?.resumo),
+);
+
 const overviewAdherenceDiasMomDelta = computed(() => {
-    const cur = overviewAdherence.value?.resumo?.dias_registro_analisados;
-    const prev = overviewAdherencePrevious.value?.resumo?.dias_registro_analisados;
+    const cur = overviewAdherenceDiasCalendario.value;
+    const prev = overviewAdherencePreviousDiasCalendario.value;
     if (typeof cur !== 'number' || typeof prev !== 'number') {
         return null;
     }
@@ -2935,6 +2950,8 @@ const justDeptBarChart = computed(() => {
                 :overview-bank-avg-minutes="overviewBankAvgMinutes"
                 :overview-bank-worst-three="overviewBankWorstThree"
                 :overview-adherence="overviewAdherence"
+                :overview-adherence-dias-calendario="overviewAdherenceDiasCalendario"
+                :overview-adherence-previous-dias-calendario="overviewAdherencePreviousDiasCalendario"
                 :overview-adherence-worst-entrada="overviewAdherenceWorstEntrada"
                 :overview-just-total="overviewJustTotal"
                 :overview-just-atestados="overviewJustAtestados"
@@ -3156,8 +3173,18 @@ const justDeptBarChart = computed(() => {
                         <template v-else-if="espelhoAdherenceResult?.resumo">
                             <p class="mt-2 text-xs text-slate-600">
                                 Período: {{ espelhoAdherenceResult.resumo.ini }} a {{ espelhoAdherenceResult.resumo.fim }} ·
-                                Tolerância: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min · Dias analisados:
-                                {{ espelhoAdherenceResult.resumo.dias_registro_analisados }}
+                                Tolerância: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min ·
+                                <span
+                                    v-if="espelhoAdherenceResult.resumo.dias_calendario_distintos != null"
+                                    class="whitespace-nowrap"
+                                >
+                                    Dias de calendário com análise:
+                                    {{ espelhoAdherenceResult.resumo.dias_calendario_distintos }}
+                                </span>
+                                <span v-else class="whitespace-nowrap">
+                                    Dias analisados (soma por colaborador):
+                                    {{ espelhoAdherenceResult.resumo.dias_registro_analisados }}
+                                </span>
                             </p>
                             <p class="mt-3 text-xs text-slate-500">
                                 Dashboard: até {{ ESPELHO_ADHERENCE_CHART_TOP }} colaboradores por gráfico. Passe o mouse para

@@ -47,6 +47,8 @@ class EspelhoScheduleAdherenceService
         $prefMap = $this->personSchedulePreferences->secondLunchMapForCompany($company->id);
 
         $byPerson = [];
+        /** @var array<string, true> datas YYYY-MM-DD com pelo menos um colaborador analisável (4 batidas) no período */
+        $datasCalendarioComAnalise = [];
 
         foreach ($days as $item) {
             /** @var RhidEspelhoDay $day */
@@ -92,6 +94,7 @@ class EspelhoScheduleAdherenceService
             }
             $byPerson[$idPersonRow]['nome'] = $nome;
             $byPerson[$idPersonRow]['dias_analisados']++;
+            $datasCalendarioComAnalise[$refDate->toDateString()] = true;
             $byPerson[$idPersonRow]['total_atraso_entrada_minutos'] += $analysis['atraso_entrada_minutos'];
             $byPerson[$idPersonRow]['maior_atraso_entrada_minutos'] = max(
                 $byPerson[$idPersonRow]['maior_atraso_entrada_minutos'],
@@ -134,7 +137,9 @@ class EspelhoScheduleAdherenceService
         });
         $rankingAlmoco = array_slice($rankingAlmoco, 0, self::TOP_RANK);
 
+        // Soma por colaborador (vários × mesmo dia civil); também contamos dias civis distintos com análise OK.
         $diasAnalisadosTotal = array_sum(array_column($byPerson, 'dias_analisados'));
+        $diasCalendarioDistintos = count($datasCalendarioComAnalise);
 
         return [
             'resumo' => [
@@ -142,6 +147,7 @@ class EspelhoScheduleAdherenceService
                 'fim' => $fim->toDateString(),
                 'tolerancia_minutos' => $tolerance,
                 'dias_registro_analisados' => $diasAnalisadosTotal,
+                'dias_calendario_distintos' => $diasCalendarioDistintos,
                 'colaboradores_com_dados' => count(array_filter($byPerson, fn ($p) => $p['dias_analisados'] > 0 || $p['dias_insuficientes'] > 0)),
             ],
             'ranking_atrasos_entrada' => $rankingAtrasos,
