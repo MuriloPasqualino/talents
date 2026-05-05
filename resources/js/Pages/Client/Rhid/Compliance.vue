@@ -1070,7 +1070,7 @@ const overviewJustAtestadosMomDelta = computed(() => {
     return cur - prev;
 });
 
-/** Dias civis distintos no período (espelho analisável); não confundir com a soma por colaborador em dias_registro_analisados */
+/** UI: dias úteis (métrica: datas distintas com análise; ver dias_calendario_distintos). Não confundir com dias_registro_analisados (soma por colaborador). */
 const adherenceResumoDiasCalendario = (resumo) => {
     if (!resumo || typeof resumo !== 'object') {
         return null;
@@ -3178,7 +3178,7 @@ const justDeptBarChart = computed(() => {
                                     v-if="espelhoAdherenceResult.resumo.dias_calendario_distintos != null"
                                     class="whitespace-nowrap"
                                 >
-                                    Dias de calendário com análise:
+                                    Dias úteis:
                                     {{ espelhoAdherenceResult.resumo.dias_calendario_distintos }}
                                 </span>
                                 <span v-else class="whitespace-nowrap">
