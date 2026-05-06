@@ -5,7 +5,11 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ company: Object, plans: Array });
+const props = defineProps({
+    company: Object,
+    plans: { type: Array, default: () => [] },
+    activePlanId: { default: null },
+});
 
 const accessMode = () => {
     const v = props.company.strategic_calendar_access;
@@ -29,6 +33,7 @@ const form = useForm({
     employee_count_estimate: props.company.employee_count_estimate,
     is_active: props.company.is_active,
     strategic_calendar_access_mode: accessMode(),
+    plan_id: props.activePlanId ?? null,
 });
 
 const submit = () => {
@@ -115,6 +120,20 @@ const submit = () => {
                 <input v-model="form.is_active" type="checkbox" class="rounded border-gray-300 text-talents-600 focus:ring-talents-500" />
                 Ativa
             </label>
+            <div>
+                <InputLabel for="plan_id" value="Plano (assinatura ativa)" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Define o plano da assinatura ativa da empresa. Deixe em branco para cancelar assinaturas ativas.
+                </p>
+                <select
+                    id="plan_id"
+                    v-model="form.plan_id"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option :value="null">— Sem plano —</option>
+                    <option v-for="p in plans" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+            </div>
             <div>
                 <InputLabel for="strategic_calendar_access_mode" value="Calendário estratégico" />
                 <p class="mt-0.5 text-xs text-gray-500">

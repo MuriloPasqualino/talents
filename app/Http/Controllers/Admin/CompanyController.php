@@ -176,9 +176,22 @@ class CompanyController extends Controller
 
     public function edit(Company $company): Response
     {
+        $activePlanId = $company->activeSubscription()?->plan_id;
+
+        $plans = Plan::query()
+            ->where(function ($q) use ($activePlanId) {
+                $q->where('is_active', true);
+                if ($activePlanId) {
+                    $q->orWhere('id', $activePlanId);
+                }
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         return Inertia::render('Admin/Companies/Edit', [
             'company' => $company,
-            'plans' => Plan::query()->where('is_active', true)->get(['id', 'name', 'slug']),
+            'activePlanId' => $activePlanId,
+            'plans' => $plans,
         ]);
     }
 
@@ -199,7 +212,11 @@ class CompanyController extends Controller
             'employee_count_estimate' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['boolean'],
             'strategic_calendar_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
+            'plan_id' => ['nullable', 'exists:plans,id'],
         ]);
+
+        $planId = $data['plan_id'] ?? null;
+        unset($data['plan_id']);
 
         if (isset($data['address_state'])) {
             $data['address_state'] = strtoupper($data['address_state']);
@@ -214,6 +231,30 @@ class CompanyController extends Controller
         };
 
         $company->update($data);
+
+        DB::transaction(function () use ($company, $planId) {
+            if (empty($planId)) {
+                $company->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
+
+                return;
+            }
+
+            $active = $company->subscriptions()->where('status', 'active')->orderByDesc('id')->first();
+
+            if ($active && (int) $active->plan_id === (int) $planId) {
+                return;
+            }
+
+            $company->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
+
+            Subscription::create([
+                'company_id' => $company->id,
+                'plan_id' => $planId,
+                'starts_at' => now(),
+                'ends_at' => now()->addYear(),
+                'status' => 'active',
+            ]);
+        });
 
         return redirect()->route('admin.companies.show', $company)->with('success', 'Empresa atualizada.');
     }
