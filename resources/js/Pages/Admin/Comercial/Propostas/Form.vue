@@ -1,6 +1,7 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
+import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
@@ -69,6 +70,45 @@ watch(salaryReais, (val) => {
 const formRef = computed(() => form);
 const { breakdownCents, totalFinalCents, commissionCents } = useCommercialPricing(formRef, settingsRef);
 
+// Consulta CNPJ (Receita Federal) — reaproveita o endpoint já existente.
+const cnpjLookupLoading = ref(false);
+const cnpjLookupError = ref('');
+const cnpjLookupSuccess = ref('');
+const cnpjDigitCount = computed(() => (String(form.client_cnpj || '').match(/\d/g) || []).length);
+const canLookupCnpj = computed(() => cnpjDigitCount.value === 14);
+
+const fetchCnpjFromReceita = async () => {
+    cnpjLookupError.value = '';
+    cnpjLookupSuccess.value = '';
+    if (!canLookupCnpj.value) {
+        cnpjLookupError.value = 'Informe um CNPJ com 14 dígitos.';
+        return;
+    }
+    cnpjLookupLoading.value = true;
+    try {
+        const { data } = await axios.get(route('admin.companies.lookup-cnpj'), {
+            params: { cnpj: form.client_cnpj },
+        });
+        form.client_cnpj = data.cnpj ?? form.client_cnpj;
+        const fantasiaOuRazao = data.name || data.legal_name;
+        if (fantasiaOuRazao) {
+            form.client_name = fantasiaOuRazao;
+        }
+        if (data.contact_email) {
+            form.client_email = data.contact_email;
+        }
+        cnpjLookupSuccess.value = 'Dados preenchidos a partir da Receita Federal.';
+    } catch (e) {
+        const d = e.response?.data;
+        cnpjLookupError.value =
+            typeof d?.message === 'string'
+                ? d.message
+                : d?.errors?.cnpj?.[0] ?? 'Não foi possível consultar o CNPJ.';
+    } finally {
+        cnpjLookupLoading.value = false;
+    }
+};
+
 const submit = () => {
     if (props.mode === 'edit') {
         form.put(route('admin.comercial.propostas.update', props.proposal.id), { preserveScroll: true });
@@ -130,58 +170,77 @@ const services = computed(() => [
                     <h3 class="text-lg font-semibold text-slate-900">Dados do cliente</h3>
                     <p class="mt-1 text-xs text-slate-500">Lead / prospect — não vinculado a empresas cadastradas.</p>
 
-                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nome / Razão social *</label>
-                            <input
-                                v-model="form.client_name"
-                                type="text"
-                                required
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                            <p v-if="form.errors.client_name" class="mt-1 text-xs text-rose-600">{{ form.errors.client_name }}</p>
-                        </div>
+                    <div class="mt-4 space-y-4">
                         <div>
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">CNPJ</label>
-                            <input
-                                v-model="form.client_cnpj"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
+                            <p class="mt-0.5 text-xs text-slate-500">
+                                Informe o CNPJ e busque na Receita Federal para preencher nome e e-mail automaticamente.
+                            </p>
+                            <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                                <input
+                                    v-model="form.client_cnpj"
+                                    type="text"
+                                    placeholder="00.000.000/0001-00"
+                                    class="block w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500 sm:max-w-md"
+                                />
+                                <button
+                                    type="button"
+                                    class="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+                                    :disabled="form.processing || cnpjLookupLoading || !canLookupCnpj"
+                                    @click="fetchCnpjFromReceita"
+                                >
+                                    {{ cnpjLookupLoading ? 'Buscando…' : 'Buscar na Receita Federal' }}
+                                </button>
+                            </div>
+                            <p v-if="cnpjLookupError" class="mt-2 text-sm text-rose-600">{{ cnpjLookupError }}</p>
+                            <p v-else-if="cnpjLookupSuccess" class="mt-2 text-sm text-emerald-700">{{ cnpjLookupSuccess }}</p>
                         </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Telefone</label>
-                            <input
-                                v-model="form.client_phone"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</label>
-                            <input
-                                v-model="form.client_email"
-                                type="email"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Indicação</label>
-                            <input
-                                v-model="form.indication"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nº de funcionários *</label>
-                            <input
-                                v-model.number="form.employee_count"
-                                type="number"
-                                min="0"
-                                required
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div class="sm:col-span-2">
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nome / Razão social *</label>
+                                <input
+                                    v-model="form.client_name"
+                                    type="text"
+                                    required
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                                <p v-if="form.errors.client_name" class="mt-1 text-xs text-rose-600">{{ form.errors.client_name }}</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Telefone</label>
+                                <input
+                                    v-model="form.client_phone"
+                                    type="text"
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</label>
+                                <input
+                                    v-model="form.client_email"
+                                    type="email"
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Indicação</label>
+                                <input
+                                    v-model="form.indication"
+                                    type="text"
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Nº de funcionários *</label>
+                                <input
+                                    v-model.number="form.employee_count"
+                                    type="number"
+                                    min="0"
+                                    required
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
                         </div>
                     </div>
                 </section>
