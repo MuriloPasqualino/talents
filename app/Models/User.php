@@ -24,6 +24,7 @@ class User extends Authenticatable
         'role',
         'company_id',
         'is_active',
+        'is_commercial',
     ];
 
     protected $hidden = [
@@ -38,6 +39,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'is_commercial' => 'boolean',
         ];
     }
 

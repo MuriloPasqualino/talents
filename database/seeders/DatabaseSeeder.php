@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TalentsSeeder::class,
             MethodologyFormTemplateSeeder::class,
+            CommercialSellersSeeder::class,
         ]);
     }
 }

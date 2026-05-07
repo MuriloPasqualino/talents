@@ -7,6 +7,7 @@ import SidebarNavItem from '@/Components/SidebarNavItem.vue';
 import { Link } from '@inertiajs/vue3';
 import {
     AcademicCapIcon,
+    BanknotesIcon,
     BeakerIcon,
     BuildingOffice2Icon,
     CalendarDaysIcon,
@@ -96,6 +97,13 @@ import {
                 :active="route().current('admin.tarefas.*')"
                 :icon="ViewColumnsIcon"
                 label="Tarefas"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('admin.comercial.dashboard')"
+                :active="route().current('admin.comercial.*')"
+                :icon="BanknotesIcon"
+                label="Comercial"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

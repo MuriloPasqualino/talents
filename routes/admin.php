@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
 use App\Http\Controllers\Admin\AiSettingsController;
+use App\Http\Controllers\Admin\Commercial\DashboardController as CommercialDashboardController;
+use App\Http\Controllers\Admin\Commercial\PreviewController as CommercialPreviewController;
+use App\Http\Controllers\Admin\Commercial\ProposalController as CommercialProposalController;
+use App\Http\Controllers\Admin\Commercial\SettingsController as CommercialSettingsController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -82,6 +86,18 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
     Route::resource('methodology-templates', MethodologyFormTemplateController::class)
         ->parameters(['methodology-templates' => 'template']);
+
+    Route::prefix('comercial')->name('comercial.')->group(function () {
+        Route::get('/', [CommercialDashboardController::class, 'index'])->name('dashboard');
+        Route::get('configuracoes', [CommercialSettingsController::class, 'edit'])->name('settings.edit');
+        Route::put('configuracoes', [CommercialSettingsController::class, 'update'])->name('settings.update');
+        Route::patch('vendedores/{user}', [CommercialSettingsController::class, 'toggleSeller'])->name('settings.sellers.toggle');
+        Route::post('propostas/preview', [CommercialPreviewController::class, 'calculate'])->name('propostas.preview');
+        Route::get('propostas/{proposal}/pdf', [CommercialProposalController::class, 'pdf'])->name('propostas.pdf');
+        Route::resource('propostas', CommercialProposalController::class)
+            ->except(['show'])
+            ->parameters(['propostas' => 'proposal']);
+    });
 
     Route::prefix('tarefas')->name('tarefas.')->group(function () {
         Route::resource('processos', TasksProcessTemplateController::class)
