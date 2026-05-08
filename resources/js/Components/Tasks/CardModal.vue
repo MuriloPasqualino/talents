@@ -78,6 +78,22 @@ function checklistStats(checklist) {
     return { total, completed, percent, done };
 }
 
+const overallChecklistStats = computed(() => {
+    const checklists = props.card?.checklists || [];
+    const totals = checklists.reduce(
+        (acc, checklist) => {
+            const stats = checklistStats(checklist);
+            acc.total += stats.total;
+            acc.completed += stats.completed;
+            return acc;
+        },
+        { total: 0, completed: 0 },
+    );
+
+    const percent = totals.total ? Math.round((totals.completed / totals.total) * 100) : 0;
+    return { ...totals, percent };
+});
+
 function saveCard() {
     if (!props.card) return;
     const url = props.isAdmin
@@ -374,6 +390,21 @@ function formatDateTime(value) {
                         <CheckCircleIcon class="h-4 w-4 text-slate-500" />
                         Checklist
                     </h4>
+                    <div class="rounded-md border border-slate-200 bg-slate-50/60 p-2">
+                        <div class="mb-1 flex items-center justify-between text-[11px] text-slate-600">
+                            <span>Progresso geral</span>
+                            <span>
+                                {{ overallChecklistStats.completed }}/{{ overallChecklistStats.total }}
+                                ({{ overallChecklistStats.percent }}%)
+                            </span>
+                        </div>
+                        <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                            <div
+                                class="h-full rounded-full bg-talents-600 transition-all duration-200"
+                                :style="{ width: `${overallChecklistStats.percent}%` }"
+                            />
+                        </div>
+                    </div>
                     <div v-if="isAdmin" class="flex gap-2">
                         <TextInput
                             v-model="checklistForm.name"
@@ -403,7 +434,7 @@ function formatDateTime(value) {
                                     :disabled="checklistBulkProcessing[cl.id]"
                                     @click="toggleChecklistCompletion(cl)"
                                 >
-                                    {{ checklistStats(cl).done ? 'Reabrir checklist' : 'Concluir checklist' }}
+                                    {{ checklistStats(cl).done ? 'Reabrir' : 'Concluir' }}
                                 </button>
                             </div>
                             <div class="mt-2">
