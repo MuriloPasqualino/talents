@@ -8,6 +8,7 @@ use App\Models\TaskBoard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Inertia\Response;
 
 class TaskBoardController extends Controller
