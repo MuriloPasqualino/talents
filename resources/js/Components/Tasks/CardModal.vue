@@ -241,6 +241,15 @@ function formatDateTime(value) {
                         Detalhes
                     </button>
                     <button
+                        v-if="isAdmin"
+                        type="button"
+                        class="border-b-2 pb-2 font-medium transition"
+                        :class="activeTab === 'settings' ? 'border-talents-600 text-talents-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                        @click="activeTab = 'settings'"
+                    >
+                        Configurações
+                    </button>
+                    <button
                         type="button"
                         class="border-b-2 pb-2 font-medium transition"
                         :class="activeTab === 'comments' ? 'border-talents-600 text-talents-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
@@ -287,68 +296,6 @@ function formatDateTime(value) {
                         </div>
                     </div>
 
-                    <div v-if="isAdmin && visibilityCardOptions.length">
-                        <InputLabel value="Visibilidade do cartão" />
-                        <select
-                            v-model="cardUpdate.visibility"
-                            class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                        >
-                            <option v-for="o in visibilityCardOptions" :key="o.value" :value="o.value">
-                                {{ o.label }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div class="md:col-span-2">
-                            <InputLabel value="Empresa responsável (cliente)" />
-                            <select
-                                v-model="cardUpdate.company_id"
-                                class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                            >
-                                <option value="">Não compartilhar com empresa</option>
-                                <option v-for="c in companies" :key="c.id" :value="c.id">
-                                    {{ c.name }}
-                                </option>
-                            </select>
-                            <p class="mt-1 text-xs text-slate-500">
-                                Quando definida, a tarefa aparece para essa empresa no portal cliente.
-                            </p>
-                        </div>
-                        <div>
-                            <InputLabel value="Membros" />
-                            <div class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
-                                <label
-                                    v-for="u in usersForSelectedCompany"
-                                    :key="u.id"
-                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
-                                >
-                                    <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
-                                    {{ u.name }}
-                                </label>
-                                <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
-                                    Selecione uma empresa para listar os responsáveis.
-                                </p>
-                            </div>
-                        </div>
-                        <div>
-                            <InputLabel value="Etiquetas" />
-                            <div class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
-                                <label
-                                    v-for="l in boardPayload.labels"
-                                    :key="l.id"
-                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
-                                >
-                                    <input v-model="cardUpdate.label_ids" type="checkbox" :value="l.id" />
-                                    <span class="inline-block h-3 w-3 rounded" :style="{ backgroundColor: l.color }" />
-                                    {{ l.name || l.color }}
-                                </label>
-                            </div>
-                            <button type="button" class="mt-1 text-xs text-talents-700 underline" @click="newLabel">
-                                + Criar etiqueta
-                            </button>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="space-y-2 rounded-lg border border-slate-100 p-4">
@@ -427,6 +374,73 @@ function formatDateTime(value) {
                             <a :href="a.url" target="_blank" class="text-talents-700 underline">{{ a.original_name }}</a>
                         </li>
                     </ul>
+                </div>
+            </div>
+
+            <div v-else-if="activeTab === 'settings'" class="overflow-y-auto p-6">
+                <div class="space-y-4 rounded-lg border border-slate-100 p-4">
+                    <div v-if="isAdmin && visibilityCardOptions.length">
+                        <InputLabel value="Visibilidade do cartão" />
+                        <select
+                            v-model="cardUpdate.visibility"
+                            class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                        >
+                            <option v-for="o in visibilityCardOptions" :key="o.value" :value="o.value">
+                                {{ o.label }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <InputLabel value="Empresa responsável (cliente)" />
+                            <select
+                                v-model="cardUpdate.company_id"
+                                class="mt-1 block w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                            >
+                                <option value="">Não compartilhar com empresa</option>
+                                <option v-for="c in companies" :key="c.id" :value="c.id">
+                                    {{ c.name }}
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Quando definida, a tarefa aparece para essa empresa no portal cliente.
+                            </p>
+                        </div>
+                        <div>
+                            <InputLabel value="Membros" />
+                            <div class="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
+                                <label
+                                    v-for="u in usersForSelectedCompany"
+                                    :key="u.id"
+                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                                >
+                                    <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
+                                    {{ u.name }}
+                                </label>
+                                <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
+                                    Selecione uma empresa para listar os responsáveis.
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            <InputLabel value="Etiquetas" />
+                            <div class="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50/60 p-2 text-sm">
+                                <label
+                                    v-for="l in boardPayload.labels"
+                                    :key="l.id"
+                                    class="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-white"
+                                >
+                                    <input v-model="cardUpdate.label_ids" type="checkbox" :value="l.id" />
+                                    <span class="inline-block h-3 w-3 rounded" :style="{ backgroundColor: l.color }" />
+                                    {{ l.name || l.color }}
+                                </label>
+                            </div>
+                            <button type="button" class="mt-1 text-xs text-talents-700 underline" @click="newLabel">
+                                + Criar etiqueta
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
