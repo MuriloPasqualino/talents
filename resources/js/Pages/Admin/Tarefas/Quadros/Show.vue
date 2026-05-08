@@ -28,6 +28,19 @@ function refreshBoard() {
         preserveScroll: true,
     });
 }
+
+function formatActivityDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
 </script>
 
 <template>
@@ -59,7 +72,7 @@ function refreshBoard() {
                     <li v-for="row in activity" :key="row.id">
                         <span class="font-medium">{{ row.action }}</span>
                         <span v-if="row.actor"> · {{ row.actor.name }}</span>
-                        <span class="text-slate-400"> · {{ row.created_at }}</span>
+                        <span class="text-slate-400"> · {{ formatActivityDate(row.created_at) }}</span>
                     </li>
                 </ul>
             </div>

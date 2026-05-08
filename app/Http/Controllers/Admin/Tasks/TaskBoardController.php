@@ -98,4 +98,19 @@ class TaskBoardController extends Controller
         ]);
     }
 
+    public function update(Request $request, TaskBoard $board): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $board->update([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+        ]);
+
+        return back()->with('success', 'Nome do quadro atualizado.');
+    }
+
 }

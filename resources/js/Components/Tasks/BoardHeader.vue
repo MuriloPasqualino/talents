@@ -1,11 +1,12 @@
 <script setup>
-import { router } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import {
+    PencilSquareIcon,
     StarIcon as StarOutlineIcon,
     UserPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/vue/24/solid';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     boardPayload: { type: Object, required: true },
@@ -18,6 +19,21 @@ const emit = defineEmits(['refresh']);
 const isStarred = ref(Boolean(props.boardPayload?.is_starred));
 const inviting = ref(false);
 const inviteUserId = ref(null);
+const editingName = ref(false);
+
+const boardForm = useForm({
+    name: props.boardPayload?.name || '',
+    description: props.boardPayload?.description || '',
+});
+
+watch(
+    () => props.boardPayload,
+    (val) => {
+        boardForm.name = val?.name || '';
+        boardForm.description = val?.description || '';
+    },
+    { deep: true },
+);
 
 const members = computed(() => props.boardPayload?.members ?? []);
 const visibleMembers = computed(() => members.value.slice(0, 4));
@@ -110,12 +126,56 @@ function removeMember(userId) {
     );
 }
 
+function saveBoardName() {
+    if (!props.isAdmin) return;
+    boardForm.patch(route('admin.tarefas.quadros.update', props.boardPayload.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            editingName.value = false;
+            emit('refresh');
+        },
+    });
+}
+
 </script>
 
 <template>
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 shadow-sm ring-1 ring-slate-200 backdrop-blur">
         <div class="flex min-w-0 items-center gap-2">
-            <h2 class="truncate text-base font-semibold text-slate-900 sm:text-lg">{{ boardPayload.name }}</h2>
+            <template v-if="editingName && isAdmin">
+                <form class="flex items-center gap-2" @submit.prevent="saveBoardName">
+                    <input
+                        v-model="boardForm.name"
+                        class="w-64 rounded-md border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-900"
+                        maxlength="255"
+                        required
+                    />
+                    <button
+                        type="submit"
+                        class="rounded bg-talents-600 px-2 py-1 text-xs font-semibold text-white hover:bg-talents-700"
+                    >
+                        Salvar
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
+                        @click="editingName = false"
+                    >
+                        Cancelar
+                    </button>
+                </form>
+            </template>
+            <h2 v-else class="truncate text-base font-semibold text-slate-900 sm:text-lg">{{ boardPayload.name }}</h2>
+
+            <button
+                v-if="isAdmin && !editingName"
+                type="button"
+                class="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                title="Alterar nome do quadro"
+                @click="editingName = true"
+            >
+                <PencilSquareIcon class="h-4 w-4" />
+            </button>
 
             <button
                 type="button"

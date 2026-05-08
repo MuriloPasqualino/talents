@@ -119,6 +119,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::resource('quadros', TasksTaskBoardController::class)
             ->only(['index', 'show'])
             ->parameters(['quadros' => 'board']);
+        Route::patch('quadros/{board}', [TasksTaskBoardController::class, 'update'])->name('quadros.update');
 
         Route::post('quadros/{board}/listas', [TaskBoardListController::class, 'store'])->name('quadros.listas.store');
         Route::patch('listas/{list}', [TaskBoardListController::class, 'update'])->name('listas.update');
