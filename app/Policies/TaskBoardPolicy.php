@@ -28,6 +28,10 @@ class TaskBoardPolicy
             return false;
         }
 
+        if ($board->company_id === null) {
+            return true;
+        }
+
         return (int) $board->company_id === (int) $user->company_id;
     }
 

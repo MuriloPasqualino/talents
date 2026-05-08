@@ -4,13 +4,14 @@ import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 
 const props = defineProps({
     show: Boolean,
     card: { type: Object, default: null },
     boardPayload: { type: Object, required: true },
     companyUsers: { type: Array, default: () => [] },
+    companies: { type: Array, default: () => [] },
     isAdmin: { type: Boolean, default: false },
     visibilityCardOptions: { type: Array, default: () => [] },
 });
@@ -23,6 +24,7 @@ const cardUpdate = useForm({
     visibility: 'inherit',
     due_date: '',
     start_date: '',
+    company_id: '',
     member_ids: [],
     label_ids: [],
 });
@@ -38,11 +40,21 @@ watch(
         cardUpdate.visibility = c.visibility || 'inherit';
         cardUpdate.due_date = c.due_date || '';
         cardUpdate.start_date = c.start_date || '';
+        cardUpdate.company_id = c.company_id || '';
         cardUpdate.member_ids = (c.members || []).map((m) => m.id);
         cardUpdate.label_ids = (c.labels || []).map((l) => l.id);
     },
     { immediate: true },
 );
+
+const usersForSelectedCompany = computed(() => {
+    if (!props.isAdmin) return props.companyUsers || [];
+    if (!cardUpdate.company_id) return [];
+
+    return (props.companyUsers || []).filter(
+        (u) => Number(u.company_id) === Number(cardUpdate.company_id),
+    );
+});
 
 function saveCard() {
     if (!props.card) return;
@@ -51,10 +63,17 @@ function saveCard() {
         : route('client.tarefas.cards.update', props.card.id);
 
     if (props.isAdmin) {
-        cardUpdate.patch(url, {
-            preserveScroll: true,
-            onSuccess: () => emit('refresh'),
-        });
+        cardUpdate
+            .transform((data) => ({
+                ...data,
+                company_id: data.company_id || null,
+                due_date: data.due_date || null,
+                start_date: data.start_date || null,
+            }))
+            .patch(url, {
+                preserveScroll: true,
+                onSuccess: () => emit('refresh'),
+            });
     } else {
         cardUpdate
             .transform((data) => ({
@@ -173,15 +192,37 @@ function newLabel() {
                 </div>
 
                 <div v-if="isAdmin" class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div class="md:col-span-2">
+                        <InputLabel value="Empresa responsável (cliente)" />
+                        <select
+                            v-model="cardUpdate.company_id"
+                            class="mt-1 block w-full rounded-md border border-slate-300 text-sm"
+                        >
+                            <option value="">Não compartilhar com empresa</option>
+                            <option v-for="c in companies" :key="c.id" :value="c.id">
+                                {{ c.name }}
+                            </option>
+                        </select>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Quando definida, a tarefa aparece para essa empresa no portal cliente.
+                        </p>
+                    </div>
                     <div>
                         <InputLabel value="Membros" />
                         <div
                             class="mt-1 max-h-32 space-y-1 overflow-y-auto rounded border border-slate-200 p-2 text-sm"
                         >
-                            <label v-for="u in companyUsers" :key="u.id" class="flex items-center gap-2">
+                            <label
+                                v-for="u in usersForSelectedCompany"
+                                :key="u.id"
+                                class="flex items-center gap-2"
+                            >
                                 <input v-model="cardUpdate.member_ids" type="checkbox" :value="u.id" />
                                 {{ u.name }}
                             </label>
+                            <p v-if="!usersForSelectedCompany.length" class="text-xs text-slate-500">
+                                Selecione uma empresa para listar os responsáveis.
+                            </p>
                         </div>
                     </div>
                     <div>

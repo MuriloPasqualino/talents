@@ -35,7 +35,7 @@ final class MoveTaskCard
             }
 
             if (! $actorIsSuperAdmin) {
-                if ($board->company_id !== $actor->company_id) {
+                if ((int) $card->company_id !== (int) $actor->company_id) {
                     throw new AuthorizationException('Acesso negado.');
                 }
                 if (! TaskCardVisibility::isVisibleToCompany($card)) {

@@ -10,6 +10,7 @@ const props = defineProps({
     boardPayload: Object,
     activity: Array,
     companyUsers: Array,
+    companies: Array,
     visibilityListOptions: Array,
     visibilityCardOptions: Array,
 });
@@ -69,6 +70,7 @@ function refreshBoard() {
             :card="selectedCard"
             :board-payload="boardPayload"
             :company-users="companyUsers || []"
+            :companies="companies || []"
             :is-admin="true"
             :visibility-card-options="visibilityCardOptions || []"
             @close="modalOpen = false"

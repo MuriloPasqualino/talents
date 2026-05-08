@@ -32,11 +32,11 @@ final class BoardPresenter
     /**
      * @return array<string, mixed>
      */
-    public static function forClient(TaskBoard $board): array
+    public static function forClient(TaskBoard $board, int $companyId): array
     {
         $board->loadMissing([
-            'lists.cards' => function ($q) {
-                $q->visibleToCompany()->orderBy('position');
+            'lists.cards' => function ($q) use ($companyId) {
+                $q->visibleToCompany($companyId)->orderBy('position');
             },
             'lists' => function ($q) {
                 $q->visibleToCompany()->orderBy('position');
@@ -113,6 +113,7 @@ final class BoardPresenter
     public static function serializeCard(TaskCard $card): array
     {
         $card->loadMissing([
+            'company:id,name',
             'labels:id,name,color',
             'members:id,name,email',
             'checklists.items',
@@ -125,6 +126,8 @@ final class BoardPresenter
             'list_id' => $card->list_id,
             'title' => $card->title,
             'description' => $card->description,
+            'company_id' => $card->company_id,
+            'company' => $card->company ? ['id' => $card->company->id, 'name' => $card->company->name] : null,
             'position' => $card->position,
             'visibility' => $card->visibility,
             'cover_color' => $card->cover_color,
@@ -176,6 +179,26 @@ final class BoardPresenter
             ->orderBy('name')
             ->get(['id', 'name', 'email'])
             ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email]);
+    }
+
+    /**
+     * @return Collection<int, array{id:int,name:string,email:string,company_id:int|null,company_name:string|null}>
+     */
+    public static function allActiveCompanyUsers(): Collection
+    {
+        return User::query()
+            ->with('company:id,name')
+            ->whereNotNull('company_id')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'company_id'])
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'company_id' => $u->company_id,
+                'company_name' => $u->company?->name,
+            ]);
     }
 
     /**

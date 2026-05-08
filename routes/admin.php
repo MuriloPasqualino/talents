@@ -117,7 +117,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('processos/{template}/ativar', [TasksBoardActivationController::class, 'store'])->name('processos.ativar');
 
         Route::resource('quadros', TasksTaskBoardController::class)
-            ->only(['index', 'create', 'store', 'show', 'destroy'])
+            ->only(['index', 'show'])
             ->parameters(['quadros' => 'board']);
 
         Route::post('quadros/{board}/listas', [TaskBoardListController::class, 'store'])->name('quadros.listas.store');

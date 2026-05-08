@@ -283,6 +283,9 @@ function dueClass(card) {
                         </div>
 
                         <p class="text-sm font-medium leading-snug text-slate-900">{{ card.title }}</p>
+                        <p v-if="isAdmin && card.company?.name" class="mt-1 text-[11px] text-slate-500">
+                            Cliente: {{ card.company.name }}
+                        </p>
 
                         <div class="mt-2 flex items-center justify-between gap-2">
                             <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">

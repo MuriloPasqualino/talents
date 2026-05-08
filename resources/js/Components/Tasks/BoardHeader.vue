@@ -1,7 +1,6 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
 import {
-    EllipsisHorizontalIcon,
     StarIcon as StarOutlineIcon,
     UserPlusIcon,
 } from '@heroicons/vue/24/outline';
@@ -19,7 +18,6 @@ const emit = defineEmits(['refresh']);
 const isStarred = ref(Boolean(props.boardPayload?.is_starred));
 const inviting = ref(false);
 const inviteUserId = ref(null);
-const showMenu = ref(false);
 
 const members = computed(() => props.boardPayload?.members ?? []);
 const visibleMembers = computed(() => members.value.slice(0, 4));
@@ -112,10 +110,6 @@ function removeMember(userId) {
     );
 }
 
-function archiveBoard() {
-    if (!confirm('Excluir definitivamente este quadro? Esta ação não pode ser desfeita.')) return;
-    router.delete(route('admin.tarefas.quadros.destroy', props.boardPayload.id));
-}
 </script>
 
 <template>
@@ -177,35 +171,6 @@ function archiveBoard() {
                 Convidar
             </button>
 
-            <div class="relative" v-if="isAdmin">
-                <button
-                    type="button"
-                    class="rounded-lg p-1.5 text-slate-600 transition hover:bg-slate-100"
-                    title="Mais ações"
-                    @click="showMenu = !showMenu"
-                >
-                    <EllipsisHorizontalIcon class="h-5 w-5" />
-                </button>
-                <div
-                    v-if="showMenu"
-                    class="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg"
-                    @mouseleave="showMenu = false"
-                >
-                    <a
-                        :href="route('admin.tarefas.quadros.index')"
-                        class="block px-3 py-2 text-slate-700 hover:bg-slate-50"
-                    >
-                        Voltar para quadros
-                    </a>
-                    <button
-                        type="button"
-                        class="block w-full px-3 py-2 text-left text-rose-600 hover:bg-rose-50"
-                        @click="showMenu = false; archiveBoard()"
-                    >
-                        Excluir quadro
-                    </button>
-                </div>
-            </div>
         </div>
 
         <Teleport to="body">

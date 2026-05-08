@@ -22,6 +22,7 @@ class TaskBoardCardController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'visibility' => ['required', 'in:internal,company,inherit'],
+            'company_id' => ['nullable', 'exists:companies,id'],
             'position' => ['nullable', 'numeric'],
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
@@ -34,6 +35,7 @@ class TaskBoardCardController extends Controller
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'visibility' => $data['visibility'],
+            'company_id' => $data['company_id'] ?? null,
             'position' => $data['position'],
             'start_date' => $data['start_date'] ?? null,
             'due_date' => $data['due_date'] ?? null,
@@ -52,6 +54,7 @@ class TaskBoardCardController extends Controller
             'title' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'visibility' => ['sometimes', 'in:internal,company,inherit'],
+            'company_id' => ['nullable', 'exists:companies,id'],
             'position' => ['sometimes', 'numeric'],
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
@@ -72,10 +75,11 @@ class TaskBoardCardController extends Controller
         }
 
         if (is_array($memberIds)) {
+            $targetCompanyId = $data['company_id'] ?? $card->company_id;
             $validIds = User::query()
                 ->whereIn('id', $memberIds)
-                ->when($board->company_id, fn ($q) => $q->where('company_id', $board->company_id))
-                ->when(! $board->company_id, fn ($q) => $q->whereNull('company_id'))
+                ->when($targetCompanyId, fn ($q) => $q->where('company_id', $targetCompanyId))
+                ->when(! $targetCompanyId, fn ($q) => $q->whereNull('company_id'))
                 ->pluck('id')
                 ->all();
             $previous = $card->members()->pluck('users.id')->all();

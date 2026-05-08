@@ -89,6 +89,7 @@ class TaskModuleTest extends TestCase
 
         $card = TaskCard::query()->create([
             'list_id' => $listFrom->id,
+            'company_id' => $company->id,
             'title' => 'Card',
             'position' => 1000,
             'visibility' => 'company',
@@ -172,6 +173,7 @@ class TaskModuleTest extends TestCase
 
         $card = TaskCard::query()->create([
             'list_id' => $list->id,
+            'company_id' => $company->id,
             'title' => 'Card',
             'position' => 1000,
             'visibility' => 'company',

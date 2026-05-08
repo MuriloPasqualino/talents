@@ -14,6 +14,7 @@ class TaskCard extends Model
 {
     protected $fillable = [
         'list_id',
+        'company_id',
         'title',
         'description',
         'position',
@@ -41,6 +42,11 @@ class TaskCard extends Model
     public function list(): BelongsTo
     {
         return $this->belongsTo(TaskList::class, 'list_id');
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 
     public function board(): HasOneThrough
@@ -100,13 +106,14 @@ class TaskCard extends Model
     /**
      * Cards visíveis para utilizadores da empresa no cliente.
      */
-    public function scopeVisibleToCompany(Builder $query): Builder
+    public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {
         return $query->whereHas('list', function (Builder $q) {
             $q->where('visibility', 'company')->where('is_archived', false);
         })->where(function (Builder $q) {
             $q->where('visibility', 'company')
                 ->orWhere('visibility', 'inherit');
-        })->where('is_archived', false);
+        })->where('is_archived', false)
+            ->where('company_id', $companyId);
     }
 }

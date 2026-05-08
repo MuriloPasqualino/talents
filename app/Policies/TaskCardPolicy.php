@@ -25,7 +25,7 @@ class TaskCardPolicy
             return false;
         }
 
-        if ((int) $board->company_id !== (int) $user->company_id) {
+        if ((int) $card->company_id !== (int) $user->company_id) {
             return false;
         }
 

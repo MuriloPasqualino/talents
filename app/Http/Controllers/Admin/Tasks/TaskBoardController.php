@@ -8,70 +8,61 @@ use App\Models\TaskBoard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Inertia\Response;
 
 class TaskBoardController extends Controller
 {
-    public function index(Request $request): Response
+    private function getOrCreateSingleBoard(int $userId): TaskBoard
     {
-        $q = TaskBoard::query()
-            ->with(['company:id,name'])
-            ->orderByDesc('id');
+        $board = TaskBoard::query()
+            ->whereNull('company_id')
+            ->where('is_archived', false)
+            ->orderBy('id')
+            ->first();
 
-        if ($request->filled('company_id')) {
-            $q->where('company_id', (int) $request->input('company_id'));
+        if ($board) {
+            return $board;
         }
-
-        if ($request->filled('scope')) {
-            if ($request->input('scope') === 'internal') {
-                $q->whereNull('company_id');
-            } elseif ($request->input('scope') === 'company') {
-                $q->whereNotNull('company_id');
-            }
-        }
-
-        $boards = $q->paginate(20)->withQueryString();
-
-        return Inertia::render('Admin/Tarefas/Quadros/Index', [
-            'boards' => $boards,
-            'companies' => Company::query()->orderBy('name')->get(['id', 'name']),
-            'filters' => $request->only(['company_id', 'scope']),
-        ]);
-    }
-
-    public function create(): Response
-    {
-        return Inertia::render('Admin/Tarefas/Quadros/Create');
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'cover_color' => ['nullable', 'string', 'max:32'],
-        ]);
 
         $board = TaskBoard::query()->create([
             'company_id' => null,
             'process_template_id' => null,
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-            'cover_color' => $data['cover_color'] ?? null,
+            'name' => 'Quadro Único de Tarefas',
+            'description' => 'Quadro central para todas as tarefas e empresas.',
+            'cover_color' => null,
             'is_archived' => false,
-            'created_by_user_id' => $request->user()->id,
+            'created_by_user_id' => $userId,
         ]);
 
         $board->lists()->create([
             'name' => 'A fazer',
             'position' => 1000,
-            'visibility' => 'internal',
-            'allow_company_drop_in' => false,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+        $board->lists()->create([
+            'name' => 'Em andamento',
+            'position' => 2000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+        $board->lists()->create([
+            'name' => 'Concluído',
+            'position' => 3000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
             'is_archived' => false,
         ]);
 
-        return redirect()->route('admin.tarefas.quadros.show', $board)->with('success', 'Quadro interno criado.');
+        return $board;
+    }
+
+    public function index(Request $request): RedirectResponse
+    {
+        $board = $this->getOrCreateSingleBoard($request->user()->id);
+        return redirect()->route('admin.tarefas.quadros.show', $board);
     }
 
     public function show(TaskBoard $board): Response
@@ -86,14 +77,14 @@ class TaskBoardController extends Controller
             'card_id' => $row->task_card_id,
         ]);
 
-        $companyUsers = $board->company_id
-            ? BoardPresenter::companyUsersForMentions($board->company_id)
-            : collect();
+        $companyUsers = BoardPresenter::allActiveCompanyUsers();
+        $companies = Company::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Admin/Tarefas/Quadros/Show', [
             'boardPayload' => $payload,
             'activity' => $activity,
             'companyUsers' => $companyUsers,
+            'companies' => $companies,
             'visibilityListOptions' => [
                 ['value' => 'internal', 'label' => 'Interno'],
                 ['value' => 'company', 'label' => 'Empresa'],
@@ -106,10 +97,4 @@ class TaskBoardController extends Controller
         ]);
     }
 
-    public function destroy(TaskBoard $board): RedirectResponse
-    {
-        $board->delete();
-
-        return redirect()->route('admin.tarefas.quadros.index')->with('success', 'Quadro removido.');
-    }
 }
