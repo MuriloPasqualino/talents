@@ -53,7 +53,7 @@ class TaskBoard extends Model
 
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'task_board_members')
+        return $this->belongsToMany(User::class, 'task_board_members', 'board_id', 'user_id')
             ->withPivot('role')
             ->withTimestamps();
     }
