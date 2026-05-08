@@ -4,14 +4,16 @@ namespace App\Http\Controllers\Admin\Tasks;
 
 use App\Actions\Tasks\LogTaskActivity;
 use App\Actions\Tasks\MoveTaskCard;
+use App\Enums\TaskListVisibility;
 use App\Http\Controllers\Controller;
-use App\Models\TaskList;
 use App\Models\TaskCard;
+use App\Models\TaskList;
 use App\Models\User;
 use App\Notifications\TaskCardMemberAssignedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 class TaskBoardCardController extends Controller
 {
@@ -30,6 +32,18 @@ class TaskBoardCardController extends Controller
 
         $max = (float) $list->cards()->max('position');
         $data['position'] = $data['position'] ?? ($max + 1000);
+
+        $list->loadMissing('board');
+        $board = $list->board;
+        if ($board && $board->company_id !== null && empty($data['company_id'])) {
+            $data['company_id'] = $board->company_id;
+        }
+
+        if ($list->visibility === TaskListVisibility::Company->value && empty($data['company_id'])) {
+            throw ValidationException::withMessages([
+                'company_id' => 'Selecione a empresa do cliente para esta tarefa aparecer no portal.',
+            ]);
+        }
 
         $card = $list->cards()->create([
             'title' => $data['title'],

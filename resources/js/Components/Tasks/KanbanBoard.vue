@@ -17,6 +17,8 @@ import { computed, ref, watch } from 'vue';
 const props = defineProps({
     boardPayload: { type: Object, required: true },
     isAdmin: { type: Boolean, default: false },
+    /** Empresas ativas (admin); necessário para atribuir cliente em quadro global. */
+    companies: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['open-card', 'refresh']);
@@ -32,6 +34,13 @@ watch(
 );
 
 const labels = computed(() => props.boardPayload.labels ?? []);
+
+const needsClientCompanyOnQuickAdd = computed(
+    () => props.isAdmin && !props.boardPayload?.company_id,
+);
+
+const quickAddCompanyId = ref('');
+const quickAddCompanyError = ref('');
 
 function cloneLists(lists) {
     if (!lists) return [];
@@ -119,6 +128,7 @@ const newCardTitles = ref({});
 
 function startComposing(listId) {
     composing.value[listId] = true;
+    quickAddCompanyError.value = '';
     if (newCardTitles.value[listId] === undefined) {
         newCardTitles.value[listId] = '';
     }
@@ -127,22 +137,42 @@ function startComposing(listId) {
 function cancelComposing(listId) {
     composing.value[listId] = false;
     newCardTitles.value[listId] = '';
+    quickAddCompanyError.value = '';
 }
 
 function submitNewCard(list) {
     const key = list.id;
     const title = (newCardTitles.value[key] || '').trim();
     if (!title) return;
+
+    quickAddCompanyError.value = '';
+    if (
+        list.visibility === 'company' &&
+        needsClientCompanyOnQuickAdd.value &&
+        !String(quickAddCompanyId.value || '').trim()
+    ) {
+        quickAddCompanyError.value = 'Selecione a empresa do cliente.';
+        return;
+    }
+
+    const payload = {
+        title,
+        visibility: 'inherit',
+    };
+    if (props.boardPayload.company_id) {
+        payload.company_id = props.boardPayload.company_id;
+    } else if (list.visibility === 'company' && quickAddCompanyId.value) {
+        payload.company_id = Number(quickAddCompanyId.value);
+    }
+
     router.post(
         route('admin.tarefas.listas.cards.store', list.id),
-        {
-            title,
-            visibility: 'inherit',
-        },
+        payload,
         {
             preserveScroll: true,
             onSuccess: () => {
                 newCardTitles.value[key] = '';
+                quickAddCompanyId.value = '';
                 reload();
             },
         },
@@ -361,6 +391,40 @@ function dueClass(card) {
 
                 <div v-if="isAdmin" class="px-0.5 pt-2">
                     <div v-if="composing[list.id]" class="space-y-2">
+                        <div
+                            v-if="
+                                list.visibility === 'company' &&
+                                needsClientCompanyOnQuickAdd &&
+                                companies.length
+                            "
+                        >
+                            <label class="block text-[11px] font-medium text-slate-600">
+                                Empresa (portal cliente)
+                                <select
+                                    v-model="quickAddCompanyId"
+                                    class="mt-1 block w-full rounded-lg border-slate-300 bg-white text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                >
+                                    <option value="">Selecione…</option>
+                                    <option v-for="c in companies" :key="c.id" :value="String(c.id)">
+                                        {{ c.name }}
+                                    </option>
+                                </select>
+                            </label>
+                            <p v-if="quickAddCompanyError" class="mt-1 text-[11px] text-rose-600">
+                                {{ quickAddCompanyError }}
+                            </p>
+                        </div>
+                        <p
+                            v-else-if="
+                                list.visibility === 'company' &&
+                                needsClientCompanyOnQuickAdd &&
+                                !companies.length
+                            "
+                            class="text-[11px] text-amber-800"
+                        >
+                            Não há empresas ativas para vincular. Esta tarefa não aparecerá no portal até ter
+                            empresa.
+                        </p>
                         <textarea
                             v-model="newCardTitles[list.id]"
                             rows="2"

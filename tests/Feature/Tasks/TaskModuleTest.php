@@ -10,6 +10,8 @@ use App\Models\TaskProcessTemplate;
 use App\Models\TaskTemplateCard;
 use App\Models\TaskTemplateList;
 use App\Models\User;
+use App\Notifications\TaskCommentMentionNotification;
+use App\Support\Tasks\BoardPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -146,6 +148,78 @@ class TaskModuleTest extends TestCase
         $this->assertSame(1, $board->lists()->first()->cards()->count());
     }
 
+    public function test_admin_cannot_create_company_list_card_on_global_board_without_company(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/listas/'.$list->id.'/cards', [
+                'title' => 'Sem empresa',
+                'visibility' => 'inherit',
+            ])
+            ->assertSessionHasErrors('company_id');
+
+        $this->assertSame(0, TaskCard::query()->count());
+    }
+
+    public function test_admin_creates_company_list_card_on_global_board_with_company_visible_to_client(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/listas/'.$list->id.'/cards', [
+                'title' => 'Com empresa',
+                'visibility' => 'inherit',
+                'company_id' => $company->id,
+            ])
+            ->assertRedirect();
+
+        $card = TaskCard::query()->first();
+        $this->assertNotNull($card);
+        $this->assertSame($company->id, (int) $card->company_id);
+
+        $clientUser = User::factory()->companyAdmin($company->id)->create();
+        $this->actingAs($clientUser)
+            ->get('/client/tarefas/'.$board->id)
+            ->assertOk();
+
+        $payload = BoardPresenter::forClient($board->fresh(), $company->id);
+        $cardIds = collect($payload['lists'])->flatMap(fn ($l) => collect($l['cards'])->pluck('id'))->all();
+        $this->assertContains($card->id, $cardIds);
+    }
+
     public function test_comment_mention_sends_notification(): void
     {
         Notification::fake();
@@ -187,6 +261,6 @@ class TaskModuleTest extends TestCase
             ])
             ->assertRedirect();
 
-        Notification::assertSentTo($mentioned, \App\Notifications\TaskCommentMentionNotification::class);
+        Notification::assertSentTo($mentioned, TaskCommentMentionNotification::class);
     }
 }

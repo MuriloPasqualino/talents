@@ -99,6 +99,7 @@ function formatDate(value) {
                 v-if="viewMode === 'kanban'"
                 :board-payload="boardPayload"
                 :is-admin="true"
+                :companies="companies || []"
                 @open-card="openCard"
                 @refresh="refreshBoard"
             />
