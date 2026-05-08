@@ -141,6 +141,7 @@ final class BoardPresenter
                 'id' => $cl->id,
                 'name' => $cl->name,
                 'position' => $cl->position,
+                'is_completed' => (bool) $cl->is_completed,
                 'items' => $cl->items->map(fn ($it) => [
                     'id' => $it->id,
                     'text' => $it->text,
