@@ -38,6 +38,7 @@ const cardUpdate = useForm({
 const commentForm = useForm({ body: '', mentioned_user_ids: [] });
 const checklistForm = useForm({ name: '' });
 const checklistItemDrafts = ref({});
+const checklistBulkProcessing = ref({});
 
 watch(
     () => props.card,
@@ -64,6 +65,16 @@ const usersForSelectedCompany = computed(() => {
         (u) => Number(u.company_id) === Number(cardUpdate.company_id),
     );
 });
+
+function checklistStats(checklist) {
+    const items = checklist?.items || [];
+    const total = items.length;
+    const completed = items.filter((item) => item.is_completed).length;
+    const percent = total ? Math.round((completed / total) * 100) : 0;
+    const done = total > 0 && completed === total;
+
+    return { total, completed, percent, done };
+}
 
 function saveCard() {
     if (!props.card) return;
@@ -170,6 +181,39 @@ function createChecklistItem(checklistId) {
             },
         },
     );
+}
+
+function toggleChecklistCompletion(checklist) {
+    if (!checklist || !checklist.id) return;
+    const stats = checklistStats(checklist);
+    if (!stats.total) return;
+
+    const targetValue = !stats.done;
+    const items = checklist.items || [];
+    checklistBulkProcessing.value[checklist.id] = true;
+
+    let pending = items.length;
+    for (const item of items) {
+        const url = props.isAdmin
+            ? route('admin.tarefas.checklist-itens.update', item.id)
+            : route('client.tarefas.checklist-itens.update', item.id);
+
+        router.patch(
+            url,
+            { is_completed: targetValue },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onFinish: () => {
+                    pending -= 1;
+                    if (pending === 0) {
+                        checklistBulkProcessing.value[checklist.id] = false;
+                        reloadBoardPayloadAndSyncCard();
+                    }
+                },
+            },
+        );
+    }
 }
 
 function uploadAttachment(e) {
@@ -318,7 +362,29 @@ function formatDateTime(value) {
                             :key="cl.id"
                             class="rounded-md border border-slate-200 p-2"
                         >
-                            <p class="text-xs font-semibold text-slate-700">{{ cl.name }}</p>
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-xs font-semibold text-slate-700">{{ cl.name }}</p>
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                    :disabled="checklistBulkProcessing[cl.id] || !checklistStats(cl).total"
+                                    @click="toggleChecklistCompletion(cl)"
+                                >
+                                    {{ checklistStats(cl).done ? 'Reabrir checklist' : 'Concluir checklist' }}
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <div class="mb-1 flex items-center justify-between text-[11px] text-slate-500">
+                                    <span>Progresso</span>
+                                    <span>{{ checklistStats(cl).completed }}/{{ checklistStats(cl).total }} ({{ checklistStats(cl).percent }}%)</span>
+                                </div>
+                                <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                                    <div
+                                        class="h-full rounded-full bg-emerald-500 transition-all duration-200"
+                                        :style="{ width: `${checklistStats(cl).percent}%` }"
+                                    />
+                                </div>
+                            </div>
                             <ul class="mt-2 space-y-1 text-sm">
                                 <li
                                     v-for="it in cl.items || []"
