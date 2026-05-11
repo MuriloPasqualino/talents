@@ -129,6 +129,8 @@ class SettingsController extends Controller
             'company_email' => ['nullable', 'email', 'max:255'],
             'company_representative_line' => ['nullable', 'string', 'max:5000'],
             'company_forum_city_state' => ['nullable', 'string', 'max:255'],
+            'company_contract_signatory_name' => ['nullable', 'string', 'max:255'],
+            'company_contract_signatory_cpf' => ['nullable', 'string', 'max:32'],
             'default_payment_terms' => ['nullable', 'string', 'max:5000'],
             'default_prazo_dias' => ['nullable', 'integer', 'min:0', 'max:3650'],
         ]);

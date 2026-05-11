@@ -38,6 +38,9 @@ class CommercialProposal extends Model
 
             'is_closed' => 'boolean',
             'closed_at' => 'datetime',
+
+            'palestra_event_date' => 'date',
+            'palestra_audience_estimate' => 'integer',
         ];
     }
 

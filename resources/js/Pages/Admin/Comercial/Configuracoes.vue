@@ -74,6 +74,8 @@ const form = useForm({
     company_email: props.settings.company_email ?? '',
     company_representative_line: props.settings.company_representative_line ?? '',
     company_forum_city_state: props.settings.company_forum_city_state ?? '',
+    company_contract_signatory_name: props.settings.company_contract_signatory_name ?? '',
+    company_contract_signatory_cpf: props.settings.company_contract_signatory_cpf ?? '',
     default_payment_terms: props.settings.default_payment_terms ?? '',
     default_prazo_dias: props.settings.default_prazo_dias ?? '',
 });
@@ -405,6 +407,24 @@ const tableConfig = computed(() => [
                                 v-model="form.company_forum_city_state"
                                 type="text"
                                 placeholder="Várzea Paulista – SP (deixe em branco para usar Cidade/UF ou o padrão legal)"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Signatário(a) — nome (contrato palestra)</label>
+                            <input
+                                v-model="form.company_contract_signatory_name"
+                                type="text"
+                                placeholder="Ex.: Suzane G. Pasqualino"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Signatário(a) — CPF</label>
+                            <input
+                                v-model="form.company_contract_signatory_cpf"
+                                type="text"
+                                placeholder="000.000.000-00"
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>

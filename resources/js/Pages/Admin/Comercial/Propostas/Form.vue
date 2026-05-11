@@ -22,6 +22,7 @@ const formInitial = props.proposal
           client_phone: props.proposal.client_phone ?? '',
           client_address: props.proposal.client_address ?? '',
           client_representative: props.proposal.client_representative ?? '',
+          client_representative_role: props.proposal.client_representative_role ?? '',
           indication: props.proposal.indication ?? '',
           employee_count: props.proposal.employee_count ?? 0,
           seller_id: props.proposal.seller_id ?? '',
@@ -37,6 +38,13 @@ const formInitial = props.proposal
           commission_percent: props.proposal.commission_percent ?? 0,
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
+          palestra_topic: props.proposal.palestra_topic ?? '',
+          palestra_event_date: props.proposal.palestra_event_date ?? '',
+          palestra_start_time: props.proposal.palestra_start_time ?? '',
+          palestra_duration_hours: props.proposal.palestra_duration_hours ?? '',
+          palestra_venue_address: props.proposal.palestra_venue_address ?? '',
+          palestra_audience_estimate: props.proposal.palestra_audience_estimate ?? '',
+          palestra_format: props.proposal.palestra_format ?? '',
       }
     : {
           client_name: '',
@@ -45,6 +53,7 @@ const formInitial = props.proposal
           client_phone: '',
           client_address: '',
           client_representative: '',
+          client_representative_role: '',
           indication: '',
           employee_count: 0,
           seller_id: '',
@@ -60,6 +69,13 @@ const formInitial = props.proposal
           commission_percent: 0,
           is_closed: false,
           notes: '',
+          palestra_topic: '',
+          palestra_event_date: '',
+          palestra_start_time: '',
+          palestra_duration_hours: '',
+          palestra_venue_address: '',
+          palestra_audience_estimate: '',
+          palestra_format: '',
       };
 
 const form = useForm(formInitial);
@@ -243,6 +259,15 @@ const services = computed(() => [
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />
                             </div>
+                            <div class="sm:col-span-2">
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Cargo do representante (contrato)</label>
+                                <input
+                                    v-model="form.client_representative_role"
+                                    type="text"
+                                    placeholder="Ex.: Diretora Administrativa"
+                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
+                            </div>
                             <div>
                                 <label class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</label>
                                 <input
@@ -392,6 +417,81 @@ const services = computed(() => [
                                 {{ formatBRL(breakdownCents.total_palestras_cents) }}
                             </div>
                         </label>
+                    </div>
+                </section>
+
+                <!-- Palestra — evento (contrato) -->
+                <section v-if="form.svc_palestras" class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Palestra — dados do evento (contrato)</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Alimentam os placeholders do modelo &quot;Palestra — Padrão Talents&quot; (tema, data, local, formato, etc.).
+                    </p>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Tema da palestra</label>
+                            <input
+                                v-model="form.palestra_topic"
+                                type="text"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Data do evento</label>
+                            <input
+                                v-model="form.palestra_event_date"
+                                type="date"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Horário de início</label>
+                            <input
+                                v-model="form.palestra_start_time"
+                                type="text"
+                                placeholder="14:00"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Duração estimada</label>
+                            <input
+                                v-model="form.palestra_duration_hours"
+                                type="text"
+                                placeholder="Ex.: 2 ou 2h"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Público estimado</label>
+                            <input
+                                v-model.number="form.palestra_audience_estimate"
+                                type="number"
+                                min="0"
+                                placeholder="Participantes"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Formato</label>
+                            <select
+                                v-model="form.palestra_format"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            >
+                                <option value="">— Selecionar —</option>
+                                <option value="presencial">Presencial</option>
+                                <option value="online">Online</option>
+                                <option value="hibrido">Híbrido</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Local do evento</label>
+                            <input
+                                v-model="form.palestra_venue_address"
+                                type="text"
+                                placeholder="Endereço completo ou link da sala virtual"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
                     </div>
                 </section>
 

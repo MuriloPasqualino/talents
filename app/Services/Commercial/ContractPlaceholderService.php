@@ -5,6 +5,7 @@ namespace App\Services\Commercial;
 use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use App\Support\BrlExtenso;
+use Illuminate\Support\Carbon;
 
 class ContractPlaceholderService
 {
@@ -52,6 +53,39 @@ class ContractPlaceholderService
 
         $validadeDiasNum = max(1, (int) ($settings->pdf_validade_dias ?? 10));
 
+        $signatoryName = trim((string) ($settings->company_contract_signatory_name ?? ''));
+        $signatoryCpf = trim((string) ($settings->company_contract_signatory_cpf ?? ''));
+
+        $palestraFmt = $proposal->palestra_format ?? null;
+        $palestraFmtStr = is_string($palestraFmt) ? $palestraFmt : null;
+
+        $ped = $proposal->palestra_event_date;
+        $palestraDataStr = $ped
+            ? Carbon::parse($ped)->timezone(config('app.timezone'))->format('d/m/Y')
+            : '___ / ___ / ______';
+
+        $palestraTopic = trim((string) ($proposal->palestra_topic ?? ''));
+        $palestraTopicStr = $palestraTopic !== '' ? $palestraTopic : '—';
+
+        $pst = trim((string) ($proposal->palestra_start_time ?? ''));
+        $palestraHorarioStr = $pst !== '' ? $pst : '______:______ h';
+
+        $pdh = trim((string) ($proposal->palestra_duration_hours ?? ''));
+        $palestraDuracaoStr = $pdh !== '' ? $pdh : '______';
+
+        $pvl = trim((string) ($proposal->palestra_venue_address ?? ''));
+        $palestraLocalStr = $pvl !== '' ? $pvl : '—';
+
+        $palestraPublicoStr = $proposal->palestra_audience_estimate !== null
+            ? (string) $proposal->palestra_audience_estimate
+            : '—';
+
+        $cargoRepr = trim((string) ($proposal->client_representative_role ?? ''));
+        $cargoReprStr = $cargoRepr !== '' ? $cargoRepr : '—';
+
+        $dataHojePorExtenso = $this->dataHojePorExtenso();
+        $cidadeAssinaturaCurta = $this->cidadeAssinaturaCurta($forum);
+
         $emitida = $proposal->created_at;
         $emitidaFmt = $emitida ? $emitida->timezone(config('app.timezone'))->format('d/m/Y') : '—';
 
@@ -95,6 +129,22 @@ class ContractPlaceholderService
 
             'comissao_percent' => number_format((float) ($proposal->commission_percent ?? 0), 2, ',', '.'),
             'comissao_reais' => 'R$ '.number_format(((int) ($proposal->commission_cents ?? 0)) / 100, 2, ',', '.'),
+
+            'palestra_tema' => $palestraTopicStr,
+            'palestra_data' => $palestraDataStr,
+            'palestra_horario_inicio' => $palestraHorarioStr,
+            'palestra_duracao_horas' => $palestraDuracaoStr,
+            'palestra_local' => $palestraLocalStr,
+            'palestra_publico_estimado' => $palestraPublicoStr,
+            'palestra_formato_opcoes_html' => $this->palestraFormatoOpcoesHtml($palestraFmtStr),
+
+            'cliente_representante_cargo' => $cargoReprStr,
+
+            'empresa_signatario_nome' => $signatoryName !== '' ? $signatoryName : '—',
+            'empresa_signatario_cpf' => $signatoryCpf !== '' ? $signatoryCpf : '—',
+
+            'cidade_assinatura_curta' => $cidadeAssinaturaCurta,
+            'data_hoje_por_extenso' => $dataHojePorExtenso,
         ];
 
         return array_merge($base, $this->perServicePlaceholders($byKey));
@@ -225,5 +275,35 @@ class ContractPlaceholderService
             .'<tr><td colspan="2" style="padding-top:10px;font-weight:700;color:#4a2070;border-top:2px solid #4a2070;font-size:14px;">Honorário total</td>'
             ."<td style=\"padding-top:10px;text-align:right;font-weight:700;color:#4a2070;border-top:2px solid #4a2070;font-size:14px;\">{$total}</td></tr>"
             .'</tbody></table>';
+    }
+
+    private function palestraFormatoOpcoesHtml(?string $format): string
+    {
+        $f = $format ? strtolower(trim($format)) : '';
+        $mark = fn (string $opt) => ($f === strtolower($opt)) ? '(X)' : '( )';
+
+        return '<span style="font-size:11px;">'.$mark('presencial').' Presencial &nbsp; '
+            .$mark('online').' Online &nbsp; '.$mark('hibrido').' Híbrido</span>';
+    }
+
+    private function cidadeAssinaturaCurta(string $forum): string
+    {
+        $forum = trim($forum);
+        if ($forum === '') {
+            return 'Várzea Paulista';
+        }
+        $parts = preg_split('/\s*[–—\-]\s*/u', $forum, 2);
+        $city = trim($parts[0] ?? '');
+
+        return $city !== '' ? $city : 'Várzea Paulista';
+    }
+
+    private function dataHojePorExtenso(): string
+    {
+        try {
+            return Carbon::now()->locale('pt_BR')->isoFormat('D [de] MMMM [de] YYYY');
+        } catch (\Throwable) {
+            return Carbon::now()->format('d/m/Y');
+        }
     }
 }

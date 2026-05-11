@@ -199,6 +199,7 @@ class ProposalController extends Controller
             'client_phone' => ['nullable', 'string', 'max:32'],
             'client_address' => ['nullable', 'string', 'max:500'],
             'client_representative' => ['nullable', 'string', 'max:255'],
+            'client_representative_role' => ['nullable', 'string', 'max:255'],
             'indication' => ['nullable', 'string', 'max:255'],
             'employee_count' => ['required', 'integer', 'min:0', 'max:100000'],
 
@@ -213,6 +214,14 @@ class ProposalController extends Controller
             'svc_contratacao_salario_cents' => ['nullable', 'integer', 'min:0'],
             'svc_direcionamento' => ['boolean'],
             'svc_palestras' => ['boolean'],
+
+            'palestra_topic' => ['nullable', 'string', 'max:500'],
+            'palestra_event_date' => ['nullable', 'date'],
+            'palestra_start_time' => ['nullable', 'string', 'max:32'],
+            'palestra_duration_hours' => ['nullable', 'string', 'max:32'],
+            'palestra_venue_address' => ['nullable', 'string', 'max:500'],
+            'palestra_audience_estimate' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'palestra_format' => ['nullable', Rule::in(['presencial', 'online', 'hibrido'])],
 
             'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
