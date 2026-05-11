@@ -12,6 +12,7 @@ mkdir -p storage/framework/sessions \
 
 if [ "$ROLE" = "web" ]; then
   php artisan migrate --force
+  php artisan db:seed --class=Database\\Seeders\\ContractTemplateSeeder --force 2>/dev/null || true
   php artisan storage:link --force 2>/dev/null || true
 fi
 

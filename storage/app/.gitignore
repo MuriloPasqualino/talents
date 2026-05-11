@@ -1,4 +1,6 @@
 *
 !private/
 !public/
+!_seeds_contracts/
+!_seeds_contracts/**
 !.gitignore

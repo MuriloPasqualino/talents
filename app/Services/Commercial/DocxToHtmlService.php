@@ -18,7 +18,19 @@ class DocxToHtmlService
             throw new \RuntimeException('Arquivo DOCX não encontrado.');
         }
 
-        $phpWord = IOFactory::load($full);
+        return self::extractFromAbsolutePath($full);
+    }
+
+    /**
+     * Extrai HTML do corpo a partir do caminho absoluto de um .docx (útil em seeders).
+     */
+    public static function extractFromAbsolutePath(string $absolutePath): string
+    {
+        if (! is_readable($absolutePath)) {
+            throw new \RuntimeException('Arquivo DOCX não encontrado.');
+        }
+
+        $phpWord = IOFactory::load($absolutePath);
         $tmp = tempnam(sys_get_temp_dir(), 'docxhtml');
         if ($tmp === false) {
             throw new \RuntimeException('Não foi possível criar arquivo temporário.');
@@ -32,10 +44,10 @@ class DocxToHtmlService
             @unlink($tmp);
         }
 
-        return $this->stripToBodyInner($html);
+        return self::stripToBodyInner($html);
     }
 
-    private function stripToBodyInner(string $html): string
+    public static function stripToBodyInner(string $html): string
     {
         if (preg_match('~<body[^>]*>(.*?)</body>~is', $html, $m)) {
             return trim($m[1]);

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Log;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,5 +14,13 @@ class DatabaseSeeder extends Seeder
             MethodologyFormTemplateSeeder::class,
             CommercialSellersSeeder::class,
         ]);
+
+        try {
+            $this->call(ContractTemplateSeeder::class);
+        } catch (\Throwable $e) {
+            Log::warning('[DatabaseSeeder] ContractTemplateSeeder ignorado.', [
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }
