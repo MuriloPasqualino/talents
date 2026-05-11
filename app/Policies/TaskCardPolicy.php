@@ -9,6 +9,18 @@ use App\Support\Tasks\TaskCardVisibility;
 
 class TaskCardPolicy
 {
+    /**
+     * Utilizador do portal empresa (não super admin): apenas ver e comentar.
+     */
+    private function isCompanyPortalUser(User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return false;
+        }
+
+        return $user->belongsToCompany() && $user->company?->hasTasksEnabled();
+    }
+
     public function view(User $user, TaskCard $card): bool
     {
         if ($user->isSuperAdmin()) {
@@ -34,11 +46,19 @@ class TaskCardPolicy
 
     public function update(User $user, TaskCard $card): bool
     {
+        if ($this->isCompanyPortalUser($user)) {
+            return false;
+        }
+
         return $this->view($user, $card);
     }
 
     public function move(User $user, TaskCard $card): bool
     {
+        if ($this->isCompanyPortalUser($user)) {
+            return false;
+        }
+
         return $this->view($user, $card);
     }
 
@@ -49,6 +69,10 @@ class TaskCardPolicy
 
     public function attach(User $user, TaskCard $card): bool
     {
+        if ($this->isCompanyPortalUser($user)) {
+            return false;
+        }
+
         return $this->view($user, $card);
     }
 }

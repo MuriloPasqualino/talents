@@ -73,6 +73,7 @@ function positionBetween(list, newIndex) {
 }
 
 function onCardDragEnd(_fromListId, evt) {
+    if (!props.isAdmin) return;
     const cardEl = evt.item;
     const cardId = Number(cardEl?.dataset?.cardId);
     if (!cardId) return;
@@ -290,6 +291,7 @@ function dueClass(card) {
                     v-model="list.cards"
                     group="kanban-cards"
                     item-key="id"
+                    :disabled="!isAdmin"
                     class="flex min-h-[8px] flex-col gap-2 px-0.5"
                     @end="(e) => onCardDragEnd(list.id, e)"
                 >

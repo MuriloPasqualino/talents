@@ -21,6 +21,8 @@ const props = defineProps({
     visibilityCardOptions: { type: Array, default: () => [] },
 });
 
+const isReadOnly = computed(() => !props.isAdmin);
+
 const emit = defineEmits(['close', 'refresh', 'sync-card']);
 const activeTab = ref('details');
 /** Evita voltar para "Detalhes" quando o mesmo cartão é só recarregado (ex.: após criar etiqueta). */
@@ -117,7 +119,7 @@ const overallChecklistStats = computed(() => {
 });
 
 function saveCard() {
-    if (!props.card) return;
+    if (!props.card || isReadOnly.value) return;
     const url = props.isAdmin
         ? route('admin.tarefas.cards.update', props.card.id)
         : route('client.tarefas.cards.update', props.card.id);
@@ -176,6 +178,7 @@ function submitComment() {
 }
 
 function toggleItem(item) {
+    if (isReadOnly.value) return;
     const url = props.isAdmin
         ? route('admin.tarefas.checklist-itens.update', item.id)
         : route('client.tarefas.checklist-itens.update', item.id);
@@ -205,7 +208,7 @@ function createChecklist() {
 }
 
 function startInlineEditItem(item) {
-    if (!item || !item.id) return;
+    if (isReadOnly.value || !item || !item.id) return;
     editingChecklistItemId.value = item.id;
     editingChecklistItemText.value = item.text || '';
 }
@@ -242,7 +245,7 @@ function saveInlineEditItem(item) {
 }
 
 function toggleChecklistCompletion(checklist) {
-    if (!checklist || !checklist.id) return;
+    if (isReadOnly.value || !checklist || !checklist.id) return;
     const stats = checklistStats(checklist);
 
     if (!stats.total) {
@@ -288,6 +291,7 @@ function toggleChecklistCompletion(checklist) {
 }
 
 function uploadAttachment(e) {
+    if (isReadOnly.value) return;
     const file = e.target.files?.[0];
     if (!file || !props.card) return;
 
@@ -408,13 +412,29 @@ function formatDateTime(value) {
         minute: '2-digit',
     });
 }
+
+function formatDateLabel(value) {
+    if (!value) return '—';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return String(value);
+    return dt.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    });
+}
 </script>
 
 <template>
     <Modal :show="show" max-width="lg" @close="emit('close')">
         <div v-if="card" class="flex max-h-[85vh] flex-col overflow-hidden rounded-xl bg-white">
             <div class="border-b border-slate-100 px-6 pt-5">
-                <p class="text-sm font-semibold text-slate-900">Planejar atividade</p>
+                <p class="text-sm font-semibold text-slate-900">
+                    {{ isReadOnly ? 'Tarefa' : 'Planejar atividade' }}
+                </p>
+                <p v-if="isReadOnly" class="mt-1 text-xs text-slate-500">
+                    Pode visualizar e comentar. Edições ao conteúdo são feitas pela equipe Talents.
+                </p>
                 <div class="mt-4 flex items-center gap-5 text-xs">
                     <button
                         type="button"
@@ -446,40 +466,63 @@ function formatDateTime(value) {
 
             <div v-if="activeTab === 'details'" class="space-y-4 overflow-y-auto p-6">
                 <div class="space-y-4 rounded-lg border border-slate-100 p-4">
-                    <div class="space-y-1">
-                        <InputLabel value="Título" />
-                        <TextInput
-                            v-model="cardUpdate.title"
-                            class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div class="space-y-1">
-                        <InputLabel value="Descrição" />
-                        <textarea
-                            v-model="cardUpdate.description"
-                            rows="4"
-                            class="mt-1 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        <div>
-                            <InputLabel value="Início" />
+                    <template v-if="isReadOnly">
+                        <div class="space-y-1">
+                            <InputLabel value="Título" />
+                            <p class="mt-1 text-sm font-medium text-slate-900">{{ card.title }}</p>
+                        </div>
+                        <div class="space-y-1">
+                            <InputLabel value="Descrição" />
+                            <p class="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                                {{ card.description?.trim() ? card.description : '—' }}
+                            </p>
+                        </div>
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <div>
+                                <InputLabel value="Início" />
+                                <p class="mt-1 text-sm text-slate-800">{{ formatDateLabel(card.start_date) }}</p>
+                            </div>
+                            <div>
+                                <InputLabel value="Vencimento" />
+                                <p class="mt-1 text-sm text-slate-800">{{ formatDateLabel(card.due_date) }}</p>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="space-y-1">
+                            <InputLabel value="Título" />
                             <TextInput
-                                v-model="cardUpdate.start_date"
-                                type="date"
-                                class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                                v-model="cardUpdate.title"
+                                class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
-                        <div>
-                            <InputLabel value="Vencimento" />
-                            <TextInput
-                                v-model="cardUpdate.due_date"
-                                type="date"
-                                class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                        <div class="space-y-1">
+                            <InputLabel value="Descrição" />
+                            <textarea
+                                v-model="cardUpdate.description"
+                                rows="4"
+                                class="mt-1 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
-                    </div>
-
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <div>
+                                <InputLabel value="Início" />
+                                <TextInput
+                                    v-model="cardUpdate.start_date"
+                                    type="date"
+                                    class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                                />
+                            </div>
+                            <div>
+                                <InputLabel value="Vencimento" />
+                                <TextInput
+                                    v-model="cardUpdate.due_date"
+                                    type="date"
+                                    class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                                />
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
                 <div class="space-y-2 rounded-lg border border-slate-100 p-4">
@@ -526,6 +569,7 @@ function formatDateTime(value) {
                             <div class="flex items-center justify-between gap-2">
                                 <p class="text-xs font-semibold text-slate-700">{{ cl.name }}</p>
                                 <button
+                                    v-if="!isReadOnly"
                                     type="button"
                                     class="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                                     :disabled="checklistBulkProcessing[cl.id]"
@@ -556,10 +600,11 @@ function formatDateTime(value) {
                                         type="checkbox"
                                         :checked="it.is_completed"
                                         class="rounded border-slate-300"
+                                        :disabled="isReadOnly"
                                         @change="toggleItem(it)"
                                     />
                                     <TextInput
-                                        v-if="editingChecklistItemId === it.id"
+                                        v-if="!isReadOnly && editingChecklistItemId === it.id"
                                         v-model="editingChecklistItemText"
                                         class="h-8 w-full border-slate-200 bg-white text-sm shadow-none"
                                         @keydown.enter.prevent="saveInlineEditItem(it)"
@@ -567,13 +612,20 @@ function formatDateTime(value) {
                                         @blur="saveInlineEditItem(it)"
                                     />
                                     <button
-                                        v-else
+                                        v-else-if="!isReadOnly"
                                         type="button"
                                         class="w-full text-left"
                                         @click="startInlineEditItem(it)"
                                     >
                                         <span :class="it.is_completed ? 'text-slate-400 line-through' : ''">{{ it.text }}</span>
                                     </button>
+                                    <span
+                                        v-else
+                                        class="w-full text-left text-sm"
+                                        :class="it.is_completed ? 'text-slate-400 line-through' : 'text-slate-800'"
+                                    >
+                                        {{ it.text }}
+                                    </span>
                                 </li>
                             </ul>
                         </div>
@@ -589,7 +641,7 @@ function formatDateTime(value) {
                         <PaperClipIcon class="h-4 w-4 text-slate-500" />
                         Anexos
                     </h4>
-                    <input type="file" class="mt-2 block text-sm" @change="uploadAttachment" />
+                    <input v-if="!isReadOnly" type="file" class="mt-2 block text-sm" @change="uploadAttachment" />
                     <ul class="mt-2 space-y-1 text-xs">
                         <li v-for="a in card.attachments || []" :key="a.id">
                             <a :href="a.url" target="_blank" class="text-talents-700 underline">{{ a.original_name }}</a>
@@ -789,16 +841,27 @@ function formatDateTime(value) {
             </div>
 
             <div class="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
-                <button
-                    type="button"
-                    class="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                    @click="emit('close')"
-                >
-                    Cancelar
-                </button>
-                <PrimaryButton type="button" :disabled="cardUpdate.processing" @click="saveCard">
-                    Salvar alterações
-                </PrimaryButton>
+                <template v-if="isReadOnly">
+                    <button
+                        type="button"
+                        class="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        @click="emit('close')"
+                    >
+                        Fechar
+                    </button>
+                </template>
+                <template v-else>
+                    <button
+                        type="button"
+                        class="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        @click="emit('close')"
+                    >
+                        Cancelar
+                    </button>
+                    <PrimaryButton type="button" :disabled="cardUpdate.processing" @click="saveCard">
+                        Salvar alterações
+                    </PrimaryButton>
+                </template>
             </div>
         </div>
     </Modal>

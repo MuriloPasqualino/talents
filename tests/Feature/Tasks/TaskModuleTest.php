@@ -349,4 +349,90 @@ class TaskModuleTest extends TestCase
 
         Notification::assertSentTo($mentioned, TaskCommentMentionNotification::class);
     }
+
+    public function test_client_company_user_cannot_patch_task_fields(): void
+    {
+        $company = $this->baseCompany();
+        $clientUser = User::factory()->companyAdmin($company->id)->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => $company->id,
+            'title' => 'Original',
+            'position' => 1000,
+            'visibility' => 'company',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($clientUser)
+            ->patch('/client/tarefas/cards/'.$card->id, [
+                'title' => 'Alterado pelo cliente',
+            ])
+            ->assertForbidden();
+
+        $this->assertSame('Original', $card->fresh()->title);
+    }
+
+    public function test_client_company_user_cannot_move_card_even_when_allowed(): void
+    {
+        $company = $this->baseCompany();
+        $clientUser = User::factory()->companyAdmin($company->id)->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $listA = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $listB = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'B',
+            'position' => 2000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $listA->id,
+            'company_id' => $company->id,
+            'title' => 'Mover',
+            'position' => 1000,
+            'visibility' => 'company',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($clientUser)
+            ->post('/client/tarefas/cards/'.$card->id.'/mover', [
+                'list_id' => $listB->id,
+                'position' => 1500,
+            ])
+            ->assertForbidden();
+
+        $this->assertSame($listA->id, (int) $card->fresh()->list_id);
+    }
 }
