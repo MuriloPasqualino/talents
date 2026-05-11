@@ -342,7 +342,7 @@ class TaskModuleTest extends TestCase
 
         $this->actingAs($mentioner)
             ->post('/client/tarefas/cards/'.$card->id.'/comentarios', [
-                'body' => 'Olá equipa',
+                'body' => 'Olá equipe',
                 'mentioned_user_ids' => [$mentioned->id],
             ])
             ->assertRedirect();

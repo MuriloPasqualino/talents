@@ -17,7 +17,7 @@ enum AdminPermissionModule: string
     case Solides = 'solides';
     case Settings = 'settings';
     case Training = 'training';
-    case Equipe = 'equipa';
+    case Equipe = 'equipe';
 
     public function label(): string
     {

@@ -31,7 +31,7 @@ const remove = (user) => {
                     <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">Equipe Talents</h2>
                     <p class="text-sm text-gray-600">Super administradores da plataforma</p>
                 </div>
-                <Link v-if="canAdmin('equipa', 'create')" :href="route('admin.users.create')">
+                <Link v-if="canAdmin('equipe', 'create')" :href="route('admin.users.create')">
                     <PrimaryButton>Novo administrador</PrimaryButton>
                 </Link>
             </div>
@@ -72,14 +72,14 @@ const remove = (user) => {
                         </td>
                         <td class="space-x-3 px-4 py-2 text-right">
                             <Link
-                                v-if="canAdmin('equipa', 'edit')"
+                                v-if="canAdmin('equipe', 'edit')"
                                 :href="route('admin.users.edit', u.id)"
                                 class="font-medium text-talents-700 hover:underline"
                             >
                                 Editar
                             </Link>
                             <button
-                                v-if="canAdmin('equipa', 'delete') && !u.is_owner && u.id !== page.props.auth?.user?.id"
+                                v-if="canAdmin('equipe', 'delete') && !u.is_owner && u.id !== page.props.auth?.user?.id"
                                 type="button"
                                 class="font-medium text-red-600 hover:underline"
                                 @click="remove(u)"

@@ -26,7 +26,7 @@ return new class extends Migration
             'solides',
             'settings',
             'training',
-            'equipa',
+            'equipe',
         ];
     }
 

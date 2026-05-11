@@ -137,7 +137,7 @@ const { canAdmin } = useAdminPermissions();
                 :collapsed="collapsed"
             />
             <SidebarNavItem
-                v-if="canAdmin('equipa')"
+                v-if="canAdmin('equipe')"
                 :href="route('admin.users.index')"
                 :active="route().current('admin.users.*')"
                 :icon="UsersIcon"
