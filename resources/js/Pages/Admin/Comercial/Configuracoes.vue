@@ -1,7 +1,7 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import ContractTemplatesManager from '@/Pages/Admin/Comercial/ContractTemplatesManager.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -66,18 +66,6 @@ const form = useForm({
     pdf_observacoes: props.settings.pdf_observacoes ?? '',
     pdf_aceite_texto: props.settings.pdf_aceite_texto ?? '',
 
-    company_name: props.settings.company_name ?? '',
-    company_cnpj: props.settings.company_cnpj ?? '',
-    company_address: props.settings.company_address ?? '',
-    company_city_state: props.settings.company_city_state ?? '',
-    company_phone: props.settings.company_phone ?? '',
-    company_email: props.settings.company_email ?? '',
-    company_representative_line: props.settings.company_representative_line ?? '',
-    company_forum_city_state: props.settings.company_forum_city_state ?? '',
-    company_contract_signatory_name: props.settings.company_contract_signatory_name ?? '',
-    company_contract_signatory_cpf: props.settings.company_contract_signatory_cpf ?? '',
-    default_payment_terms: props.settings.default_payment_terms ?? '',
-    default_prazo_dias: props.settings.default_prazo_dias ?? '',
 });
 
 const submit = () => {
@@ -338,118 +326,45 @@ const tableConfig = computed(() => [
             <!-- Tab: Empresa (contratos / placeholders Talents) -->
             <template v-if="tab === 'empresa'">
                 <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Dados da empresa (Talents)</h3>
+                    <h3 class="text-lg font-semibold text-slate-900">Dados da empresa Talents (CONTRATADA)</h3>
                     <p class="mt-1 text-xs text-slate-500">
-                        Usados nos placeholders de contrato (empresa_nome, forma_pagamento, prazo_dias, etc.).
+                        Razão social, CNPJ, endereço, representação legal, foro e termos padrão — usados nos PDFs de contrato e proposta.
+                        A edição foi movida para uma página dedicada no menu lateral.
                     </p>
-                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <dl class="mt-6 grid gap-3 text-sm sm:grid-cols-2">
                         <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Razão social / Nome</label>
-                            <input
-                                v-model="form.company_name"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Razão social</dt>
+                            <dd class="mt-1 font-medium text-slate-900">{{ settings.company_name || '—' }}</dd>
                         </div>
                         <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">CNPJ</label>
-                            <input
-                                v-model="form.company_cnpj"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">CNPJ</dt>
+                            <dd class="mt-1 text-slate-800">{{ settings.company_cnpj || '—' }}</dd>
                         </div>
                         <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Telefone</label>
-                            <input
-                                v-model="form.company_phone"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</label>
-                            <input
-                                v-model="form.company_email"
-                                type="email"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">E-mail</dt>
+                            <dd class="mt-1 text-slate-800">{{ settings.company_email || '—' }}</dd>
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Endereço</label>
-                            <input
-                                v-model="form.company_address"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Endereço</dt>
+                            <dd class="mt-1 text-slate-800">{{ settings.company_address || '—' }}</dd>
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Cidade / UF</label>
-                            <input
-                                v-model="form.company_city_state"
-                                type="text"
-                                placeholder="São Paulo — SP"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Representação legal</dt>
+                            <dd class="mt-1 text-slate-700">{{ settings.company_representative_line || '—' }}</dd>
                         </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Representação legal no contrato (Contratada)</label>
-                            <textarea
-                                v-model="form.company_representative_line"
-                                rows="3"
-                                placeholder='Ex.: neste ato representada por Fulana de Tal, CPF nº 000.000.000-00, conforme contrato social.'
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Foro (comarca)</label>
-                            <input
-                                v-model="form.company_forum_city_state"
-                                type="text"
-                                placeholder="Várzea Paulista – SP (deixe em branco para usar Cidade/UF ou o padrão legal)"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Signatário(a) — nome (contrato palestra)</label>
-                            <input
-                                v-model="form.company_contract_signatory_name"
-                                type="text"
-                                placeholder="Ex.: Suzane G. Pasqualino"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Signatário(a) — CPF</label>
-                            <input
-                                v-model="form.company_contract_signatory_cpf"
-                                type="text"
-                                placeholder="000.000.000-00"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Forma de pagamento padrão</label>
-                            <textarea
-                                v-model="form.default_payment_terms"
-                                rows="4"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div class="max-w-xs">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Prazo padrão (dias)</label>
-                            <input
-                                v-model.number="form.default_prazo_dias"
-                                type="number"
-                                min="0"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
+                    </dl>
+                    <div class="mt-8">
+                        <Link
+                            :href="route('admin.empresa-talents.edit')"
+                            class="inline-flex items-center rounded-xl bg-talents-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-talents-700"
+                        >
+                            Editar dados da Talents (Empresa)
+                        </Link>
                     </div>
                 </section>
             </template>
 
-            <div v-if="tab !== 'vendedores' && tab !== 'contratos'" class="flex justify-end">
+            <div v-if="tab !== 'vendedores' && tab !== 'contratos' && tab !== 'empresa'" class="flex justify-end">
                 <button
                     type="submit"
                     :disabled="form.processing"

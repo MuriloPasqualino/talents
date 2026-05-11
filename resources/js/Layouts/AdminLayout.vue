@@ -10,6 +10,7 @@ import {
     BanknotesIcon,
     BeakerIcon,
     BuildingOffice2Icon,
+    IdentificationIcon,
     CalendarDaysIcon,
     ViewColumnsIcon,
     DocumentDuplicateIcon,
@@ -104,6 +105,13 @@ import {
                 :active="route().current('admin.comercial.*')"
                 :icon="BanknotesIcon"
                 label="Comercial"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                :href="route('admin.empresa-talents.edit')"
+                :active="route().current('admin.empresa-talents.*')"
+                :icon="IdentificationIcon"
+                label="Empresa Talents"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

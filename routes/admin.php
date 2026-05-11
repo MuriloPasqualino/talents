@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\MethodologyCompanyController;
 use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyController;
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
+use App\Http\Controllers\Admin\PlatformCompanyController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
@@ -41,6 +42,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('empresa-talents', [PlatformCompanyController::class, 'edit'])->name('empresa-talents.edit');
+    Route::put('empresa-talents', [PlatformCompanyController::class, 'update'])->name('empresa-talents.update');
     Route::get('/interessados-landing', [LandingInterestSubmissionController::class, 'index'])
         ->name('landing-interest.index');
     Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)

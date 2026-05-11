@@ -22,5 +22,13 @@ class DatabaseSeeder extends Seeder
                 'message' => $e->getMessage(),
             ]);
         }
+
+        try {
+            $this->call(TalentsCompanyProfileSeeder::class);
+        } catch (\Throwable $e) {
+            Log::warning('[DatabaseSeeder] TalentsCompanyProfileSeeder ignorado.', [
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }
