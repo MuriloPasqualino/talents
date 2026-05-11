@@ -9,11 +9,7 @@ use Illuminate\Support\Facades\Log;
 
 class ContractTemplateSeeder extends Seeder
 {
-    private const SEEDS_DIR = '_seeds_contracts';
-
-    /**
-     * @var array<int, array{name: string, files: array<int, string>, hints?: array<int, string>}>
-     */
+    /** @var array<int, array{name: string, files: array<int, string>, hints?: array<int, string>}> Ficheiros em database/seed_data/contract_templates (fora de storage/ por causa do volume Docker). */
     private const DEFINITIONS = [
         [
             'name' => 'Consultoria - Padrão Talents',
@@ -41,7 +37,7 @@ class ContractTemplateSeeder extends Seeder
 
     public function run(): void
     {
-        $base = storage_path('app/'.self::SEEDS_DIR);
+        $base = database_path('seed_data/contract_templates');
 
         foreach (self::DEFINITIONS as $def) {
             $path = $this->resolveFirstExistingPath($base, $def['files']);
