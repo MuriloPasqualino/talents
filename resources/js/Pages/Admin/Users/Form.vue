@@ -41,7 +41,7 @@ const submit = () => {
         <template #header>
             <div>
                 <Link :href="route('admin.users.index')" class="text-sm font-medium text-talents-700 hover:underline">
-                    ← Equipa
+                    ← Equipe
                 </Link>
                 <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">
                     {{ mode === 'create' ? 'Novo administrador' : 'Editar administrador' }}

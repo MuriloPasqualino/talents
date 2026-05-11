@@ -9,7 +9,7 @@
     @if ($company)
         <p>Foi criado um <strong>acesso ao portal Talents</strong> para a empresa <strong>{{ $company->name }}</strong>.</p>
     @else
-        <p>Foi criado um <strong>acesso à equipa administrativa</strong> da plataforma Talents.</p>
+        <p>Foi criado um <strong>acesso à equipe administrativa</strong> da plataforma Talents.</p>
     @endif
     <p>Seu usuário é o e-mail: <strong>{{ $user->email }}</strong></p>
     <p>Para <strong>definir sua senha</strong> e entrar no portal, use o link abaixo (válido por tempo limitado):</p>

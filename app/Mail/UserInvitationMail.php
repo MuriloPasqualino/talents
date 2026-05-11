@@ -24,7 +24,7 @@ class UserInvitationMail extends Mailable
     {
         $subject = $this->company !== null
             ? 'Convite — portal Talents ('.$this->company->name.')'
-            : 'Convite — equipa administrativa Talents';
+            : 'Convite — equipe administrativa Talents';
 
         return new Envelope(
             subject: $subject,

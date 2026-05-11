@@ -141,7 +141,7 @@ const { canAdmin } = useAdminPermissions();
                 :href="route('admin.users.index')"
                 :active="route().current('admin.users.*')"
                 :icon="UsersIcon"
-                label="Equipa"
+                label="Equipe"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

@@ -17,7 +17,7 @@ enum AdminPermissionModule: string
     case Solides = 'solides';
     case Settings = 'settings';
     case Training = 'training';
-    case Equipa = 'equipa';
+    case Equipe = 'equipa';
 
     public function label(): string
     {
@@ -35,7 +35,7 @@ enum AdminPermissionModule: string
             self::Solides => 'Sólides — Currículos',
             self::Settings => 'Configurações',
             self::Training => 'Capacitação',
-            self::Equipa => 'Equipa',
+            self::Equipe => 'Equipe',
         };
     }
 
@@ -58,7 +58,7 @@ enum AdminPermissionModule: string
             self::Solides,
             self::Settings,
             self::Training,
-            self::Equipa,
+            self::Equipe,
         ];
     }
 }

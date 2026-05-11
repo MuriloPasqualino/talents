@@ -22,13 +22,13 @@ const remove = (user) => {
 </script>
 
 <template>
-    <Head title="Equipa — Administradores" />
+    <Head title="Equipe — Administradores" />
 
     <AdminLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                    <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">Equipa Talents</h2>
+                    <h2 class="mt-1 text-xl font-semibold leading-tight text-gray-900">Equipe Talents</h2>
                     <p class="text-sm text-gray-600">Super administradores da plataforma</p>
                 </div>
                 <Link v-if="canAdmin('equipa', 'create')" :href="route('admin.users.create')">
