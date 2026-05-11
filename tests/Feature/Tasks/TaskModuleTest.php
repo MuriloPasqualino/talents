@@ -146,6 +146,92 @@ class TaskModuleTest extends TestCase
         $this->assertSame('Meu quadro', $board->name);
         $this->assertSame(1, $board->lists()->count());
         $this->assertSame(1, $board->lists()->first()->cards()->count());
+        $card = $board->lists()->first()->cards()->first();
+        $this->assertSame($company->id, (int) $card->company_id);
+    }
+
+    public function test_client_sees_card_on_internal_list_when_company_assigned(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $listInternal = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $listInternal->id,
+            'company_id' => $company->id,
+            'title' => 'Tarefa cliente',
+            'position' => 1000,
+            'visibility' => 'inherit',
+            'is_archived' => false,
+        ]);
+
+        $clientUser = User::factory()->companyAdmin($company->id)->create();
+        $payload = BoardPresenter::forClient($board->fresh(), $company->id);
+        $cardIds = collect($payload['lists'])->flatMap(fn ($l) => collect($l['cards'])->pluck('id'))->all();
+        $this->assertContains($card->id, $cardIds);
+
+        $this->actingAs($clientUser)
+            ->get('/client/tarefas/'.$board->id)
+            ->assertOk();
+    }
+
+    public function test_admin_assigning_company_coerces_internal_card_visibility(): void
+    {
+        $company = $this->baseCompany();
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro global',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'company_id' => null,
+            'title' => 'Rascunho',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, [
+                'company_id' => $company->id,
+            ])
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertSame('company', $card->visibility);
+        $this->assertSame($company->id, (int) $card->company_id);
+
+        $clientUser = User::factory()->companyAdmin($company->id)->create();
+        $payload = BoardPresenter::forClient($board->fresh(), $company->id);
+        $cardIds = collect($payload['lists'])->flatMap(fn ($l) => collect($l['cards'])->pluck('id'))->all();
+        $this->assertContains($card->id, $cardIds);
     }
 
     public function test_admin_cannot_create_company_list_card_on_global_board_without_company(): void

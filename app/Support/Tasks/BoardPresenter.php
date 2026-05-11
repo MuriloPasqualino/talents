@@ -5,6 +5,7 @@ namespace App\Support\Tasks;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,8 +39,23 @@ final class BoardPresenter
             'lists.cards' => function ($q) use ($companyId) {
                 $q->visibleToCompany($companyId)->orderBy('position');
             },
-            'lists' => function ($q) {
-                $q->visibleToCompany()->orderBy('position');
+            'lists' => function ($q) use ($companyId) {
+                $q->where('is_archived', false)
+                    ->where(function (Builder $lq) use ($companyId) {
+                        $lq->where('visibility', 'company')
+                            ->orWhere(function (Builder $inner) use ($companyId) {
+                                $inner->where('visibility', 'internal')
+                                    ->whereHas('cards', function (Builder $cq) use ($companyId) {
+                                        $cq->where('is_archived', false)
+                                            ->where('company_id', $companyId)
+                                            ->where(function (Builder $cv) {
+                                                $cv->where('visibility', 'company')
+                                                    ->orWhere('visibility', 'inherit');
+                                            });
+                                    });
+                            });
+                    })
+                    ->orderBy('position');
             },
             'labels',
             'members:id,name,email',

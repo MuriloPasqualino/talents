@@ -105,15 +105,21 @@ class TaskCard extends Model
 
     /**
      * Cards visíveis para utilizadores da empresa no cliente.
+     *
+     * Inclui listas internas quando o cartão está atribuído à empresa (company_id)
+     * e a visibilidade do cartão não é estritamente interna.
      */
     public function scopeVisibleToCompany(Builder $query, int $companyId): Builder
     {
-        return $query->whereHas('list', function (Builder $q) {
-            $q->where('visibility', 'company')->where('is_archived', false);
-        })->where(function (Builder $q) {
-            $q->where('visibility', 'company')
-                ->orWhere('visibility', 'inherit');
-        })->where('is_archived', false)
-            ->where('company_id', $companyId);
+        return $query->where('is_archived', false)
+            ->where('company_id', $companyId)
+            ->where(function (Builder $q) {
+                $q->where('visibility', 'company')
+                    ->orWhere('visibility', 'inherit');
+            })
+            ->where(function (Builder $q) {
+                $q->whereHas('list', fn (Builder $l) => $l->where('visibility', 'company')->where('is_archived', false))
+                    ->orWhereHas('list', fn (Builder $l) => $l->where('visibility', 'internal')->where('is_archived', false));
+            });
     }
 }

@@ -84,6 +84,12 @@ class TaskBoardCardController extends Controller
         $labelIds = $data['label_ids'] ?? null;
         unset($data['member_ids'], $data['label_ids']);
 
+        $mergedCompanyId = array_key_exists('company_id', $data) ? $data['company_id'] : $card->company_id;
+        $mergedVisibility = $data['visibility'] ?? $card->visibility;
+        if (! empty($mergedCompanyId) && $mergedVisibility === 'internal') {
+            $data['visibility'] = 'company';
+        }
+
         if ($data !== []) {
             $card->update($data);
         }

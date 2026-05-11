@@ -53,6 +53,7 @@ final class InstantiateProcessTemplateForCompany
 
                     TaskCard::query()->create([
                         'list_id' => $list->id,
+                        'company_id' => $company->id,
                         'title' => $tCard->title,
                         'description' => $tCard->description,
                         'position' => $tCard->position,

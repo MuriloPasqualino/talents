@@ -16,28 +16,42 @@ final class TaskCardVisibility
             return false;
         }
 
-        if ($list->visibility !== TaskListVisibility::Company->value) {
-            return false;
-        }
-
-        return match ($card->visibility) {
+        $cardAllowsPortal = match ($card->visibility) {
             TaskCardVisibilityEnum::Internal->value => false,
             TaskCardVisibilityEnum::Company->value,
             TaskCardVisibilityEnum::Inherit->value => true,
             default => false,
         };
+
+        if (! $cardAllowsPortal) {
+            return false;
+        }
+
+        if ($list->visibility === TaskListVisibility::Company->value) {
+            return true;
+        }
+
+        if ($list->visibility === TaskListVisibility::Internal->value) {
+            return $card->company_id !== null;
+        }
+
+        return false;
     }
 
     public static function companyMayMoveBetween(TaskList $from, TaskList $to): bool
     {
-        if ($from->visibility !== TaskListVisibility::Company->value) {
-            return false;
-        }
-
         if ($to->visibility !== TaskListVisibility::Company->value) {
             return false;
         }
 
-        return (bool) $to->allow_company_drop_in;
+        if (! (bool) $to->allow_company_drop_in) {
+            return false;
+        }
+
+        if ($from->visibility === TaskListVisibility::Company->value) {
+            return true;
+        }
+
+        return $from->visibility === TaskListVisibility::Internal->value;
     }
 }
