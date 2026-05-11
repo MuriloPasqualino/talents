@@ -1,5 +1,5 @@
 <script setup>
-import DashboardBootstrapCalendar from '@/Components/DashboardBootstrapCalendar.vue';
+import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 
@@ -37,7 +37,7 @@ defineProps({
         </template>
 
         <div v-if="dashboardCalendar" class="mb-10">
-            <DashboardBootstrapCalendar
+            <StrategicCalendarWidget
                 :items="dashboardCalendar.items"
                 :year="dashboardCalendar.year"
                 :month="dashboardCalendar.month"

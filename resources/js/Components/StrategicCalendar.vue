@@ -1,0 +1,458 @@
+<script setup>
+import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
+import { computed, ref, watch } from 'vue';
+
+const props = defineProps({
+    year: { type: Number, required: true },
+    month: { type: Number, required: true },
+    items: { type: Array, default: () => [] },
+    /** Itens para visão Agenda (ex.: próximos 60 dias), já filtrados no backend */
+    agendaItems: { type: Array, default: () => [] },
+    kindLabels: { type: Object, default: () => ({}) },
+    compact: { type: Boolean, default: false },
+    showViewToggle: { type: Boolean, default: true },
+    /** Sem borda/sombra externa (ex.: dentro do StrategicCalendarWidget que já usa surface-card) */
+    embedded: { type: Boolean, default: false },
+});
+
+const emit = defineEmits(['navigate-month', 'go-today', 'update:view']);
+
+const selectedDay = ref(1);
+const currentView = ref('month');
+
+watch(
+    () => props.showViewToggle,
+    (show) => {
+        if (!show) {
+            currentView.value = 'month';
+        }
+    },
+    { immediate: true },
+);
+
+const todayIso = computed(() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+});
+
+const itemsByDay = computed(() => {
+    const map = {};
+    for (const item of props.items) {
+        const key = item.occurs_on?.slice?.(0, 10) ?? String(item.occurs_on);
+        if (!map[key]) map[key] = [];
+        map[key].push(item);
+    }
+    return map;
+});
+
+const weeks = computed(() => {
+    const y = props.year;
+    const m = props.month;
+    const first = new Date(y, m - 1, 1);
+    const startPad = first.getDay();
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < startPad; i++) {
+        cells.push({ day: null, iso: null, items: [] });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        cells.push({
+            day: d,
+            iso,
+            items: itemsByDay.value[iso] ?? [],
+            isToday: iso === todayIso.value,
+        });
+    }
+    while (cells.length % 7 !== 0) {
+        cells.push({ day: null, iso: null, items: [] });
+    }
+    const rows = [];
+    for (let i = 0; i < cells.length; i += 7) {
+        rows.push(cells.slice(i, i + 7));
+    }
+    return rows;
+});
+
+const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+const monthTitleCapitalized = computed(() => {
+    const d = new Date(props.year, props.month - 1, 1);
+    return d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+});
+
+function syncSelectedDay() {
+    const t = new Date();
+    if (props.year === t.getFullYear() && props.month === t.getMonth() + 1) {
+        selectedDay.value = t.getDate();
+    } else {
+        selectedDay.value = 1;
+    }
+}
+
+watch(
+    () => [props.year, props.month],
+    () => {
+        syncSelectedDay();
+    },
+    { immediate: true },
+);
+
+const kindLabel = (kind) => props.kindLabels[kind] ?? kind;
+
+const selectedDayIso = computed(() => {
+    return `${props.year}-${String(props.month).padStart(2, '0')}-${String(selectedDay.value).padStart(2, '0')}`;
+});
+
+const selectedDayItems = computed(() => itemsByDay.value[selectedDayIso.value] ?? []);
+
+const listRowsGrouped = computed(() => {
+    const entries = Object.entries(itemsByDay.value)
+        .filter(([iso]) => iso.startsWith(`${props.year}-${String(props.month).padStart(2, '0')}`))
+        .sort(([a], [b]) => a.localeCompare(b));
+    return entries.map(([iso, dayItems]) => ({
+        iso,
+        label: new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+        }),
+        items: dayItems,
+    }));
+});
+
+const agendaTimeline = computed(() => {
+    const groups = {};
+    for (const item of props.agendaItems) {
+        const key = item.occurs_on?.slice?.(0, 10) ?? String(item.occurs_on);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+    }
+    return Object.keys(groups)
+        .sort()
+        .map((iso) => ({
+            iso,
+            label: new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+            }),
+            items: groups[iso],
+        }));
+});
+
+function onPickDay(cell) {
+    if (cell.day) {
+        selectedDay.value = cell.day;
+    }
+}
+
+function onPrev() {
+    emit('navigate-month', -1);
+}
+
+function onNext() {
+    emit('navigate-month', 1);
+}
+
+function onGoToday() {
+    emit('go-today');
+}
+
+function setView(v) {
+    currentView.value = v;
+    emit('update:view', v);
+}
+
+const rootPad = computed(() => (props.compact ? 'p-3 sm:p-4' : 'p-4 sm:p-6'));
+
+const rootShellClass = computed(() =>
+    props.embedded ? 'overflow-hidden' : 'surface-card overflow-hidden',
+);
+
+const cellMinH = computed(() =>
+    props.compact ? 'min-h-[4.25rem]' : 'min-h-[5.5rem] sm:min-h-[6.25rem]',
+);
+
+function monthCellClass(cell) {
+    const base =
+        'relative flex w-full flex-col rounded-xl border text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-talents-500 focus-visible:ring-offset-2';
+    if (!cell.day) {
+        return `${base} border-transparent bg-transparent`;
+    }
+    const selected = selectedDay.value === cell.day;
+    const today = cell.isToday && !selected;
+    return [
+        base,
+        'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/80',
+        selected ? 'border-talents-500 bg-talents-50 ring-1 ring-talents-500' : '',
+        today ? 'ring-1 ring-slate-300/80' : '',
+    ].join(' ');
+}
+</script>
+
+<template>
+    <div :class="rootShellClass">
+        <!-- Toolbar -->
+        <div
+            class="flex flex-col gap-3 border-b border-slate-200/80 sm:flex-row sm:items-center sm:justify-between"
+            :class="rootPad"
+        >
+            <div v-if="showViewToggle" class="flex flex-wrap items-center gap-2">
+                <div class="inline-flex rounded-full border border-slate-200 bg-slate-50/90 p-0.5">
+                    <button
+                        type="button"
+                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition sm:text-sm"
+                        :class="
+                            currentView === 'month'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-600 hover:text-slate-900'
+                        "
+                        @click="setView('month')"
+                    >
+                        Mês
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition sm:text-sm"
+                        :class="
+                            currentView === 'list'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-600 hover:text-slate-900'
+                        "
+                        @click="setView('list')"
+                    >
+                        Lista
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-full px-3 py-1.5 text-xs font-semibold transition sm:text-sm"
+                        :class="
+                            currentView === 'agenda'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-600 hover:text-slate-900'
+                        "
+                        @click="setView('agenda')"
+                    >
+                        Agenda
+                    </button>
+                </div>
+            </div>
+
+            <div
+                v-if="currentView !== 'agenda'"
+                class="flex flex-wrap items-center justify-between gap-3 sm:justify-end"
+                :class="!showViewToggle ? 'w-full sm:ml-auto' : ''"
+            >
+                <div class="flex items-center gap-1">
+                    <button
+                        type="button"
+                        class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="Mês anterior"
+                        @click="onPrev"
+                    >
+                        <ChevronLeftIcon class="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <span
+                        class="min-w-[10rem] truncate px-2 text-center text-sm font-semibold capitalize text-slate-800 sm:text-base"
+                        :title="monthTitleCapitalized"
+                    >
+                        {{ monthTitleCapitalized }}
+                    </span>
+                    <button
+                        type="button"
+                        class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="Próximo mês"
+                        @click="onNext"
+                    >
+                        <ChevronRightIcon class="h-5 w-5" aria-hidden="true" />
+                    </button>
+                </div>
+                <button type="button" class="btn-ghost !px-4 !py-2 text-xs sm:text-sm" @click="onGoToday">
+                    Hoje
+                </button>
+            </div>
+            <div v-else-if="showViewToggle" class="flex flex-wrap items-center gap-2 sm:ml-auto">
+                <p class="text-sm text-slate-500">Próximos eventos e ritos (até 60 dias)</p>
+                <button type="button" class="btn-ghost !px-4 !py-2 text-xs sm:text-sm" @click="onGoToday">
+                    Ir para hoje
+                </button>
+            </div>
+        </div>
+
+        <!-- Month + detail -->
+        <div v-if="currentView === 'month'" :class="compact ? 'flex flex-col' : 'flex flex-col lg:flex-row'">
+            <div class="min-w-0 flex-1" :class="rootPad">
+                <div role="grid" class="grid grid-cols-7 gap-px rounded-xl bg-slate-200/80 p-px">
+                    <div
+                        v-for="w in weekdayLabels"
+                        :key="w"
+                        class="bg-slate-50 px-1 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs"
+                        role="columnheader"
+                    >
+                        {{ w }}
+                    </div>
+                    <template v-for="(row, ri) in weeks" :key="ri">
+                        <template v-for="(cell, ci) in row" :key="`${ri}-${ci}`">
+                            <div class="bg-white" role="gridcell">
+                                <button
+                                    v-if="cell.day"
+                                    type="button"
+                                    :class="[monthCellClass(cell), cellMinH]"
+                                    @click="onPickDay(cell)"
+                                >
+                                    <span
+                                        class="px-2 pt-1.5 text-xs font-semibold tabular-nums"
+                                        :class="cell.isToday ? 'text-talents-700' : 'text-slate-500'"
+                                    >
+                                        {{ cell.day }}
+                                    </span>
+                                    <div class="flex min-h-0 flex-1 flex-col gap-0.5 px-1.5 pb-1.5">
+                                        <div
+                                            v-for="it in cell.items.slice(0, compact ? 1 : 2)"
+                                            :key="it.id"
+                                            class="flex min-w-0 items-center gap-1"
+                                        >
+                                            <span
+                                                class="h-1 w-1 shrink-0 rounded-full"
+                                                :class="it.kind === 'rito' ? 'bg-violet-500' : 'bg-sky-500'"
+                                                aria-hidden="true"
+                                            />
+                                            <span
+                                                class="truncate text-[10px] font-medium leading-tight text-slate-700 sm:text-xs"
+                                            >
+                                                {{ it.title }}
+                                            </span>
+                                        </div>
+                                        <span
+                                            v-if="cell.items.length > (compact ? 1 : 2)"
+                                            class="text-[10px] font-medium text-slate-400"
+                                        >
+                                            +{{ cell.items.length - (compact ? 1 : 2) }}
+                                        </span>
+                                    </div>
+                                </button>
+                                <div v-else :class="['border-transparent', cellMinH]" />
+                            </div>
+                        </template>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Painel detalhe -->
+            <div
+                v-if="!compact"
+                class="border-t border-slate-200/80 bg-slate-50/40 lg:w-[min(380px,34%)] lg:border-l lg:border-t-0 lg:shrink-0"
+                :class="rootPad"
+            >
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {{
+                        selectedDayIso
+                            ? new Date(selectedDayIso + 'T12:00:00').toLocaleDateString('pt-BR', {
+                                  weekday: 'long',
+                                  day: 'numeric',
+                                  month: 'long',
+                              })
+                            : ''
+                    }}
+                </p>
+                <ul v-if="selectedDayItems.length" class="mt-4 space-y-3" aria-live="polite">
+                    <li
+                        v-for="it in selectedDayItems"
+                        :key="it.id"
+                        class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+                    >
+                        <div class="mb-2">
+                            <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                        </div>
+                        <p class="font-semibold text-slate-900">{{ it.title }}</p>
+                        <p v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                            {{ it.description }}
+                        </p>
+                        <p v-if="it.company?.name" class="mt-2 text-xs text-slate-500">
+                            Empresa: {{ it.company.name }}
+                        </p>
+                    </li>
+                </ul>
+                <p v-else class="mt-6 text-sm text-slate-500">Nenhum evento ou rito neste dia.</p>
+            </div>
+            <div v-else class="border-t border-slate-200/80 px-3 py-2 sm:px-4">
+                <p class="text-xs text-slate-600">
+                    {{ selectedDayItems.length }} {{ selectedDayItems.length === 1 ? 'item' : 'itens' }} neste dia
+                </p>
+            </div>
+        </div>
+
+        <!-- List view -->
+        <div v-else-if="currentView === 'list'" :class="rootPad">
+            <div class="max-h-[min(70vh,720px)] overflow-y-auto rounded-2xl border border-slate-200/80">
+                <template v-if="listRowsGrouped.length">
+                    <template v-for="group in listRowsGrouped" :key="group.iso">
+                        <div
+                            class="sticky top-0 z-10 border-b border-slate-200/80 bg-slate-50/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur-sm"
+                        >
+                            {{ group.label }}
+                        </div>
+                        <ul class="divide-y divide-slate-100">
+                            <li
+                                v-for="it in group.items"
+                                :key="it.id"
+                                class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
+                            >
+                                <div class="min-w-0 flex-1">
+                                    <div class="mb-1">
+                                        <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                                    </div>
+                                    <p class="font-medium text-slate-900">{{ it.title }}</p>
+                                    <p v-if="it.description" class="mt-1 line-clamp-2 text-sm text-slate-600">
+                                        {{ it.description }}
+                                    </p>
+                                    <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </template>
+                </template>
+                <p v-else class="px-4 py-10 text-center text-sm text-slate-500">Nenhum item neste mês.</p>
+            </div>
+        </div>
+
+        <!-- Agenda -->
+        <div v-else :class="rootPad">
+            <div class="max-h-[min(70vh,720px)] overflow-y-auto space-y-6">
+                <template v-if="agendaTimeline.length">
+                    <div v-for="block in agendaTimeline" :key="block.iso" class="relative pl-6">
+                        <span
+                            class="absolute left-0 top-1.5 h-full w-px bg-slate-200"
+                            aria-hidden="true"
+                        />
+                        <span
+                            class="absolute left-0 top-2 h-2.5 w-2.5 -translate-x-[3px] rounded-full bg-talents-500"
+                            aria-hidden="true"
+                        />
+                        <p class="text-sm font-semibold capitalize text-slate-800">{{ block.label }}</p>
+                        <ul class="mt-3 space-y-3">
+                            <li
+                                v-for="it in block.items"
+                                :key="it.id"
+                                class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+                            >
+                                <div class="mb-2">
+                                    <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                                </div>
+                                <p class="font-medium text-slate-900">{{ it.title }}</p>
+                                <p v-if="it.description" class="mt-2 line-clamp-3 text-sm text-slate-600">
+                                    {{ it.description }}
+                                </p>
+                                <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
+                            </li>
+                        </ul>
+                    </div>
+                </template>
+                <p v-else class="text-center text-sm text-slate-500">Nenhum item nos próximos dias.</p>
+            </div>
+        </div>
+    </div>
+</template>

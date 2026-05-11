@@ -1,5 +1,5 @@
 <script setup>
-import HeroStrategicCalendar from '@/Components/HeroStrategicCalendar.vue';
+import StrategicCalendar from '@/Components/StrategicCalendar.vue';
 import { Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 
@@ -64,26 +64,30 @@ const goToday = () => {
 
 <template>
     <div class="surface-card overflow-hidden">
-        <div class="flex flex-col gap-2 border-b border-zinc-100 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div
+            class="flex flex-col gap-2 border-b border-slate-200/80 p-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+        >
             <div>
-                <h3 class="text-base font-semibold text-zinc-900">{{ title }}</h3>
-                <p v-if="subtitle" class="mt-0.5 text-sm text-zinc-500">{{ subtitle }}</p>
+                <h3 class="text-base font-semibold text-slate-900">{{ title }}</h3>
+                <p v-if="subtitle" class="mt-0.5 text-sm text-slate-500">{{ subtitle }}</p>
             </div>
             <Link
                 v-if="fullPageHref"
                 :href="fullPageHref"
-                class="inline-flex shrink-0 items-center justify-center rounded-full bg-talents-700 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-talents-800"
+                class="shrink-0 text-sm font-medium text-talents-700 hover:underline"
             >
                 {{ fullPageLabel }}
             </Link>
         </div>
         <div class="p-3 sm:p-4">
-            <HeroStrategicCalendar
+            <StrategicCalendar
                 :year="localYear"
                 :month="localMonth"
                 :items="items"
                 :kind-labels="kindLabels"
+                embedded
                 compact
+                :show-view-toggle="false"
                 @navigate-month="goMonth"
                 @go-today="goToday"
             />

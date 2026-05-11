@@ -38,9 +38,19 @@ class StrategicCalendarController extends Controller
             ->limit(12)
             ->get();
 
+        $agendaEnd = now()->copy()->addDays(60)->endOfDay();
+        $agendaItems = StrategicCalendarItem::query()
+            ->forCompany($company)
+            ->whereDate('occurs_on', '>=', now()->toDateString())
+            ->whereDate('occurs_on', '<=', $agendaEnd->toDateString())
+            ->orderBy('occurs_on')
+            ->orderBy('id')
+            ->get();
+
         return Inertia::render('Client/StrategicCalendar/Index', [
             'monthItems' => $monthItems,
             'upcoming' => $upcoming,
+            'agendaItems' => $agendaItems,
             'calendarYear' => $year,
             'calendarMonth' => $month,
             'kindLabels' => collect(StrategicCalendarItemKind::cases())->mapWithKeys(

@@ -1,5 +1,5 @@
 <script setup>
-import DashboardBootstrapCalendar from '@/Components/DashboardBootstrapCalendar.vue';
+import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { Head, Link } from '@inertiajs/vue3';
@@ -70,7 +70,7 @@ const healthLevelLabel = (level) => {
         </template>
 
         <div v-if="dashboardCalendar && can('calendario_estrategico', 'view')" class="mb-10">
-            <DashboardBootstrapCalendar
+            <StrategicCalendarWidget
                 :items="dashboardCalendar.items"
                 :year="dashboardCalendar.year"
                 :month="dashboardCalendar.month"

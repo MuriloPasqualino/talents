@@ -23,6 +23,12 @@ class StrategicCalendarController extends Controller
         $monthStart = Carbon::create($year, $month, 1)->startOfDay();
         $monthEnd = $monthStart->copy()->endOfMonth()->endOfDay();
 
+        if ($request->filled('kind')) {
+            $request->validate([
+                'kind' => ['required', 'string', Rule::enum(StrategicCalendarItemKind::class)],
+            ]);
+        }
+
         $listQuery = StrategicCalendarItem::query()
             ->with('company:id,name')
             ->orderByDesc('occurs_on')
@@ -33,6 +39,10 @@ class StrategicCalendarController extends Controller
             $listQuery->where(function ($q) use ($cid) {
                 $q->whereNull('company_id')->orWhere('company_id', $cid);
             });
+        }
+
+        if ($request->filled('kind')) {
+            $listQuery->where('kind', $request->input('kind'));
         }
 
         $items = $listQuery->paginate(20)->withQueryString();
@@ -48,14 +58,38 @@ class StrategicCalendarController extends Controller
             });
         }
 
+        if ($request->filled('kind')) {
+            $monthQuery->where('kind', $request->input('kind'));
+        }
+
         $monthItems = $monthQuery->orderBy('occurs_on')->orderBy('id')->get();
+
+        $agendaEnd = now()->copy()->addDays(60)->endOfDay();
+        $agendaQuery = StrategicCalendarItem::query()
+            ->with('company:id,name')
+            ->whereDate('occurs_on', '>=', now()->toDateString())
+            ->whereDate('occurs_on', '<=', $agendaEnd->toDateString());
+
+        if ($request->filled('company_id')) {
+            $cid = (int) $request->input('company_id');
+            $agendaQuery->where(function ($q) use ($cid) {
+                $q->whereNull('company_id')->orWhere('company_id', $cid);
+            });
+        }
+
+        if ($request->filled('kind')) {
+            $agendaQuery->where('kind', $request->input('kind'));
+        }
+
+        $agendaItems = $agendaQuery->orderBy('occurs_on')->orderBy('id')->get();
 
         return Inertia::render('Admin/StrategicCalendar/Index', [
             'items' => $items,
             'monthItems' => $monthItems,
+            'agendaItems' => $agendaItems,
             'calendarYear' => $year,
             'calendarMonth' => $month,
-            'filters' => $request->only(['company_id']),
+            'filters' => $request->only(['company_id', 'kind']),
             'companies' => Company::query()->orderBy('name')->get(['id', 'name']),
             'kindLabels' => collect(StrategicCalendarItemKind::cases())->mapWithKeys(
                 fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
