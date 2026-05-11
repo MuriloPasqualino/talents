@@ -73,8 +73,6 @@ final class CanonicalContractTemplates
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula nona – Foro</h2>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">Para dirimir quaisquer dúvidas oriundas deste contrato, as partes elegem o foro da comarca de {{foro_comarca}}, com exclusão de qualquer outro, por mais privilegiado que seja.</p>
 
-<p style="font-size:11px;line-height:1.55;color:#64748b;margin-top:14px;">Indicação / origem do lead (quando houver): {{proposta_indicacao}}. Observações da proposta: {{proposta_observacoes}}. Comissão comercial (quando houver): {{comissao_percent}}% ({{comissao_reais}}). Responsável comercial: {{vendedor_nome}} ({{vendedor_email}}).</p>
-
 <p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:28px;text-align:center;">________________________________________<br /><strong>CONTRATANTE</strong></p>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;margin-top:28px;text-align:center;">________________________________________<br /><strong>CONTRATADA — {{empresa_nome}}</strong></p>
 <p style="font-size:11px;line-height:1.45;color:#0f172a;margin-top:16px;">{{cidade_estado}}, {{data_hoje}}.</p>
@@ -233,8 +231,6 @@ HTML;
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula 18 – Disposições finais</h2>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">Este contrato reflete a integralidade do acordo entre as partes, substituindo quaisquer entendimentos anteriores.</p>
 
-<p style="font-size:11px;line-height:1.45;color:#64748b;margin-top:16px;">Responsável comercial: {{vendedor_nome}} ({{vendedor_email}}). Comissão: {{comissao_percent}}% ({{comissao_reais}}). Observações: {{proposta_observacoes}}</p>
-
 <h2 style="font-size:12px;color:#4a2070;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.06em;">Assinaturas</h2>
 <table style="width:100%;margin-top:8px;font-size:11px;color:#0f172a;border-collapse:collapse;">
 <tr><td style="width:50%;vertical-align:top;padding:12px 8px;border-top:1px solid #cbd5e1;">
@@ -356,8 +352,6 @@ HTML;
 
 <h2 style="font-size:12px;color:#4a2070;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.06em;">Cláusula décima segunda – Foro</h2>
 <p style="font-size:11px;line-height:1.55;color:#0f172a;">Fica eleito o foro da comarca de {{foro_comarca}} para dirimir quaisquer controvérsias decorrentes deste contrato, com renúncia a qualquer outro, por mais privilegiado que seja.</p>
-
-<p style="font-size:10px;line-height:1.45;color:#64748b;margin-top:14px;">Referência comercial: {{vendedor_nome}} ({{vendedor_email}}). Comissão: {{comissao_percent}}% ({{comissao_reais}}). Observações da proposta: {{proposta_observacoes}}</p>
 
 <table style="width:100%;margin-top:28px;font-size:11px;color:#0f172a;border-collapse:collapse;">
 <tr><td style="width:50%;vertical-align:top;padding:8px;">
