@@ -71,8 +71,13 @@ class TalentsSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'role' => UserRole::SuperAdmin,
                 'company_id' => null,
+                'is_owner' => true,
             ]
         );
+
+        if (! $admin->is_owner) {
+            $admin->update(['is_owner' => true]);
+        }
 
         $company = Company::query()->firstOrCreate(
             ['cnpj' => '00.000.000/0001-99'],

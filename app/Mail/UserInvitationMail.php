@@ -16,14 +16,18 @@ class UserInvitationMail extends Mailable
 
     public function __construct(
         public User $user,
-        public Company $company,
+        public ?Company $company,
         public string $resetPasswordUrl,
     ) {}
 
     public function envelope(): Envelope
     {
+        $subject = $this->company !== null
+            ? 'Convite — portal Talents ('.$this->company->name.')'
+            : 'Convite — equipa administrativa Talents';
+
         return new Envelope(
-            subject: 'Convite — portal Talents ('.$this->company->name.')',
+            subject: $subject,
         );
     }
 

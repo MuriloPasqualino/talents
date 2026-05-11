@@ -30,6 +30,8 @@ class HandleInertiaRequests extends Middleware
         if ($user) {
             if ($user->isCompanyUser()) {
                 $user->loadMissing(['company', 'permissions']);
+            } elseif ($user->isSuperAdmin()) {
+                $user->loadMissing(['company', 'adminPermissions']);
             } else {
                 $user->loadMissing('company');
             }
@@ -64,6 +66,10 @@ class HandleInertiaRequests extends Middleware
                         'company_id' => $user->company_id,
                         'company' => $companyPayload,
                         'permissions' => $permissions,
+                        'admin_permissions' => $user->isSuperAdmin()
+                            ? $user->adminPermissionMatrixForFrontend()
+                            : null,
+                        'is_owner' => $user->isSuperAdmin() && $user->isOwner(),
                     ]
                     : null,
             ],

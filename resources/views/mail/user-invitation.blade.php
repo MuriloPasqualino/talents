@@ -6,7 +6,11 @@
 </head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #1f2937;">
     <p>Olá,</p>
-    <p>Foi criado um <strong>acesso ao portal Talents</strong> para a empresa <strong>{{ $company->name }}</strong>.</p>
+    @if ($company)
+        <p>Foi criado um <strong>acesso ao portal Talents</strong> para a empresa <strong>{{ $company->name }}</strong>.</p>
+    @else
+        <p>Foi criado um <strong>acesso à equipa administrativa</strong> da plataforma Talents.</p>
+    @endif
     <p>Seu usuário é o e-mail: <strong>{{ $user->email }}</strong></p>
     <p>Para <strong>definir sua senha</strong> e entrar no portal, use o link abaixo (válido por tempo limitado):</p>
     <p style="margin: 24px 0;">

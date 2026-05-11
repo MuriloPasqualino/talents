@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Enums;
+
+enum AdminPermissionModule: string
+{
+    case Dashboard = 'dashboard';
+    case LandingInterest = 'landing_interest';
+    case Companies = 'companies';
+    case Plans = 'plans';
+    case SurveyTemplates = 'survey_templates';
+    case Methodology = 'methodology';
+    case StrategicCalendar = 'strategic_calendar';
+    case Tarefas = 'tarefas';
+    case Comercial = 'comercial';
+    case EmpresaTalents = 'empresa_talents';
+    case Solides = 'solides';
+    case Settings = 'settings';
+    case Training = 'training';
+    case Equipa = 'equipa';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::Dashboard => 'Painel',
+            self::LandingInterest => 'Interessados',
+            self::Companies => 'Empresas',
+            self::Plans => 'Planos',
+            self::SurveyTemplates => 'Templates NR1',
+            self::Methodology => 'Metodologia',
+            self::StrategicCalendar => 'Calendário estratégico',
+            self::Tarefas => 'Tarefas',
+            self::Comercial => 'Comercial',
+            self::EmpresaTalents => 'Empresa Talents',
+            self::Solides => 'Sólides — Currículos',
+            self::Settings => 'Configurações',
+            self::Training => 'Capacitação',
+            self::Equipa => 'Equipa',
+        };
+    }
+
+    /**
+     * @return list<self>
+     */
+    public static function all(): array
+    {
+        return [
+            self::Dashboard,
+            self::LandingInterest,
+            self::Companies,
+            self::Plans,
+            self::SurveyTemplates,
+            self::Methodology,
+            self::StrategicCalendar,
+            self::Tarefas,
+            self::Comercial,
+            self::EmpresaTalents,
+            self::Solides,
+            self::Settings,
+            self::Training,
+            self::Equipa,
+        ];
+    }
+}

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
 use App\Enums\UserRole;
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'company_id',
         'is_active',
         'is_commercial',
+        'is_owner',
     ];
 
     protected $hidden = [
@@ -40,6 +42,7 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'is_active' => 'boolean',
             'is_commercial' => 'boolean',
+            'is_owner' => 'boolean',
         ];
     }
 
@@ -51,6 +54,11 @@ class User extends Authenticatable
     public function permissions(): HasMany
     {
         return $this->hasMany(UserPermission::class);
+    }
+
+    public function adminPermissions(): HasMany
+    {
+        return $this->hasMany(AdminUserPermission::class);
     }
 
     public function isActive(): bool
@@ -65,7 +73,7 @@ class User extends Authenticatable
 
     public function canAccess(PermissionModule $module, PermissionAction $action): bool
     {
-        if ($this->isSuperAdmin()) {
+        if ($this->isOwner()) {
             return true;
         }
 
@@ -93,16 +101,79 @@ class User extends Authenticatable
             ->exists();
     }
 
+    public function canAccessAdmin(AdminPermissionModule $module, PermissionAction $action): bool
+    {
+        if (! $this->isSuperAdmin()) {
+            return false;
+        }
+
+        if ($this->isOwner()) {
+            return true;
+        }
+
+        if (! $this->isActive()) {
+            return false;
+        }
+
+        if ($this->relationLoaded('adminPermissions')) {
+            return $this->adminPermissions->contains(
+                fn (AdminUserPermission $p) => $p->module === $module && $p->action === $action
+            );
+        }
+
+        return $this->adminPermissions()
+            ->where('module', $module->value)
+            ->where('action', $action->value)
+            ->exists();
+    }
+
+    /**
+     * Matriz para o sidebar admin: módulo => lista de ações (values).
+     * Owner: ['*' => true].
+     *
+     * @return array<string, mixed>
+     */
+    public function adminPermissionMatrixForFrontend(): array
+    {
+        if (! $this->isSuperAdmin()) {
+            return [];
+        }
+
+        if ($this->isOwner()) {
+            return ['*' => true];
+        }
+
+        $matrix = [];
+        $rows = $this->relationLoaded('adminPermissions')
+            ? $this->adminPermissions
+            : $this->adminPermissions()->get();
+
+        foreach ($rows as $p) {
+            $matrix[$p->module->value] ??= [];
+            $matrix[$p->module->value][] = $p->action->value;
+        }
+
+        foreach ($matrix as $key => $actions) {
+            $matrix[$key] = array_values(array_unique($actions));
+        }
+
+        return $matrix;
+    }
+
     /**
      * Matriz para o frontend: módulo => lista de ações (values).
-     * SuperAdmin: ['*' => true].
+     * Owner (super admin): ['*' => true].
      *
      * @return array<string, mixed>
      */
     public function permissionMatrixForFrontend(): array
     {
-        if ($this->isSuperAdmin()) {
+        if ($this->isOwner()) {
             return ['*' => true];
+        }
+
+        if ($this->isSuperAdmin()) {
+            return [];
         }
 
         $company = $this->relationLoaded('company') ? $this->company : $this->company()->first();
@@ -150,6 +221,11 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->role === UserRole::SuperAdmin;
+    }
+
+    public function isOwner(): bool
+    {
+        return (bool) $this->is_owner;
     }
 
     public function isCompanyAdmin(): bool

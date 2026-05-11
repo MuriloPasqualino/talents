@@ -4,6 +4,7 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
+import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { Link } from '@inertiajs/vue3';
 import {
     AcademicCapIcon,
@@ -20,7 +21,10 @@ import {
     EnvelopeOpenIcon,
     HomeIcon,
     UserCircleIcon,
+    UsersIcon,
 } from '@heroicons/vue/24/outline';
+
+const { canAdmin } = useAdminPermissions();
 </script>
 
 <template>
@@ -42,6 +46,7 @@ import {
 
         <template #navigation="{ collapsed }">
             <SidebarNavItem
+                v-if="canAdmin('dashboard')"
                 :href="route('admin.dashboard')"
                 :active="route().current('admin.dashboard')"
                 :icon="HomeIcon"
@@ -49,6 +54,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('landing_interest')"
                 :href="route('admin.landing-interest.index')"
                 :active="route().current('admin.landing-interest.*')"
                 :icon="EnvelopeOpenIcon"
@@ -56,6 +62,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('companies')"
                 :href="route('admin.companies.index')"
                 :active="route().current('admin.companies.*')"
                 :icon="BuildingOffice2Icon"
@@ -63,6 +70,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('plans')"
                 :href="route('admin.plans.index')"
                 :active="route().current('admin.plans.*')"
                 :icon="CreditCardIcon"
@@ -70,6 +78,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('survey_templates')"
                 :href="route('admin.survey-templates.index')"
                 :active="route().current('admin.survey-templates.*')"
                 :icon="DocumentDuplicateIcon"
@@ -77,6 +86,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('methodology')"
                 :href="route('admin.metodologia.index')"
                 :active="
                     route().current('admin.metodologia.*') ||
@@ -87,6 +97,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('strategic_calendar')"
                 :href="route('admin.strategic-calendar.index')"
                 :active="route().current('admin.strategic-calendar.*')"
                 :icon="CalendarDaysIcon"
@@ -94,6 +105,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('tarefas')"
                 :href="route('admin.tarefas.quadros.index')"
                 :active="route().current('admin.tarefas.*')"
                 :icon="ViewColumnsIcon"
@@ -101,6 +113,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('comercial')"
                 :href="route('admin.comercial.dashboard')"
                 :active="route().current('admin.comercial.*')"
                 :icon="BanknotesIcon"
@@ -108,6 +121,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('empresa_talents')"
                 :href="route('admin.empresa-talents.edit')"
                 :active="route().current('admin.empresa-talents.*')"
                 :icon="IdentificationIcon"
@@ -115,6 +129,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('solides')"
                 :href="route('admin.solides.curriculos.index')"
                 :active="route().current('admin.solides.*')"
                 :icon="DocumentTextIcon"
@@ -122,6 +137,15 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('equipa')"
+                :href="route('admin.users.index')"
+                :active="route().current('admin.users.*')"
+                :icon="UsersIcon"
+                label="Equipa"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="canAdmin('settings')"
                 :href="route('admin.settings.edit')"
                 :active="
                     route().current('admin.settings.edit') ||
@@ -132,6 +156,7 @@ import {
                 :collapsed="collapsed"
             />
             <SidebarNavItem
+                v-if="canAdmin('training')"
                 :href="route('admin.training.index')"
                 :active="route().current('admin.training.*')"
                 :icon="AcademicCapIcon"

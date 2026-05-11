@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActionPlanAdminController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AiSettingsController;
 use App\Http\Controllers\Admin\Commercial\ContractController as CommercialContractController;
 use App\Http\Controllers\Admin\Commercial\ContractTemplateController as CommercialContractTemplateController;
@@ -41,61 +42,91 @@ use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::middleware('admin.can:dashboard')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    });
 
-    Route::get('empresa-talents', [PlatformCompanyController::class, 'edit'])->name('empresa-talents.edit');
-    Route::put('empresa-talents', [PlatformCompanyController::class, 'update'])->name('empresa-talents.update');
-    Route::get('/interessados-landing', [LandingInterestSubmissionController::class, 'index'])
-        ->name('landing-interest.index');
-    Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)
-        ->except(['show'])
-        ->names([
-            'index' => 'strategic-calendar.index',
-            'create' => 'strategic-calendar.create',
-            'store' => 'strategic-calendar.store',
-            'edit' => 'strategic-calendar.edit',
-            'update' => 'strategic-calendar.update',
-            'destroy' => 'strategic-calendar.destroy',
-        ])
-        ->parameters(['calendario-estrategico' => 'item']);
-    Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
-    Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
-        ->name('companies.surveys.action-plan.edit');
-    Route::put('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'update'])
-        ->name('companies.surveys.action-plan.update');
-    Route::post('companies/{company}/surveys/{survey}/ai-analysis', [ActionPlanAdminController::class, 'generateAiAnalysis'])
-        ->name('companies.surveys.ai-analysis');
-    Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
-    Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
-    Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');
-    Route::get('companies/{company}/users/{user}/edit', [CompanyUserController::class, 'edit'])->name('companies.users.edit');
-    Route::match(['put', 'patch'], 'companies/{company}/users/{user}', [CompanyUserController::class, 'update'])->name('companies.users.update');
-    Route::delete('companies/{company}/users/{user}', [CompanyUserController::class, 'destroy'])->name('companies.users.destroy');
-    Route::resource('companies', CompanyController::class);
-    Route::post('companies/{company}/templates/{template}', [CompanyController::class, 'attachTemplate'])->name('companies.templates.attach');
-    Route::delete('companies/{company}/templates/{template}', [CompanyController::class, 'detachTemplate'])->name('companies.templates.detach');
-    Route::resource('plans', PlanController::class)->except(['show']);
-    Route::resource('survey-templates', SurveyTemplateController::class);
-    Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
-    Route::put('settings/ai', [AiSettingsController::class, 'update'])->name('settings.ai.update');
-    Route::post('settings/ai/test', [AiSettingsController::class, 'test'])->name('settings.ai.test');
-    Route::put('settings/solides', [SolidesSettingsController::class, 'update'])->name('settings.solides.update');
-    Route::post('settings/solides/test', [SolidesSettingsController::class, 'test'])->name('settings.solides.test');
-    Route::get('solides/curriculos', [SolidesCurriculumController::class, 'index'])->name('solides.curriculos.index');
-    Route::put('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
-    Route::post('settings/mail/test', [MailSettingsController::class, 'test'])->name('settings.mail.test');
-    Route::get('ai-settings', [AiSettingsController::class, 'edit'])->name('ai-settings.edit');
-    Route::put('ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
-    Route::post('ai-settings/test', [AiSettingsController::class, 'test'])->name('ai-settings.test');
-    Route::get('capacitacao', [AdminTrainingController::class, 'index'])->name('training.index');
+    Route::middleware('admin.can:empresa_talents')->group(function () {
+        Route::get('empresa-talents', [PlatformCompanyController::class, 'edit'])->name('empresa-talents.edit');
+        Route::put('empresa-talents', [PlatformCompanyController::class, 'update'])->name('empresa-talents.update');
+    });
 
-    Route::get('metodologia', [AdminMethodologyController::class, 'index'])->name('metodologia.index');
-    Route::post('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'attachTemplate'])->name('companies.methodology-templates.attach');
-    Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
-    Route::resource('methodology-templates', MethodologyFormTemplateController::class)
-        ->parameters(['methodology-templates' => 'template']);
+    Route::middleware('admin.can:landing_interest')->group(function () {
+        Route::get('/interessados-landing', [LandingInterestSubmissionController::class, 'index'])
+            ->name('landing-interest.index');
+    });
 
-    Route::prefix('comercial')->name('comercial.')->group(function () {
+    Route::middleware('admin.can:strategic_calendar')->group(function () {
+        Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)
+            ->except(['show'])
+            ->names([
+                'index' => 'strategic-calendar.index',
+                'create' => 'strategic-calendar.create',
+                'store' => 'strategic-calendar.store',
+                'edit' => 'strategic-calendar.edit',
+                'update' => 'strategic-calendar.update',
+                'destroy' => 'strategic-calendar.destroy',
+            ])
+            ->parameters(['calendario-estrategico' => 'item']);
+    });
+
+    Route::middleware('admin.can:companies')->group(function () {
+        Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
+        Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
+            ->name('companies.surveys.action-plan.edit');
+        Route::put('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'update'])
+            ->name('companies.surveys.action-plan.update');
+        Route::post('companies/{company}/surveys/{survey}/ai-analysis', [ActionPlanAdminController::class, 'generateAiAnalysis'])
+            ->name('companies.surveys.ai-analysis');
+        Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
+        Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
+        Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');
+        Route::get('companies/{company}/users/{user}/edit', [CompanyUserController::class, 'edit'])->name('companies.users.edit');
+        Route::match(['put', 'patch'], 'companies/{company}/users/{user}', [CompanyUserController::class, 'update'])->name('companies.users.update');
+        Route::delete('companies/{company}/users/{user}', [CompanyUserController::class, 'destroy'])->name('companies.users.destroy');
+        Route::resource('companies', CompanyController::class);
+        Route::post('companies/{company}/templates/{template}', [CompanyController::class, 'attachTemplate'])->name('companies.templates.attach');
+        Route::delete('companies/{company}/templates/{template}', [CompanyController::class, 'detachTemplate'])->name('companies.templates.detach');
+        Route::post('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'attachTemplate'])->name('companies.methodology-templates.attach');
+        Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
+    });
+
+    Route::middleware('admin.can:plans')->group(function () {
+        Route::resource('plans', PlanController::class)->except(['show']);
+    });
+
+    Route::middleware('admin.can:survey_templates')->group(function () {
+        Route::resource('survey-templates', SurveyTemplateController::class);
+    });
+
+    Route::middleware('admin.can:settings')->group(function () {
+        Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
+        Route::put('settings/ai', [AiSettingsController::class, 'update'])->name('settings.ai.update');
+        Route::post('settings/ai/test', [AiSettingsController::class, 'test'])->name('settings.ai.test');
+        Route::put('settings/solides', [SolidesSettingsController::class, 'update'])->name('settings.solides.update');
+        Route::post('settings/solides/test', [SolidesSettingsController::class, 'test'])->name('settings.solides.test');
+        Route::put('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
+        Route::post('settings/mail/test', [MailSettingsController::class, 'test'])->name('settings.mail.test');
+        Route::get('ai-settings', [AiSettingsController::class, 'edit'])->name('ai-settings.edit');
+        Route::put('ai-settings', [AiSettingsController::class, 'update'])->name('ai-settings.update');
+        Route::post('ai-settings/test', [AiSettingsController::class, 'test'])->name('ai-settings.test');
+    });
+
+    Route::middleware('admin.can:solides')->group(function () {
+        Route::get('solides/curriculos', [SolidesCurriculumController::class, 'index'])->name('solides.curriculos.index');
+    });
+
+    Route::middleware('admin.can:training')->group(function () {
+        Route::get('capacitacao', [AdminTrainingController::class, 'index'])->name('training.index');
+    });
+
+    Route::middleware('admin.can:methodology')->group(function () {
+        Route::get('metodologia', [AdminMethodologyController::class, 'index'])->name('metodologia.index');
+        Route::resource('methodology-templates', MethodologyFormTemplateController::class)
+            ->parameters(['methodology-templates' => 'template']);
+    });
+
+    Route::middleware('admin.can:comercial')->prefix('comercial')->name('comercial.')->group(function () {
         Route::get('/', [CommercialDashboardController::class, 'index'])->name('dashboard');
         Route::get('configuracoes', [CommercialSettingsController::class, 'edit'])->name('settings.edit');
         Route::put('configuracoes', [CommercialSettingsController::class, 'update'])->name('settings.update');
@@ -121,7 +152,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->parameters(['propostas' => 'proposal']);
     });
 
-    Route::prefix('tarefas')->name('tarefas.')->group(function () {
+    Route::middleware('admin.can:tarefas')->prefix('tarefas')->name('tarefas.')->group(function () {
         Route::resource('processos', TasksProcessTemplateController::class)
             ->parameters(['processos' => 'template']);
 
@@ -173,5 +204,14 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::post('quadros/{board}/membros', [TaskBoardMemberController::class, 'store'])->name('quadros.membros.store');
         Route::delete('quadros/{board}/membros/{user}', [TaskBoardMemberController::class, 'destroy'])->name('quadros.membros.destroy');
+    });
+
+    Route::middleware('admin.can:equipa')->group(function () {
+        Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::get('users/create', [AdminUserController::class, 'create'])->name('users.create');
+        Route::post('users', [AdminUserController::class, 'store'])->name('users.store');
+        Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
+        Route::match(['put', 'patch'], 'users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+        Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
     });
 });

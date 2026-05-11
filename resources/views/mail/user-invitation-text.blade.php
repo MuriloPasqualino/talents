@@ -1,6 +1,10 @@
 Olá,
 
+@if ($company)
 Foi criado um acesso ao portal Talents para a empresa {{ $company->name }}.
+@else
+Foi criado um acesso à equipa administrativa da plataforma Talents.
+@endif
 
 Seu usuário é o e-mail: {{ $user->email }}
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\EnsureCompanyAccess;
 use App\Http\Middleware\EnsureCompanyAdmin;
 use App\Http\Middleware\EnsureModulePermission;
@@ -43,6 +44,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'super_admin' => EnsureSuperAdmin::class,
+            'admin.can' => EnsureAdminPermission::class,
             'company' => EnsureCompanyAccess::class,
             'company_admin' => EnsureCompanyAdmin::class,
             'strategic_calendar' => EnsureStrategicCalendarAccess::class,

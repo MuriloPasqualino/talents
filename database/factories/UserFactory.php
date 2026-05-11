@@ -2,6 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Actions\SyncAdminUserPermissions;
+use App\Enums\AdminPermissionModule;
+use App\Enums\PermissionAction;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -34,6 +37,8 @@ class UserFactory extends Factory
             'role' => UserRole::CompanyUser,
             'company_id' => null,
             'is_active' => true,
+            'is_commercial' => false,
+            'is_owner' => false,
         ];
     }
 
@@ -52,7 +57,20 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::SuperAdmin,
             'company_id' => null,
-        ]);
+        ])->afterCreating(function (User $user): void {
+            if ($user->role !== UserRole::SuperAdmin || $user->isOwner()) {
+                return;
+            }
+
+            $perms = [];
+            foreach (AdminPermissionModule::all() as $module) {
+                foreach (PermissionAction::all() as $action) {
+                    $perms[] = ['module' => $module->value, 'action' => $action->value];
+                }
+            }
+
+            app(SyncAdminUserPermissions::class)->execute($user, $perms);
+        });
     }
 
     public function companyAdmin(?int $companyId = null): static
