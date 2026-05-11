@@ -12,7 +12,7 @@ class ContractTemplateSeeder extends Seeder
     private const SEEDS_DIR = '_seeds_contracts';
 
     /**
-     * @var array<int, array{name: string, files: array<int, string>}>
+     * @var array<int, array{name: string, files: array<int, string>, hints?: array<int, string>}>
      */
     private const DEFINITIONS = [
         [
@@ -27,7 +27,9 @@ class ContractTemplateSeeder extends Seeder
             'files' => [
                 'TALENTS - CONTRATACAO DE TALENTOS - NOVO.docx',
                 'TALENTS - CONTRATAÇAO DE TALENTOS - NOVO.docx',
+                'TALENTS - CONTRATAÇÃO DE TALENTOS - NOVO.docx',
             ],
+            'hints' => ['talentos', 'contrat'],
         ],
         [
             'name' => 'Palestra - Padrão Talents',
@@ -43,6 +45,9 @@ class ContractTemplateSeeder extends Seeder
 
         foreach (self::DEFINITIONS as $def) {
             $path = $this->resolveFirstExistingPath($base, $def['files']);
+            if ($path === null && ! empty($def['hints'] ?? [])) {
+                $path = $this->resolveByFilenameHints($base, $def['hints']);
+            }
             if ($path === null) {
                 Log::warning('[ContractTemplateSeeder] Arquivo ausente; modelo não criado.', [
                     'name' => $def['name'],
@@ -89,6 +94,37 @@ class ContractTemplateSeeder extends Seeder
         foreach ($filenames as $name) {
             $full = $base.DIRECTORY_SEPARATOR.$name;
             if (is_file($full) && is_readable($full)) {
+                return $full;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Localiza .docx quando o nome no disco difere (acentos, encoding).
+     *
+     * @param  array<int, string>  $hints  Substrings que devem aparecer no nome (case-insensitive)
+     */
+    private function resolveByFilenameHints(string $base, array $hints): ?string
+    {
+        foreach (scandir($base) ?: [] as $f) {
+            if (! str_ends_with(strtolower($f), '.docx')) {
+                continue;
+            }
+            $lower = mb_strtolower($f);
+            $ok = true;
+            foreach ($hints as $h) {
+                if (! str_contains($lower, mb_strtolower($h))) {
+                    $ok = false;
+                    break;
+                }
+            }
+            if (! $ok) {
+                continue;
+            }
+            $full = $base.DIRECTORY_SEPARATOR.$f;
+            if (is_readable($full)) {
                 return $full;
             }
         }
