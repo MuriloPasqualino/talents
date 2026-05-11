@@ -60,18 +60,6 @@
             font-weight: 700;
         }
         .muted { color: #64748b; font-size: 11px; line-height: 1.45; }
-        .badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: bold;
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #475569;
-        }
-        .badge-open { border-color: #e2e8f0; color: #64748b; }
-        .badge-closed { border-color: #86efac; color: #166534; }
         .grid { width: 100%; border-collapse: collapse; }
         .grid td { vertical-align: top; padding: 3px 0; }
         .grid .label {
@@ -187,15 +175,6 @@
 
     <h1>Proposta Comercial</h1>
     <div class="accent-line"></div>
-
-    <p class="muted" style="margin-top: 8px;">
-        @if($proposal->is_closed)
-            <span class="badge badge-closed">Fechada</span>
-        @else
-            <span class="badge badge-open">Em negociação</span>
-        @endif
-        &nbsp;Esta proposta é nominal e personalizada para o cliente abaixo.
-    </p>
 
     <h2>Dados do cliente</h2>
     <table class="grid">
