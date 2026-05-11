@@ -6,8 +6,11 @@ import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
+
+const greeting = useDashboardGreeting();
 
 const props = defineProps({
     stats: Object,
@@ -48,7 +51,7 @@ const riskDonutOptions = computed(() => ({
     labels: ['Saudável', 'Atenção', 'Crítico'],
     colors: ['#10b981', '#f59e0b', '#f43f5e'],
     stroke: { width: 0 },
-    legend: { position: 'bottom', fontSize: '11px', markers: { size: 6 } },
+    legend: { show: false },
     plotOptions: {
         pie: {
             donut: {
@@ -82,6 +85,46 @@ const formatShortDate = (iso) => {
         return '—';
     }
 };
+
+const userInitials = computed(() => {
+    const full = greeting.value.full || '';
+    const parts = full.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+    }
+    return (parts[0]?.slice(0, 2) || 'TA').toUpperCase();
+});
+
+const nextCalendarEvent = computed(() => {
+    const items = props.upcomingCalendar;
+    if (!items?.length) return null;
+    return items[0];
+});
+
+const formatEventLong = (item) => {
+    if (!item?.occurs_on) return '';
+    try {
+        return new Date(item.occurs_on).toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        });
+    } catch {
+        return '';
+    }
+};
+
+const riskLegend = computed(() => {
+    const d = props.riskDistribution || {};
+    return [
+        { key: 'green', label: 'Saudável', count: d.green || 0, color: 'bg-emerald-500' },
+        { key: 'yellow', label: 'Atenção', count: d.yellow || 0, color: 'bg-amber-500' },
+        { key: 'red', label: 'Crítico', count: d.red || 0, color: 'bg-rose-500' },
+    ];
+});
+
+const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
 </script>
 
 <template>
@@ -89,12 +132,22 @@ const formatShortDate = (iso) => {
 
     <AdminLayout>
         <template #header>
-            <div class="flex flex-wrap items-end justify-between gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <p class="text-sm capitalize text-slate-500">{{ todayLabel }}</p>
-                    <p class="text-sm text-slate-500">Olá, {{ $page.props.auth.user.name }}</p>
-                    <h2 class="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">Visão geral Talents</h2>
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Painel executivo</p>
+                    <h2 class="mt-0.5 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">Visão geral Talents</h2>
+                    <p class="mt-1 text-sm capitalize text-slate-500">{{ todayLabel }}</p>
                 </div>
+                <Link
+                    v-if="Number(stats.pending_complaints_total) > 0"
+                    :href="route('admin.companies.index')"
+                    class="group relative inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-2 text-sm font-bold text-white shadow-md transition hover:bg-amber-600 hover:shadow-lg"
+                >
+                    <span class="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-amber-700 ring-2 ring-amber-500">
+                        {{ stats.pending_complaints_total }}
+                    </span>
+                    Denúncias pendentes
+                </Link>
             </div>
         </template>
 
@@ -114,6 +167,78 @@ const formatShortDate = (iso) => {
                 </div>
             </div>
         </template>
+
+        <!-- Hero + status (estilo cartões principais) -->
+        <div class="mb-8 grid gap-4 lg:grid-cols-3">
+            <div
+                class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-talents-600 via-violet-600 to-amber-500 p-6 text-white shadow-xl sm:p-8 lg:col-span-2"
+            >
+                <div class="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+                <div class="pointer-events-none absolute -bottom-20 left-1/4 h-40 w-40 rounded-full bg-amber-300/20 blur-2xl" />
+                <div class="relative flex flex-wrap items-start justify-between gap-6">
+                    <div class="flex min-w-0 flex-1 gap-4">
+                        <div
+                            class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-lg font-bold tracking-tight text-white ring-2 ring-white/30 backdrop-blur-sm"
+                            aria-hidden="true"
+                        >
+                            {{ userInitials }}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-white/85">
+                                {{ greeting.prefix }}, <span class="font-bold text-white">{{ greeting.first }}</span>
+                            </p>
+                            <template v-if="nextCalendarEvent">
+                                <p class="mt-3 text-xs font-semibold uppercase tracking-wider text-white/70">Próximo no calendário</p>
+                                <h3 class="mt-1 text-xl font-bold leading-snug sm:text-2xl">{{ nextCalendarEvent.title }}</h3>
+                                <p class="mt-2 text-sm text-white/90">{{ formatEventLong(nextCalendarEvent) }}</p>
+                                <p v-if="nextCalendarEvent.company" class="mt-1 text-xs text-white/75">
+                                    {{ nextCalendarEvent.company.name }}
+                                </p>
+                            </template>
+                            <template v-else>
+                                <h3 class="mt-3 text-xl font-bold leading-snug sm:text-2xl">Sem eventos nos próximos 7 dias</h3>
+                                <p class="mt-2 max-w-md text-sm text-white/85">Planeje ritos e marcos no calendário estratégico para a equipa ver aqui o próximo passo.</p>
+                            </template>
+                        </div>
+                    </div>
+                    <Link
+                        :href="route('admin.strategic-calendar.index')"
+                        class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-talents-700 shadow-lg transition hover:scale-105 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-white/80"
+                        aria-label="Abrir calendário estratégico"
+                    >
+                        <svg class="h-5 w-5 translate-x-px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </Link>
+                </div>
+            </div>
+
+            <div
+                class="relative flex flex-col justify-between overflow-hidden rounded-3xl bg-slate-900 p-6 text-white shadow-xl ring-1 ring-slate-700/50 transition hover:shadow-2xl sm:p-7"
+            >
+                <div class="pointer-events-none absolute right-0 top-0 h-32 w-32 translate-x-1/3 -translate-y-1/3 rounded-full bg-indigo-500/30 blur-2xl" />
+                <div class="relative">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Resumo rápido</p>
+                    <h3 class="mt-2 text-lg font-bold">Alertas NR-1</h3>
+                    <div class="mt-5 space-y-4">
+                        <div class="flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2.5 ring-1 ring-white/10">
+                            <span class="text-sm text-slate-300">Empresas críticas</span>
+                            <span class="text-2xl font-bold tabular-nums text-rose-400">{{ criticalCount }}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 rounded-2xl bg-white/5 px-3 py-2.5 ring-1 ring-white/10">
+                            <span class="text-sm text-slate-300">Denúncias abertas</span>
+                            <span class="text-2xl font-bold tabular-nums text-amber-300">{{ stats.pending_complaints_total }}</span>
+                        </div>
+                    </div>
+                </div>
+                <Link
+                    :href="route('admin.companies.index')"
+                    class="relative mt-6 inline-flex w-full items-center justify-center rounded-xl bg-white/10 py-2.5 text-sm font-semibold text-white ring-1 ring-white/20 transition hover:bg-white/20"
+                >
+                    Ver empresas
+                </Link>
+            </div>
+        </div>
 
         <!-- KPIs -->
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -152,17 +277,18 @@ const formatShortDate = (iso) => {
         <!-- Zona principal + lateral -->
         <div class="mt-8 grid gap-8 lg:grid-cols-3">
             <div class="space-y-8 lg:col-span-2">
-                <div class="surface-card border-slate-200/70 p-5 sm:p-6">
+                <div class="surface-card border-slate-200/70 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
                     <SectionHeader
+                        variant="panel"
                         title="Saúde organizacional"
                         subtitle="Distribuição na última campanha de cada empresa (resultado global)"
                     />
-                    <div class="mt-4 grid gap-8 sm:grid-cols-2">
-                        <div class="min-h-[220px]">
+                    <div class="mt-6 flex flex-col gap-8 lg:flex-row lg:items-start">
+                        <div class="flex min-h-[220px] min-w-0 flex-1 justify-center">
                             <apexchart
                                 v-if="riskDonutTotal > 0"
                                 type="donut"
-                                height="240"
+                                height="260"
                                 :options="riskDonutOptions"
                                 :series="riskDonutSeries"
                             />
@@ -173,32 +299,55 @@ const formatShortDate = (iso) => {
                                 description="Quando houver campanhas concluídas com resultado global, o gráfico aparece aqui."
                             />
                         </div>
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Média por segmento (0–100)</p>
-                            <div class="mt-3 space-y-3">
-                                <ProgressBar
-                                    v-for="row in riskBySegment"
-                                    :key="row.segment"
-                                    :label="row.segment"
-                                    :value="(100 * (Number(row.avg_score) || 0)) / maxSegmentScore"
-                                    :display-value="Number(row.avg_score).toFixed(1)"
-                                    bar-class="bg-talents-600"
-                                />
-                                <EmptyState
-                                    v-if="!riskBySegment?.length"
-                                    class="border-0 bg-transparent py-6"
-                                    title="Sem dados por segmento"
-                                    description="Defina o segmento nas empresas para comparar."
-                                />
+                        <aside
+                            v-if="riskDonutTotal > 0"
+                            class="flex w-full shrink-0 flex-col justify-center gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-5 lg:w-60 lg:border-0 lg:bg-transparent lg:p-0 lg:pl-2"
+                        >
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Legenda</p>
+                            <ul class="space-y-3">
+                                <li v-for="row in riskLegend" :key="row.key" class="flex items-center justify-between gap-3 text-sm">
+                                    <span class="flex items-center gap-2 text-slate-700">
+                                        <span class="h-2.5 w-2.5 shrink-0 rounded-full" :class="row.color" />
+                                        {{ row.label }}
+                                    </span>
+                                    <span class="tabular-nums font-semibold text-slate-900">{{ row.count }}</span>
+                                </li>
+                            </ul>
+                            <div class="mt-2 border-t border-slate-200 pt-4">
+                                <p class="text-xs text-slate-500">Total de empresas (última campanha)</p>
+                                <p class="font-serif text-3xl font-bold text-talents-800">{{ riskDonutTotal }}</p>
                             </div>
+                        </aside>
+                    </div>
+                    <div class="mt-8 border-t border-slate-100 pt-6">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Média por segmento (0–100)</p>
+                        <div class="mt-3 space-y-3">
+                            <ProgressBar
+                                v-for="row in riskBySegment"
+                                :key="row.segment"
+                                :label="row.segment"
+                                :value="(100 * (Number(row.avg_score) || 0)) / maxSegmentScore"
+                                :display-value="Number(row.avg_score).toFixed(1)"
+                                bar-class="bg-talents-600"
+                            />
+                            <EmptyState
+                                v-if="!riskBySegment?.length"
+                                class="border-0 bg-transparent py-6"
+                                title="Sem dados por segmento"
+                                description="Defina o segmento nas empresas para comparar."
+                            />
                         </div>
                     </div>
                 </div>
 
-                <div class="surface-card border-slate-200/70 p-5 sm:p-6">
+                <div class="surface-card border-slate-200/70 p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6">
                     <SectionHeader title="Empresas com saúde crítica" subtitle="Última campanha — nível vermelho" />
                     <ul v-if="criticalCompanies?.length" class="mt-4 divide-y divide-slate-100">
-                        <li v-for="c in criticalCompanies" :key="c.id" class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0">
+                        <li
+                            v-for="c in criticalCompanies"
+                            :key="c.id"
+                            class="flex flex-wrap items-center justify-between gap-3 rounded-xl py-3 transition first:pt-0 hover:bg-slate-50/80 sm:px-2"
+                        >
                             <div class="min-w-0">
                                 <Link
                                     :href="route('admin.companies.show', c.id)"

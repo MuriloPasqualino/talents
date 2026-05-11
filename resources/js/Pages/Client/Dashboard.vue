@@ -6,12 +6,14 @@ import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
+import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { usePermissions } from '@/composables/usePermissions';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const page = usePage();
 const { can } = usePermissions();
+const greeting = useDashboardGreeting();
 
 const copied = ref(false);
 
@@ -67,6 +69,28 @@ const kindLabel = (kind) => {
     const k = typeof kind === 'object' && kind?.value !== undefined ? kind.value : kind;
     return props.calendarKindLabels?.[k] ?? k;
 };
+
+const userInitials = computed(() => {
+    const full = greeting.value.full || '';
+    const parts = full.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+    }
+    return (parts[0]?.slice(0, 2) || 'ME').toUpperCase();
+});
+
+const nextCalendarItem = computed(() => {
+    const u = props.upcomingCalendar;
+    if (!u?.length) return null;
+    return u[0];
+});
+
+const attentionTotal = computed(() => {
+    let n = 0;
+    if (can('denuncias', 'view')) n += props.pendingComplaintsCount || 0;
+    if (can('tarefas', 'view')) n += props.pendingTasks?.length || 0;
+    return n;
+});
 </script>
 
 <template>
@@ -74,11 +98,35 @@ const kindLabel = (kind) => {
 
     <ClientLayout>
         <template #header>
-            <div>
-                <p class="text-sm capitalize text-slate-500">{{ todayLabel }}</p>
-                <p class="text-sm text-slate-500">Olá, {{ $page.props.auth.user.name }}</p>
-                <h2 class="mt-0.5 text-2xl font-semibold tracking-tight text-slate-900">Painel NR-1</h2>
-                <p v-if="companyName" class="mt-1 text-sm text-slate-600">{{ companyName }}</p>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex min-w-0 items-center gap-3">
+                    <div
+                        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-talents-600 to-violet-700 text-sm font-bold text-white shadow-md"
+                        aria-hidden="true"
+                    >
+                        {{ userInitials }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs capitalize text-slate-500">{{ todayLabel }}</p>
+                        <p class="text-sm text-slate-600">
+                            {{ greeting.prefix }}, <span class="font-semibold text-slate-900">{{ greeting.first }}</span>
+                        </p>
+                        <h2 class="mt-0.5 truncate text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">Painel NR-1</h2>
+                        <p v-if="companyName" class="truncate text-sm text-slate-600">{{ companyName }}</p>
+                    </div>
+                </div>
+                <Link
+                    v-if="attentionTotal > 0"
+                    :href="can('denuncias', 'view') ? route('client.complaints.index') : route('client.tarefas.index')"
+                    class="relative inline-flex items-center gap-2 rounded-2xl bg-talents-600 px-4 py-2 text-sm font-bold text-white shadow-md transition hover:bg-talents-700 hover:shadow-lg"
+                >
+                    <span
+                        class="absolute -right-1 -top-1 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-amber-400 px-1 text-[11px] font-bold text-talents-900 ring-2 ring-white"
+                    >
+                        {{ attentionTotal }}
+                    </span>
+                    Pendências
+                </Link>
             </div>
         </template>
 
@@ -126,8 +174,36 @@ const kindLabel = (kind) => {
             </div>
         </template>
 
-        <!-- Hero última campanha -->
-        <div v-if="can('pesquisas', 'view')" class="surface-card-dark border-slate-700/40 p-6 sm:p-8">
+        <!-- Destaque: calendário + NR-1 -->
+        <div class="mt-2 grid gap-4 lg:grid-cols-3">
+            <div
+                v-if="can('calendario_estrategico', 'view') && upcomingCalendar?.length && nextCalendarItem"
+                class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-6 text-white shadow-xl sm:p-7"
+                :class="can('pesquisas', 'view') ? '' : 'lg:col-span-3'"
+            >
+                <div class="pointer-events-none absolute -left-10 bottom-0 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
+                <div class="relative">
+                    <p class="text-xs font-bold uppercase tracking-wider text-white/90">Próximo no calendário</p>
+                    <h3 class="mt-2 font-serif text-xl font-bold leading-snug sm:text-2xl">{{ nextCalendarItem.title }}</h3>
+                    <p class="mt-2 text-sm text-white/95">{{ formatShortDate(nextCalendarItem.occurs_on) }}</p>
+                    <p class="mt-1 text-xs text-white/85">{{ kindLabel(nextCalendarItem.kind) }}</p>
+                    <Link
+                        :href="route('client.strategic-calendar.index')"
+                        class="mt-5 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-rose-600 shadow-lg transition hover:scale-105"
+                        aria-label="Abrir calendário"
+                    >
+                        <svg class="h-5 w-5 translate-x-px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </Link>
+                </div>
+            </div>
+
+            <div
+                v-if="can('pesquisas', 'view')"
+                class="surface-card-dark border-slate-700/40 p-6 sm:p-8"
+                :class="can('calendario_estrategico', 'view') && upcomingCalendar?.length ? 'lg:col-span-2' : 'lg:col-span-3'"
+            >
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div class="min-w-0 flex-1">
                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Última campanha NR-1</p>
@@ -178,6 +254,7 @@ const kindLabel = (kind) => {
                 >
                     Ir para pesquisas
                 </Link>
+            </div>
             </div>
         </div>
 

@@ -14,6 +14,8 @@ const props = defineProps({
     sparklineSeries: { type: Array, default: null },
     detailHref: { type: String, default: '' },
     detailLabel: { type: String, default: 'Ver detalhes' },
+    /** Hover sutil (cartões “clicáveis”) */
+    interactive: { type: Boolean, default: true },
 });
 
 const deltaClass = computed(() => {
@@ -35,7 +37,14 @@ const deltaText = computed(() => {
 </script>
 
 <template>
-    <div class="surface-card flex min-h-[7.5rem] flex-col justify-between border-slate-200/70 p-5 text-slate-900">
+    <div
+        class="surface-card flex min-h-[7.5rem] flex-col justify-between border-slate-200/70 p-5 text-slate-900"
+        :class="
+            interactive
+                ? 'transition-all duration-200 hover:-translate-y-0.5 hover:border-talents-200/90 hover:shadow-lg focus-within:ring-2 focus-within:ring-talents-400/30'
+                : ''
+        "
+    >
         <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ label }}</p>
