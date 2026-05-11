@@ -62,6 +62,11 @@ class ProposalController extends Controller
                 ->get(['id', 'name'])
                 ->all(),
             'zapsign_configured' => filled(trim((string) ($commercialSettings->zapsign_api_token ?? ''))),
+            'zapsignParties' => [
+                'contratada_signatario' => trim((string) ($commercialSettings->company_contract_signatory_name ?? '')),
+                'contratada_telefone' => $commercialSettings->company_phone,
+                'contratada_email' => $commercialSettings->company_email,
+            ],
         ]);
     }
 

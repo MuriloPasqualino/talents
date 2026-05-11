@@ -234,12 +234,18 @@ const services = computed(() => [
                                 <p v-if="form.errors.client_name" class="mt-1 text-xs text-rose-600">{{ form.errors.client_name }}</p>
                             </div>
                             <div>
-                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Telefone</label>
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                    Celular / WhatsApp (contrato e ZapSign)
+                                </label>
                                 <input
                                     v-model="form.client_phone"
                                     type="text"
+                                    placeholder="DDD + número — usado para envio do link de assinatura pela ZapSign"
                                     class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 />
+                                <p class="mt-1 text-xs text-slate-500">
+                                    Se não houver e-mail válido, o número com DDD é obrigatório para disparo por WhatsApp.
+                                </p>
                             </div>
                             <div class="sm:col-span-2">
                                 <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Endereço da sede (contrato)</label>

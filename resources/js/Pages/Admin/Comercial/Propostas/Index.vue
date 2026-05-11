@@ -19,6 +19,14 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
     templates: { type: Array, default: () => [] },
     zapsign_configured: { type: Boolean, default: false },
+    zapsignParties: {
+        type: Object,
+        default: () => ({
+            contratada_signatario: '',
+            contratada_telefone: '',
+            contratada_email: '',
+        }),
+    },
 });
 
 const filterState = reactive({
@@ -63,6 +71,39 @@ const zapsignSignUrl = ref('');
 const selectedTemplateName = computed(() => {
     const id = Number(contractTemplateId.value);
     return props.templates.find((t) => t.id === id)?.name ?? '';
+});
+
+const emailLooksValid = (s) => {
+    const t = String(s ?? '').trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+};
+
+const digitsOnly = (s) => String(s ?? '').replace(/\D/g, '');
+
+/** Celular BR suficiente para tentativa ZapSign (backend valida com DDD). */
+const phoneLooksValid = (s) => {
+    let d = digitsOnly(s);
+    if (d.startsWith('55')) {
+        d = d.slice(2);
+    }
+    return d.length >= 10 && d.length <= 11;
+};
+
+const clienteRepresentanteNome = computed(() => {
+    const p = contractProposal.value;
+    if (!p) return '—';
+    return String(p.client_representative || p.client_name || '').trim() || '—';
+});
+
+const zapsignClienteContatoOk = computed(() => {
+    const p = contractProposal.value;
+    if (!p) return false;
+    return phoneLooksValid(p.client_phone) || emailLooksValid(p.client_email);
+});
+
+const zapsignContratadaContatoOk = computed(() => {
+    const z = props.zapsignParties || {};
+    return phoneLooksValid(z.contratada_telefone) || emailLooksValid(z.contratada_email);
 });
 
 const pdfPreviewUrl = computed(() => {
@@ -351,6 +392,55 @@ const sendZapSign = () => {
                     {{ inertiaPage.props.flash.success }}
                 </div>
 
+                <div
+                    v-if="contractProposal && zapsign_configured"
+                    class="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800"
+                >
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Assinatura ZapSign (ordem)
+                    </p>
+                    <ol class="mt-2 list-decimal space-y-2 pl-5">
+                        <li>
+                            <strong class="text-slate-900">CONTRATANTE</strong>
+                            — {{ clienteRepresentanteNome }}
+                            <span class="block text-xs text-slate-600">
+                                Envio:
+                                <template v-if="phoneLooksValid(contractProposal.client_phone)">
+                                    WhatsApp/celular {{ contractProposal.client_phone }}
+                                    <template v-if="emailLooksValid(contractProposal.client_email)">
+                                        (e-mail também cadastrado; prioridade WhatsApp)
+                                    </template>
+                                </template>
+                                <template v-else-if="emailLooksValid(contractProposal.client_email)">
+                                    e-mail {{ contractProposal.client_email }}
+                                </template>
+                                <template v-else>
+                                    <span class="text-amber-800">cadastre celular com DDD ou e-mail na proposta</span>
+                                </template>
+                            </span>
+                        </li>
+                        <li>
+                            <strong class="text-slate-900">CONTRATADA</strong>
+                            — {{ zapsignParties.contratada_signatario || '—' }}
+                            <span class="block text-xs text-slate-600">
+                                Envio:
+                                <template v-if="phoneLooksValid(zapsignParties.contratada_telefone)">
+                                    WhatsApp/celular {{ zapsignParties.contratada_telefone }}
+                                    <template v-if="emailLooksValid(zapsignParties.contratada_email)">
+                                        (e-mail também cadastrado; prioridade WhatsApp)
+                                    </template>
+                                </template>
+                                <template v-else-if="emailLooksValid(zapsignParties.contratada_email)">
+                                    e-mail {{ zapsignParties.contratada_email }}
+                                </template>
+                                <template v-else>
+                                    <span class="text-amber-800">configure telefone ou e-mail em Empresa Talents</span>
+                                </template>
+                            </span>
+                        </li>
+                    </ol>
+                </div>
+
                 <template v-if="!generatedContractId">
                     <div v-if="!templates.length" class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
                         Nenhum modelo ativo. Cadastre em Comercial → Configurações → aba Contratos.
@@ -402,6 +492,14 @@ const sendZapSign = () => {
                     <div v-if="!zapsign_configured" class="mt-3 text-xs text-amber-800">
                         Configure o token ZapSign em Comercial → Configurações → PDF para habilitar o envio à assinatura.
                     </div>
+                    <div
+                        v-else-if="(!zapsignClienteContatoOk || !zapsignContratadaContatoOk) && !zapsignSent"
+                        class="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-950"
+                    >
+                        Complete os contatos acima antes de enviar: é obrigatório
+                        <strong>e-mail válido ou celular com DDD</strong>
+                        na proposta (cliente) e em Empresa Talents (Talents). Com celular, a ZapSign envia o link por WhatsApp.
+                    </div>
                     <div v-if="zapsignSignUrl" class="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm">
                         <span class="text-slate-600">Link do 1º signatário:</span>
                         <a
@@ -430,7 +528,13 @@ const sendZapSign = () => {
                         <button
                             type="button"
                             class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-                            :disabled="!zapsign_configured || zapsignSending || zapsignSent"
+                            :disabled="
+                                !zapsign_configured
+                                    || zapsignSending
+                                    || zapsignSent
+                                    || !zapsignClienteContatoOk
+                                    || !zapsignContratadaContatoOk
+                            "
                             :title="zapsignSent ? 'Este contrato já foi enviado ao ZapSign nesta sessão.' : ''"
                             @click="sendZapSign"
                         >

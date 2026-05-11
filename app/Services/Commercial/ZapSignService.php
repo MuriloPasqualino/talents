@@ -48,6 +48,12 @@ class ZapSignService
             if (isset($signer['order_group'])) {
                 $row['order_group'] = (int) $signer['order_group'];
             }
+            if (! empty($signer['blank_email'])) {
+                $row['blank_email'] = true;
+            }
+            if (array_key_exists('send_automatic_whatsapp', $signer)) {
+                $row['send_automatic_whatsapp'] = (bool) $signer['send_automatic_whatsapp'];
+            }
             $signerPayloads[] = $row;
         }
 

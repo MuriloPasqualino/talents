@@ -167,12 +167,18 @@ const submit = () => {
                         />
                     </div>
                     <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Telefone</label>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Celular / WhatsApp (empresa — ZapSign 2º signatário)
+                        </label>
                         <input
                             v-model="form.company_phone"
                             type="text"
+                            placeholder="DDD + número da Talents para receber o link por WhatsApp"
                             class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                         />
+                        <p class="mt-1 text-xs text-slate-500">
+                            Se não usar e-mail institucional no ZapSign, cadastre o celular com DDD (mesmo número pode ser usado para o signatário da CONTRATADA).
+                        </p>
                     </div>
                     <div class="sm:col-span-2">
                         <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Endereço</label>
@@ -210,7 +216,9 @@ const submit = () => {
                         />
                     </div>
                     <div>
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Signatário(a) — nome (palestra / rodapé)</label>
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            Signatário(a) CONTRATADA — nome (ex.: Suzane)
+                        </label>
                         <input
                             v-model="form.company_contract_signatory_name"
                             type="text"

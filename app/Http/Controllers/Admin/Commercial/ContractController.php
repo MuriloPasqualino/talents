@@ -9,6 +9,7 @@ use App\Models\CommercialProposal;
 use App\Models\CommercialSetting;
 use App\Services\Commercial\ContractGenerationService;
 use App\Services\Commercial\ZapSignService;
+use App\Support\BrazilMobilePhone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -89,17 +90,23 @@ class ContractController extends Controller
         $companyEmail = trim((string) ($settings->company_email ?? ''));
         $companySigner = trim((string) ($settings->company_contract_signatory_name ?? ''));
 
-        if ($clientEmail === '' || ! filter_var($clientEmail, FILTER_VALIDATE_EMAIL)) {
-            return redirect()->back()->with('error', 'Informe um e-mail válido do cliente na proposta antes de enviar ao ZapSign.');
-        }
-        if ($companyEmail === '' || ! filter_var($companyEmail, FILTER_VALIDATE_EMAIL)) {
-            return redirect()->back()->with('error', 'Configure o e-mail da empresa Talents (Empresa Talents no menu) para o signatário CONTRATADA.');
-        }
+        $clientPhone = BrazilMobilePhone::parse($proposal->client_phone ?? null);
+        $companyPhone = BrazilMobilePhone::parse($settings->company_phone ?? null);
+
+        $clientEmailOk = $clientEmail !== '' && filter_var($clientEmail, FILTER_VALIDATE_EMAIL);
+        $companyEmailOk = $companyEmail !== '' && filter_var($companyEmail, FILTER_VALIDATE_EMAIL);
+
         if ($clientName === '') {
-            return redirect()->back()->with('error', 'Preencha o nome do cliente ou representante na proposta.');
+            return redirect()->back()->with('error', 'Preencha o nome do cliente ou representante legal (CONTRATANTE) na proposta.');
         }
         if ($companySigner === '') {
-            return redirect()->back()->with('error', 'Configure o nome do signatário da CONTRATADA em Empresa Talents.');
+            return redirect()->back()->with('error', 'Configure o nome do signatário da CONTRATADA (ex.: Suzane) em Empresa Talents.');
+        }
+        if ($clientPhone === null && ! $clientEmailOk) {
+            return redirect()->back()->with('error', 'Para o ZapSign, cadastre na proposta um e-mail válido do cliente OU um celular/WhatsApp com DDD (ex.: 11 98765-4321). Com celular, o link de assinatura é enviado por WhatsApp pela ZapSign.');
+        }
+        if ($companyPhone === null && ! $companyEmailOk) {
+            return redirect()->back()->with('error', 'Para o ZapSign, configure em Empresa Talents um e-mail institucional OU o telefone/WhatsApp (com DDD) da Talents para receber o link da CONTRATADA.');
         }
 
         if (! Storage::disk('local')->exists($contract->pdf_path)) {
@@ -110,17 +117,11 @@ class ContractController extends Controller
         $base64 = base64_encode($pdfBinary);
         $docName = $contract->code.' — '.($contract->template?->name ?? 'Contrato');
 
+        $autoEmail = (bool) ($settings->zapsign_send_automatic_email ?? true);
+
         $signers = [
-            [
-                'name' => $clientName,
-                'email' => $clientEmail,
-                'order_group' => 1,
-            ],
-            [
-                'name' => $companySigner,
-                'email' => $companyEmail,
-                'order_group' => 2,
-            ],
+            $this->zapSignSignerPayload($clientName, $clientEmail, $clientPhone, 1, $autoEmail),
+            $this->zapSignSignerPayload($companySigner, $companyEmail, $companyPhone, 2, $autoEmail),
         ];
 
         try {
@@ -146,9 +147,57 @@ class ContractController extends Controller
         $contract->zapsign_primary_sign_url = $primaryUrl;
         $contract->save();
 
+        $msg = 'Contrato enviado ao ZapSign. 1º signatário (CONTRATANTE): '
+            .($clientPhone !== null ? 'link por WhatsApp (ZapSign).' : 'link por e-mail (se habilitado nas configurações).')
+            .' 2º signatário (CONTRATADA — '.$companySigner.'): '
+            .($companyPhone !== null ? 'WhatsApp.' : 'e-mail.');
+
         return redirect()
             ->back()
-            ->with('success', 'Contrato enviado ao ZapSign. O primeiro signatário receberá o link por e-mail (se habilitado).')
+            ->with('success', $msg)
             ->with('zapsign_sign_url', $primaryUrl);
+    }
+
+    /**
+     * Se houver celular válido, usa envio/autenticação por WhatsApp (prioridade sobre e-mail).
+     * Caso contrário usa e-mail com token.
+     *
+     * @param  array{country: string, national: string}|null  $parsedPhone
+     * @return array<string, mixed>
+     */
+    private function zapSignSignerPayload(
+        string $name,
+        string $email,
+        ?array $parsedPhone,
+        int $orderGroup,
+        bool $settingsAutoEmail,
+    ): array {
+        if ($parsedPhone !== null) {
+            return [
+                'name' => $name,
+                'email' => '',
+                'blank_email' => true,
+                'phone_country' => $parsedPhone['country'],
+                'phone_number' => $parsedPhone['national'],
+                'auth_mode' => 'assinaturaTela-tokenWhatsapp',
+                'send_automatic_whatsapp' => true,
+                'send_automatic_email' => false,
+                'order_group' => $orderGroup,
+            ];
+        }
+
+        $email = trim($email);
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Signatário sem e-mail válido.');
+        }
+
+        return [
+            'name' => $name,
+            'email' => $email,
+            'auth_mode' => 'assinaturaTela-tokenEmail',
+            'send_automatic_email' => $settingsAutoEmail,
+            'send_automatic_whatsapp' => false,
+            'order_group' => $orderGroup,
+        ];
     }
 }
