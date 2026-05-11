@@ -6,7 +6,9 @@
 FROM composer:2 AS composer-deps
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader
+# Imagem composer:2 não inclui ext-gd (exigida pelo phpoffice/phpword). Este estágio só
+# materializa vendor/ para o build do Vite (Ziggy); o estágio php reinstala com PHP real.
+RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-reqs
 
 # -----------------------------------------------------------------------------
 # Stage 1: frontend (Vite / Vue / PWA)
