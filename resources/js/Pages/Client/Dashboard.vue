@@ -8,6 +8,7 @@ import StrategicCalendarWidget from '@/Components/StrategicCalendarWidget.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { usePermissions } from '@/composables/usePermissions';
+import { formatDateShort } from '@/utils/dateOnly';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -56,14 +57,7 @@ const todayLabel = computed(() =>
     }),
 );
 
-const formatShortDate = (iso) => {
-    if (!iso) return '—';
-    try {
-        return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-    } catch {
-        return '—';
-    }
-};
+const formatShortDate = (iso) => formatDateShort(iso);
 
 const kindLabel = (kind) => {
     const k = typeof kind === 'object' && kind?.value !== undefined ? kind.value : kind;

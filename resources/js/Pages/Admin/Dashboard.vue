@@ -6,6 +6,7 @@ import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
+import { daysFromToday, formatDateLong, formatDateShort } from '@/utils/dateOnly';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -22,15 +23,6 @@ const props = defineProps({
     subscriptionsDueSoon: Array,
     calendarKindLabels: { type: Object, default: () => ({}) },
 });
-
-const startOfLocalDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-function parseOccurrenceDate(iso) {
-    if (!iso) return null;
-    const raw = iso;
-    const d = new Date(String(raw).includes('T') ? raw : `${raw}T12:00:00`);
-    return Number.isNaN(d.getTime()) ? null : d;
-}
 
 const responsesSpark = computed(() => (props.stats?.responses_sparkline || []).map((p) => p.count));
 const complaintsSpark = computed(() => (props.stats?.complaints_sparkline || []).map((p) => p.count));
@@ -76,14 +68,7 @@ const maxSegmentScore = computed(() => {
     return Math.max(100, ...rows.map((r) => Number(r.avg_score) || 0));
 });
 
-const formatShortDate = (iso) => {
-    if (!iso) return '—';
-    try {
-        return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-    } catch {
-        return '—';
-    }
-};
+const formatShortDate = (iso) => formatDateShort(iso);
 
 const userInitials = computed(() => {
     const full = greeting.value.full || '';
@@ -101,19 +86,7 @@ const nextCalendarEvent = computed(() => {
 });
 
 /** Diferença em dias entre hoje e a data `occurs_on` do evento (0 = hoje). */
-const calendarEventDaysFromToday = computed(() => {
-    const d = parseOccurrenceDate(nextCalendarEvent.value?.occurs_on);
-    if (!d) return null;
-    const today = new Date();
-    const e0 = startOfLocalDay(d).getTime();
-    const t0 = startOfLocalDay(today).getTime();
-    return Math.round((e0 - t0) / 86400000);
-});
-
-function capitalizeFirst(str) {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
+const calendarEventDaysFromToday = computed(() => daysFromToday(nextCalendarEvent.value?.occurs_on));
 
 /** Chip discreto que situa o evento no tempo sem repetir a data inteira. */
 const calendarEventChip = computed(() => {
@@ -131,22 +104,7 @@ const calendarKindLabel = (kind) => {
     return props.calendarKindLabels?.[k] ?? k ?? '—';
 };
 
-const formatEventLong = (item) => {
-    const d = parseOccurrenceDate(item?.occurs_on);
-    if (!d) return '';
-    try {
-        return capitalizeFirst(
-            d.toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-            }),
-        );
-    } catch {
-        return '';
-    }
-};
+const formatEventLong = (item) => formatDateLong(item?.occurs_on);
 
 const riskLegend = computed(() => {
     const d = props.riskDistribution || {};
