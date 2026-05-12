@@ -163,4 +163,16 @@ return [
         return (int) $v;
     })(),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Horários da empresa (aderência espelho vs escala)
+    |--------------------------------------------------------------------------
+    |
+    | Valor usado quando a empresa ainda não gravou tolerancia_minutos em
+    | company_rhid_schedule_settings. A aderência sempre lê o valor salvo na
+    | configuração RHID quando existir; este é apenas o fallback.
+    |
+    */
+    'default_schedule_tolerance_minutes' => (int) env('RHID_DEFAULT_SCHEDULE_TOLERANCE_MINUTES', 10),
+
 ];

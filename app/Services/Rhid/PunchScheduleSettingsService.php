@@ -23,7 +23,7 @@ class PunchScheduleSettingsService
         return [
             'segundo_trabalho' => false,
             'segundo_almoco' => false,
-            'tolerancia_minutos' => 15,
+            'tolerancia_minutos' => $this->defaultToleranceMinutes(),
             'dias' => $dias,
         ];
     }
@@ -58,8 +58,8 @@ class PunchScheduleSettingsService
         }
         $base['segundo_trabalho'] = (bool) ($stored['segundo_trabalho'] ?? false);
         $base['segundo_almoco'] = (bool) ($stored['segundo_almoco'] ?? false);
-        $tm = $stored['tolerancia_minutos'] ?? 15;
-        $base['tolerancia_minutos'] = is_numeric($tm) ? max(0, min(120, (int) $tm)) : 15;
+        $tm = $stored['tolerancia_minutos'] ?? null;
+        $base['tolerancia_minutos'] = is_numeric($tm) ? max(0, min(120, (int) $tm)) : $this->defaultToleranceMinutes();
         $inDays = $stored['dias'] ?? [];
         foreach (self::DAY_KEYS as $k) {
             $base['dias'][$k] = $this->mergeDay(is_array($inDays[$k] ?? null) ? $inDays[$k] : []);
@@ -105,5 +105,13 @@ class PunchScheduleSettingsService
             ['company_id' => $company->id],
             ['settings' => $normalized],
         );
+    }
+
+    /** Fallback quando tolerancia_minutos não veio no JSON salvo (config/rhid.php). */
+    public function defaultToleranceMinutes(): int
+    {
+        $d = (int) config('rhid.default_schedule_tolerance_minutes', 10);
+
+        return max(0, min(120, $d));
     }
 }

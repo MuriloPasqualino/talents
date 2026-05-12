@@ -1357,6 +1357,17 @@ const espelhoAdherenceSituacaoLabel = (code) => {
     return code ?? '—';
 };
 
+/** Detalhe de minutos de almoço no destaque (janela esperada vs duração real). */
+const lunchBreakdownLabel = (row) => {
+    const total = Number(row?.total_minutos_atraso_almoco ?? 0);
+    const janela = row?.total_minutos_atraso_almoco_janela;
+    const dur = row?.total_minutos_desvio_duracao_almoco;
+    if (janela != null && dur != null) {
+        return `${total} (saída/volta: ${janela} · duração: ${dur})`;
+    }
+    return String(total);
+};
+
 const closeEspelhoAdherenceMarksModal = () => {
     espelhoAdherenceMarksOpen.value = false;
     espelhoAdherenceMarksError.value = null;
@@ -1495,9 +1506,13 @@ const espelhoAdherenceChartAlmoco = computed(() => {
     const data = rows.map(
         (row) =>
             Number(row.total_minutos_atraso_saida_almoco ?? 0) +
-            Number(row.total_minutos_atraso_volta_almoco ?? 0),
+            Number(row.total_minutos_atraso_volta_almoco ?? 0) +
+            Number(row.total_deficit_duracao_almoco_minutos ?? 0) +
+            Number(row.total_excesso_duracao_almoco_minutos ?? 0),
     );
     const diasExtra = rows.map((row) => Number(row.dias_com_infracao_almoco ?? 0));
+    const diasCurto = rows.map((row) => Number(row.dias_almoco_curto ?? 0));
+    const diasLongo = rows.map((row) => Number(row.dias_almoco_longo ?? 0));
     const empty = data.length === 0;
     const options = {
         chart: {
@@ -1530,7 +1545,9 @@ const espelhoAdherenceChartAlmoco = computed(() => {
                 formatter: (val, opts) => {
                     const idx = opts.dataPointIndex;
                     const d = diasExtra[idx] ?? 0;
-                    return `${val} min (saída+volta); ${d} dia(s) c/ infração — clique para ver marcações`;
+                    const c = diasCurto[idx] ?? 0;
+                    const l = diasLongo[idx] ?? 0;
+                    return `${val} min (saída+volta+duração); ${d} dia(s) c/ infração · ${c} curto(s) · ${l} longo(s) — clique para ver marcações`;
                 },
             },
         },
@@ -2808,6 +2825,8 @@ const justDeptBarChart = computed(() => {
                                         <th class="whitespace-nowrap p-2">Atraso ent.</th>
                                         <th class="whitespace-nowrap p-2">Atraso saída</th>
                                         <th class="whitespace-nowrap p-2">Atraso volta</th>
+                                        <th class="whitespace-nowrap p-2">Duração (R / E min)</th>
+                                        <th class="whitespace-nowrap p-2">Desvio duração</th>
                                         <th class="whitespace-nowrap p-2">Situação</th>
                                     </tr>
                                 </thead>
@@ -2878,6 +2897,32 @@ const justDeptBarChart = computed(() => {
                                                 class="text-emerald-700"
                                             >
                                                 0 min
+                                            </span>
+                                            <span v-else class="text-slate-400">—</span>
+                                        </td>
+                                        <td class="whitespace-nowrap p-2 text-center font-mono tabular-nums text-slate-700">
+                                            <template
+                                                v-if="
+                                                    d.duracao_almoco_real_minutos != null &&
+                                                    d.duracao_almoco_esperada_minutos != null
+                                                "
+                                            >
+                                                {{ d.duracao_almoco_real_minutos }} / {{ d.duracao_almoco_esperada_minutos }}
+                                            </template>
+                                            <span v-else class="text-slate-400">—</span>
+                                        </td>
+                                        <td class="whitespace-nowrap p-2 text-xs">
+                                            <span
+                                                v-if="(d.deficit_duracao_almoco_minutos ?? 0) > 0"
+                                                class="font-medium text-rose-700"
+                                            >
+                                                −{{ d.deficit_duracao_almoco_minutos }} min (curto)
+                                            </span>
+                                            <span
+                                                v-else-if="(d.excesso_duracao_almoco_minutos ?? 0) > 0"
+                                                class="font-medium text-amber-800"
+                                            >
+                                                +{{ d.excesso_duracao_almoco_minutos }} min (longo)
                                             </span>
                                             <span v-else class="text-slate-400">—</span>
                                         </td>
@@ -3152,7 +3197,9 @@ const justDeptBarChart = computed(() => {
                         <template v-else-if="espelhoAdherenceResult?.resumo">
                             <p class="mt-2 text-xs text-slate-600">
                                 Período: {{ espelhoAdherenceResult.resumo.ini }} a {{ espelhoAdherenceResult.resumo.fim }} ·
-                                Tolerância: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min ·
+                                Tolerância: {{ espelhoAdherenceResult.resumo.tolerancia_minutos }} min
+                                <span class="text-slate-500">(valor em Configuração RHID)</span>
+                                ·
                                 <span
                                     v-if="espelhoAdherenceResult.resumo.dias_calendario_distintos != null"
                                     class="whitespace-nowrap"
@@ -3344,8 +3391,10 @@ const justDeptBarChart = computed(() => {
                                 <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                                     <h4 class="mb-1 text-sm font-semibold text-slate-800">Infrações de almoço (min)</h4>
                                     <p class="mb-3 text-xs text-slate-500">
-                                        Total min (saída para almoço + volta), top
-                                        {{ ESPELHO_ADHERENCE_CHART_TOP }} (mesma ordenação da tabela).
+                                        Soma de minutos: atraso na saída para almoço + atraso na volta
+                                        <span class="font-medium text-slate-700">e</span>
+                                        desvio da duração (falta ou excesso em relação ao intervalo configurado, após a
+                                        tolerância). Top {{ ESPELHO_ADHERENCE_CHART_TOP }} (mesma ordenação da tabela).
                                     </p>
                                     <apexchart
                                         v-if="!espelhoAdherenceChartAlmoco.empty"
@@ -3388,7 +3437,7 @@ const justDeptBarChart = computed(() => {
                                             <span class="mt-0.5 block text-xs text-slate-600">
                                                 {{ row.total_minutos_penalidade }} min no período (entrada:
                                                 {{ row.total_atraso_entrada_minutos }} · almoço:
-                                                {{ row.total_minutos_atraso_almoco }}) ·
+                                                {{ lunchBreakdownLabel(row) }}) ·
                                                 {{ row.dias_analisados }}
                                                 dia(s) analisável(is)                                                <template v-if="row.dias_com_infracao_almoco">
                                                     · {{ row.dias_com_infracao_almoco }} dia(s) c/ infração de almoço
@@ -3428,7 +3477,7 @@ const justDeptBarChart = computed(() => {
                                             <span class="mt-0.5 block text-xs text-slate-600">
                                                 {{ row.total_minutos_penalidade }} min no período (entrada:
                                                 {{ row.total_atraso_entrada_minutos }} · almoço:
-                                                {{ row.total_minutos_atraso_almoco }}) ·
+                                                {{ lunchBreakdownLabel(row) }}) ·
                                                 {{ row.dias_analisados }}
                                                 dia(s) analisável(is)                                                <template v-if="row.dias_com_infracao_almoco">
                                                     · {{ row.dias_com_infracao_almoco }} dia(s) c/ infração de almoço
@@ -3491,9 +3540,10 @@ const justDeptBarChart = computed(() => {
                                         Infrações de almoço — detalhe
                                     </h4>
                                     <p class="mb-2 text-xs text-slate-500">
-                                        Ordenação: mais dias com problema; depois soma dos atrasos em minutos (saída para
-                                        almoço + volta). Infrações só por duração (almoço curto/longo) podem ter 0 min
-                                        nessa soma. Listagem até {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas.
+                                        Ordenação: mais dias com problema; depois soma total (saída+volta+duração). Colunas
+                                        <span class="font-medium">Falta</span>/<span class="font-medium">Excesso</span>
+                                        indicam minutos abaixo ou acima da duração de almoço prevista na escala (após a
+                                        tolerância). Listagem até {{ ESPELHO_ADHERENCE_CHART_TOP }} linhas.
                                     </p>
                                     <div class="overflow-x-auto rounded border border-slate-200 text-sm">
                                         <table class="min-w-full text-left">
@@ -3502,7 +3552,12 @@ const justDeptBarChart = computed(() => {
                                                     <th class="p-2">Nome</th>
                                                     <th class="p-2">ID</th>
                                                     <th class="p-2">Dias c/ problema</th>
-                                                    <th class="p-2">Total min atraso</th>
+                                                    <th class="p-2">Saída+volta</th>
+                                                    <th class="p-2">Falta duração</th>
+                                                    <th class="p-2">Excesso duração</th>
+                                                    <th class="p-2">Dias curto</th>
+                                                    <th class="p-2">Dias longo</th>
+                                                    <th class="p-2">Total min</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -3522,10 +3577,23 @@ const justDeptBarChart = computed(() => {
                                                     </td>
                                                     <td class="p-2 font-mono text-xs">{{ row.id_person }}</td>
                                                     <td class="p-2">{{ row.dias_com_infracao_almoco }}</td>
-                                                    <td class="p-2">
+                                                    <td class="p-2 tabular-nums">
+                                                        {{ (row.total_minutos_atraso_saida_almoco ?? 0) + (row.total_minutos_atraso_volta_almoco ?? 0) }}
+                                                    </td>
+                                                    <td class="p-2 tabular-nums text-rose-800">
+                                                        {{ row.total_deficit_duracao_almoco_minutos ?? 0 }}
+                                                    </td>
+                                                    <td class="p-2 tabular-nums text-amber-800">
+                                                        {{ row.total_excesso_duracao_almoco_minutos ?? 0 }}
+                                                    </td>
+                                                    <td class="p-2 tabular-nums">{{ row.dias_almoco_curto ?? 0 }}</td>
+                                                    <td class="p-2 tabular-nums">{{ row.dias_almoco_longo ?? 0 }}</td>
+                                                    <td class="p-2 tabular-nums font-medium">
                                                         {{
                                                             (row.total_minutos_atraso_saida_almoco ?? 0) +
-                                                            (row.total_minutos_atraso_volta_almoco ?? 0)
+                                                            (row.total_minutos_atraso_volta_almoco ?? 0) +
+                                                            (row.total_deficit_duracao_almoco_minutos ?? 0) +
+                                                            (row.total_excesso_duracao_almoco_minutos ?? 0)
                                                         }}
                                                     </td>
                                                 </tr>

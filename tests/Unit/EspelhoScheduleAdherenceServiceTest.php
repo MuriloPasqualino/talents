@@ -67,6 +67,35 @@ class EspelhoScheduleAdherenceServiceTest extends TestCase
         $this->assertNotNull($r);
         $this->assertTrue($r['almoco_curto']);
         $this->assertTrue($r['tem_infracao_almoco']);
+        $this->assertSame(15, $r['duracao_almoco_real_minutos']);
+        $this->assertSame(60, $r['duracao_almoco_esperada_minutos']);
+        $this->assertSame(45, $r['deficit_duracao_almoco_minutos']);
+        $this->assertSame(0, $r['excesso_duracao_almoco_minutos']);
+    }
+
+    public function test_analyze_day_detects_almoco_longo_excesso(): void
+    {
+        $day = [
+            'ativo' => true,
+            'entrada' => '08:00',
+            'saida_almoco' => '12:00',
+            'volta_almoco' => '13:00',
+            'saida' => '17:00',
+        ];
+        $frag = [
+            'ent_1' => '08:00',
+            'sai_1' => '12:00',
+            'ent_2' => '14:35',
+            'sai_2' => '17:00',
+        ];
+        $r = $this->svc->analyzeDayFragment($frag, $day, 0);
+        $this->assertNotNull($r);
+        $this->assertTrue($r['almoco_longo']);
+        $this->assertTrue($r['tem_infracao_almoco']);
+        $this->assertSame(155, $r['duracao_almoco_real_minutos']);
+        $this->assertSame(60, $r['duracao_almoco_esperada_minutos']);
+        $this->assertSame(0, $r['deficit_duracao_almoco_minutos']);
+        $this->assertSame(95, $r['excesso_duracao_almoco_minutos']);
     }
 
     public function test_analyze_day_returns_null_without_four_slots(): void

@@ -113,6 +113,14 @@ class EspelhoScheduleAdherenceService
             }
             $byPerson[$idPersonRow]['total_minutos_atraso_saida_almoco'] += $analysis['atraso_saida_almoco_minutos'];
             $byPerson[$idPersonRow]['total_minutos_atraso_volta_almoco'] += $analysis['atraso_volta_almoco_minutos'];
+            if (! empty($analysis['almoco_curto'])) {
+                $byPerson[$idPersonRow]['dias_almoco_curto']++;
+            }
+            if (! empty($analysis['almoco_longo'])) {
+                $byPerson[$idPersonRow]['dias_almoco_longo']++;
+            }
+            $byPerson[$idPersonRow]['total_deficit_duracao_almoco_minutos'] += (int) ($analysis['deficit_duracao_almoco_minutos'] ?? 0);
+            $byPerson[$idPersonRow]['total_excesso_duracao_almoco_minutos'] += (int) ($analysis['excesso_duracao_almoco_minutos'] ?? 0);
         }
 
         $rankingAtrasos = array_values(array_filter($byPerson, fn (array $p): bool => $p['dias_analisados'] > 0));
@@ -130,7 +138,8 @@ class EspelhoScheduleAdherenceService
 
         $rankingAlmoco = array_values(array_filter($byPerson, fn (array $p): bool => $p['dias_analisados'] > 0));
         $minTotaisAlmoco = static function (array $p): int {
-            return (int) ($p['total_minutos_atraso_saida_almoco'] + $p['total_minutos_atraso_volta_almoco']);
+            return (int) ($p['total_minutos_atraso_saida_almoco'] + $p['total_minutos_atraso_volta_almoco']
+                + $p['total_deficit_duracao_almoco_minutos'] + $p['total_excesso_duracao_almoco_minutos']);
         };
         usort($rankingAlmoco, function (array $a, array $b) use ($minTotaisAlmoco): int {
             if ($a['dias_com_infracao_almoco'] !== $b['dias_com_infracao_almoco']) {
@@ -368,7 +377,9 @@ class EspelhoScheduleAdherenceService
      */
     private function buildAdherenceHighlightRow(array $p): array
     {
-        $alm = (int) ($p['total_minutos_atraso_saida_almoco'] + $p['total_minutos_atraso_volta_almoco']);
+        $janelaAlm = (int) ($p['total_minutos_atraso_saida_almoco'] + $p['total_minutos_atraso_volta_almoco']);
+        $durDev = (int) ($p['total_deficit_duracao_almoco_minutos'] + $p['total_excesso_duracao_almoco_minutos']);
+        $alm = $janelaAlm + $durDev;
         $ent = (int) $p['total_atraso_entrada_minutos'];
 
         return [
@@ -376,7 +387,11 @@ class EspelhoScheduleAdherenceService
             'nome' => $p['nome'],
             'dias_analisados' => (int) $p['dias_analisados'],
             'dias_com_infracao_almoco' => (int) $p['dias_com_infracao_almoco'],
+            'dias_almoco_curto' => (int) ($p['dias_almoco_curto'] ?? 0),
+            'dias_almoco_longo' => (int) ($p['dias_almoco_longo'] ?? 0),
             'total_atraso_entrada_minutos' => $ent,
+            'total_minutos_atraso_almoco_janela' => $janelaAlm,
+            'total_minutos_desvio_duracao_almoco' => $durDev,
             'total_minutos_atraso_almoco' => $alm,
             'total_minutos_penalidade' => $ent + $alm,
         ];
@@ -453,6 +468,12 @@ class EspelhoScheduleAdherenceService
                 'atraso_entrada_minutos' => $analysis['atraso_entrada_minutos'] ?? null,
                 'atraso_saida_almoco_minutos' => $analysis['atraso_saida_almoco_minutos'] ?? null,
                 'atraso_volta_almoco_minutos' => $analysis['atraso_volta_almoco_minutos'] ?? null,
+                'duracao_almoco_real_minutos' => $analysis['duracao_almoco_real_minutos'] ?? null,
+                'duracao_almoco_esperada_minutos' => $analysis['duracao_almoco_esperada_minutos'] ?? null,
+                'almoco_curto' => $analysis['almoco_curto'] ?? null,
+                'almoco_longo' => $analysis['almoco_longo'] ?? null,
+                'deficit_duracao_almoco_minutos' => $analysis['deficit_duracao_almoco_minutos'] ?? null,
+                'excesso_duracao_almoco_minutos' => $analysis['excesso_duracao_almoco_minutos'] ?? null,
             ];
         }
 
@@ -476,8 +497,12 @@ class EspelhoScheduleAdherenceService
      */
     public function toleranceMinutes(array $settings): int
     {
-        $t = $settings['tolerancia_minutos'] ?? 15;
-        $t = is_numeric($t) ? (int) $t : 15;
+        $fallback = max(0, min(120, (int) config('rhid.default_schedule_tolerance_minutes', 10)));
+        $t = $settings['tolerancia_minutos'] ?? null;
+        if (! is_numeric($t)) {
+            $t = $fallback;
+        }
+        $t = (int) $t;
 
         return max(0, min(120, $t));
     }
@@ -691,12 +716,19 @@ class EspelhoScheduleAdherenceService
         $almocoLongo = $duracaoReal > $duracaoEsp + $T;
         $saidaCedo = $mSai1 < $mSaidaAlm - $T;
 
+        $deficitDuracao = $almocoCurto ? max(0, $duracaoEsp - $duracaoReal - $T) : 0;
+        $excessoDuracao = $almocoLongo ? max(0, $duracaoReal - $duracaoEsp - $T) : 0;
+
         $temInfracao = $atrasoSaidaAlmoco > 0 || $atrasoVoltaAlmoco > 0 || $almocoCurto || $almocoLongo || $saidaCedo;
 
         return [
             'atraso_entrada_minutos' => $atrasoEntrada,
             'atraso_saida_almoco_minutos' => $atrasoSaidaAlmoco,
             'atraso_volta_almoco_minutos' => $atrasoVoltaAlmoco,
+            'duracao_almoco_real_minutos' => $duracaoReal,
+            'duracao_almoco_esperada_minutos' => $duracaoEsp,
+            'deficit_duracao_almoco_minutos' => $deficitDuracao,
+            'excesso_duracao_almoco_minutos' => $excessoDuracao,
             'almoco_curto' => $almocoCurto,
             'almoco_longo' => $almocoLongo,
             'saida_almoco_cedo' => $saidaCedo,
@@ -715,8 +747,12 @@ class EspelhoScheduleAdherenceService
             'total_atraso_entrada_minutos' => 0,
             'maior_atraso_entrada_minutos' => 0,
             'dias_com_infracao_almoco' => 0,
+            'dias_almoco_curto' => 0,
+            'dias_almoco_longo' => 0,
             'total_minutos_atraso_saida_almoco' => 0,
             'total_minutos_atraso_volta_almoco' => 0,
+            'total_deficit_duracao_almoco_minutos' => 0,
+            'total_excesso_duracao_almoco_minutos' => 0,
         ];
     }
 

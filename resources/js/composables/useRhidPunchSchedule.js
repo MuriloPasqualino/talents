@@ -30,7 +30,7 @@ export const defaultScheduleForm = () => {
     return {
         segundo_trabalho: false,
         segundo_almoco: false,
-        tolerancia_minutos: 15,
+        tolerancia_minutos: 10,
         dias,
     };
 };
@@ -130,7 +130,7 @@ export function useRhidPunchSchedule(configuredRef, errRef = null) {
                 base.segundo_trabalho = Boolean(s.segundo_trabalho);
                 base.segundo_almoco = Boolean(s.segundo_almoco);
                 const tm = Number(s.tolerancia_minutos);
-                base.tolerancia_minutos = Number.isFinite(tm) ? Math.min(120, Math.max(0, Math.round(tm))) : 15;
+                base.tolerancia_minutos = Number.isFinite(tm) ? Math.min(120, Math.max(0, Math.round(tm))) : 10;
                 for (const { key } of PUNCH_DAY_ORDER) {
                     const incoming = s.dias?.[key];
                     if (incoming && typeof incoming === 'object') {
@@ -166,7 +166,7 @@ export function useRhidPunchSchedule(configuredRef, errRef = null) {
                 base.segundo_trabalho = Boolean(s.segundo_trabalho);
                 base.segundo_almoco = Boolean(s.segundo_almoco);
                 const tm = Number(s.tolerancia_minutos);
-                base.tolerancia_minutos = Number.isFinite(tm) ? Math.min(120, Math.max(0, Math.round(tm))) : 15;
+                base.tolerancia_minutos = Number.isFinite(tm) ? Math.min(120, Math.max(0, Math.round(tm))) : 10;
                 for (const { key } of PUNCH_DAY_ORDER) {
                     const incoming = s.dias?.[key];
                     if (incoming && typeof incoming === 'object') {
