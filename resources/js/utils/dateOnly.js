@@ -1,11 +1,38 @@
 /**
  * Utilitários para datas "só-dia" (sem hora, ex.: cast `date` no Laravel).
  *
- * Laravel serializa colunas `date` como `YYYY-MM-DDT00:00:00.000000Z` (UTC).
- * Em fusos negativos (BRT = UTC-3) isto "anda" para o dia anterior quando
- * convertido para hora local. Aqui ignoramos a hora UTC e construímos um
- * Date local ao meio-dia para evitar deslocamentos por timezone/DST.
+ * Talents opera com horário oficial **America/Sao_Paulo (UTC-3)**:
+ *   - O backend Laravel está em `America/Sao_Paulo` (config/app.php).
+ *   - Aqui no front, "hoje" / "amanhã" / "ontem" são calculados na timezone
+ *     de São Paulo, independente da timezone do navegador. Isto evita que
+ *     um utilizador que viaje ou tenha o sistema em outro fuso veja uma data
+ *     diferente da que a equipa cadastrou no calendário estratégico.
+ *
+ * Implementação:
+ *   - Para datas só-dia (`YYYY-MM-DD`), extraímos os componentes e construímos
+ *     um Date "âncora" ao meio-dia local — assim a formatação por extenso fica
+ *     no dia certo, sem deslocamento por DST.
+ *   - Para "hoje", usamos Intl.DateTimeFormat com timezone fixo de São Paulo.
  */
+
+const APP_TIMEZONE = 'America/Sao_Paulo';
+
+/**
+ * Retorna o ano/mês/dia "hoje" em São Paulo, sem depender do fuso do navegador.
+ *
+ * @returns {{ y: number, m: number, d: number }}
+ */
+function todayInSaoPauloParts() {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: APP_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+    const parts = fmt.formatToParts(new Date());
+    const get = (type) => Number(parts.find((p) => p.type === type)?.value);
+    return { y: get('year'), m: get('month'), d: get('day') };
+}
 
 /**
  * Devolve um `Date` local ao meio-dia para a parte `YYYY-MM-DD` de uma string.
@@ -66,7 +93,20 @@ export function startOfLocalDay(d) {
 }
 
 /**
- * Diferença em dias entre a data informada e hoje (0 = hoje, 1 = amanhã, -1 = ontem).
+ * Date "âncora" do dia de hoje em São Paulo (12:00 local do navegador,
+ * mas com ano/mês/dia da timezone de SP — assim comparações de dia ficam
+ * corretas mesmo se o usuário estiver em outro fuso).
+ *
+ * @returns {Date}
+ */
+export function todayInSaoPaulo() {
+    const { y, m, d } = todayInSaoPauloParts();
+    return new Date(y, m - 1, d, 12, 0, 0);
+}
+
+/**
+ * Diferença em dias entre a data informada e "hoje em São Paulo".
+ * 0 = hoje, 1 = amanhã, -1 = ontem.
  *
  * @param {string|null|undefined} iso
  * @returns {number|null}
@@ -75,6 +115,6 @@ export function daysFromToday(iso) {
     const d = parseDateOnly(iso);
     if (!d) return null;
     const e0 = startOfLocalDay(d).getTime();
-    const t0 = startOfLocalDay(new Date()).getTime();
+    const t0 = startOfLocalDay(todayInSaoPaulo()).getTime();
     return Math.round((e0 - t0) / 86400000);
 }
