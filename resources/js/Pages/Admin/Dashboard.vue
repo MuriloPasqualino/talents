@@ -156,7 +156,9 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
         </template>
 
         <template #aside>
-            <div class="dashboard-accent-dark text-white">
+            <div
+                class="dashboard-accent-dark h-full min-h-[14rem] text-white lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:rounded-none lg:border-l-0"
+            >
                 <div class="dashboard-hero-blob -right-10 -top-10 h-32 w-32 bg-talents-500/25" />
                 <div class="relative flex flex-col gap-4">
                     <div class="flex items-center justify-between gap-3">
