@@ -107,7 +107,7 @@ class DashboardController extends Controller
             ->whereNull('mail_sent_at')
             ->orderByDesc('id')
             ->limit(8)
-            ->get(['id', 'name', 'email', 'company', 'created_at']);
+            ->get(['id', 'name', 'email', 'phone', 'company', 'message', 'mail_sent_at', 'created_at']);
 
         $today = Carbon::today();
         $weekEnd = $today->copy()->addDays(7);

@@ -135,8 +135,39 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
 const showCalendarModal = ref(false);
 const showAlertsModal = ref(false);
 const showLeadsModal = ref(false);
+const showLeadDetailModal = ref(false);
+const selectedLead = ref(null);
 
 const formatLeadDate = (iso) => formatDateLong(iso);
+
+const openLeadDetail = (lead) => {
+    selectedLead.value = lead;
+    showLeadDetailModal.value = true;
+};
+
+const closeLeadDetail = () => {
+    showLeadDetailModal.value = false;
+};
+
+const leadInitials = computed(() => {
+    const full = selectedLead.value?.name || '';
+    const parts = full.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
+    }
+    return (parts[0]?.slice(0, 2) || '?').toUpperCase();
+});
+
+/** Telefone limpo (apenas dígitos e "+") para uso em links wa.me/tel: */
+const leadPhoneDigits = computed(() => {
+    const raw = selectedLead.value?.phone || '';
+    return raw.replace(/[^0-9+]/g, '');
+});
+
+const leadWhatsappUrl = computed(() => {
+    const digits = leadPhoneDigits.value.replace(/^\+/, '');
+    return digits ? `https://wa.me/${digits}` : '#';
+});
 </script>
 
 <template>
@@ -335,7 +366,12 @@ const formatLeadDate = (iso) => formatDateLong(iso);
                         <li
                             v-for="lead in recentLeads.slice(0, 4)"
                             :key="lead.id"
-                            class="rounded-xl px-3 py-2.5 ring-1 ring-white/10 transition hover:bg-white/5"
+                            class="cursor-pointer rounded-xl px-3 py-2.5 ring-1 ring-white/10 transition hover:bg-white/10 hover:ring-white/20"
+                            role="button"
+                            tabindex="0"
+                            @click.stop="openLeadDetail(lead)"
+                            @keydown.enter.prevent.stop="openLeadDetail(lead)"
+                            @keydown.space.prevent.stop="openLeadDetail(lead)"
                         >
                             <p class="truncate font-medium leading-snug text-white">{{ lead.name }}</p>
                             <p class="mt-0.5 truncate text-xs text-talents-100/80">{{ lead.email }}</p>
@@ -689,7 +725,12 @@ const formatLeadDate = (iso) => formatDateLong(iso);
                         <li
                             v-for="lead in recentLeads"
                             :key="lead.id"
-                            class="rounded-xl px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/5"
+                            class="group cursor-pointer rounded-xl px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/10 hover:ring-white/20"
+                            role="button"
+                            tabindex="0"
+                            @click="openLeadDetail(lead)"
+                            @keydown.enter.prevent="openLeadDetail(lead)"
+                            @keydown.space.prevent="openLeadDetail(lead)"
                         >
                             <div class="flex flex-wrap items-baseline justify-between gap-2">
                                 <p class="font-semibold leading-snug text-white">{{ lead.name }}</p>
@@ -697,10 +738,14 @@ const formatLeadDate = (iso) => formatDateLong(iso);
                                     {{ formatLeadDate(lead.created_at) }}
                                 </span>
                             </div>
-                            <p class="mt-0.5 truncate text-sm text-talents-50/85">
-                                <a :href="`mailto:${lead.email}`" class="hover:underline">{{ lead.email }}</a>
-                            </p>
+                            <p class="mt-0.5 truncate text-sm text-talents-50/85">{{ lead.email }}</p>
                             <p v-if="lead.company" class="mt-1 truncate text-xs text-talents-100/70">{{ lead.company }}</p>
+                            <p class="mt-2 inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-talents-100/60 transition group-hover:text-white">
+                                Ver detalhes
+                                <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </p>
                         </li>
                     </ul>
                     <div v-else class="mt-6 rounded-xl px-4 py-8 text-center text-sm text-talents-100/65 ring-1 ring-white/10">
@@ -713,6 +758,112 @@ const formatLeadDate = (iso) => formatDateLong(iso);
                     >
                         Abrir gestão completa de leads
                     </Link>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showLeadDetailModal" max-width="lg" @close="closeLeadDetail">
+            <div v-if="selectedLead" class="dashboard-accent-dark !rounded-lg text-white">
+                <div class="dashboard-hero-blob -right-10 -top-10 h-32 w-32 bg-talents-300/30" />
+                <div class="relative">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <div
+                                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-base font-semibold tracking-wide text-white ring-1 ring-white/25"
+                                aria-hidden="true"
+                            >
+                                {{ leadInitials }}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-talents-100/75">Lead</p>
+                                <h3 class="mt-0.5 truncate font-serif text-2xl font-bold leading-tight text-white">
+                                    {{ selectedLead.name }}
+                                </h3>
+                                <p v-if="selectedLead.created_at" class="mt-1 text-xs text-talents-100/70">
+                                    Enviado em {{ formatLeadDate(selectedLead.created_at) }}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+                            aria-label="Fechar"
+                            @click="closeLeadDetail"
+                        >
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <dl class="mt-6 space-y-2.5">
+                        <div class="rounded-xl px-4 py-3 ring-1 ring-white/10">
+                            <dt class="text-[11px] font-medium uppercase tracking-wide text-talents-100/70">E-mail</dt>
+                            <dd class="mt-0.5 break-all text-sm font-medium text-white">
+                                <a :href="`mailto:${selectedLead.email}`" class="hover:underline">{{ selectedLead.email }}</a>
+                            </dd>
+                        </div>
+                        <div v-if="selectedLead.phone" class="rounded-xl px-4 py-3 ring-1 ring-white/10">
+                            <dt class="text-[11px] font-medium uppercase tracking-wide text-talents-100/70">Telefone</dt>
+                            <dd class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-white">
+                                <a :href="`tel:${leadPhoneDigits}`" class="hover:underline">{{ selectedLead.phone }}</a>
+                                <a
+                                    v-if="leadPhoneDigits"
+                                    :href="leadWhatsappUrl"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200 ring-1 ring-emerald-300/30 hover:bg-emerald-500/30"
+                                >
+                                    WhatsApp
+                                </a>
+                            </dd>
+                        </div>
+                        <div v-if="selectedLead.company" class="rounded-xl px-4 py-3 ring-1 ring-white/10">
+                            <dt class="text-[11px] font-medium uppercase tracking-wide text-talents-100/70">Empresa</dt>
+                            <dd class="mt-0.5 text-sm font-medium text-white">{{ selectedLead.company }}</dd>
+                        </div>
+                        <div v-if="selectedLead.message" class="rounded-xl px-4 py-3 ring-1 ring-white/10">
+                            <dt class="text-[11px] font-medium uppercase tracking-wide text-talents-100/70">Mensagem</dt>
+                            <dd class="mt-1 whitespace-pre-line text-sm leading-relaxed text-talents-50/95">
+                                {{ selectedLead.message }}
+                            </dd>
+                        </div>
+                        <div class="rounded-xl px-4 py-3 ring-1 ring-white/10">
+                            <dt class="text-[11px] font-medium uppercase tracking-wide text-talents-100/70">Status</dt>
+                            <dd class="mt-1 inline-flex items-center gap-2 text-xs font-semibold">
+                                <span
+                                    v-if="selectedLead.mail_sent_at"
+                                    class="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-emerald-200 ring-1 ring-emerald-300/30"
+                                >
+                                    E-mail enviado
+                                </span>
+                                <span
+                                    v-else
+                                    class="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-amber-100 ring-1 ring-amber-300/30"
+                                >
+                                    Pendente · follow-up
+                                </span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div class="mt-6 flex flex-wrap gap-2">
+                        <a
+                            :href="`mailto:${selectedLead.email}`"
+                            class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-talents-900 shadow-sm transition hover:bg-talents-50"
+                        >
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Responder por e-mail
+                        </a>
+                        <Link
+                            :href="route('admin.landing-interest.index')"
+                            class="inline-flex flex-1 items-center justify-center rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/15 hover:text-white"
+                        >
+                            Ver todos os leads
+                        </Link>
+                    </div>
                 </div>
             </div>
         </Modal>
