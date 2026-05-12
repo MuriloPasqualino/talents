@@ -1,9 +1,9 @@
 <script setup>
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
-defineProps({
+const props = defineProps({
     overviewLoading: { type: Boolean, required: true },
     overviewLoadedAt: { type: Object, default: null },
     overviewCalendarRangeLabel: { type: String, required: true },
@@ -58,7 +58,22 @@ const emit = defineEmits([
     'go-collaborators',
 ]);
 
-/** Exibe variação inteira com sinal (pt-BR) */
+/** Paleta principal alinhada ao logo Talents (talents-700/500/accent + dourado highlight) */
+const PALETTE = {
+    primary: '#4a2070',
+    primaryDeep: '#3a1858',
+    primary600: '#632a7e',
+    primary500: '#7b4fa2',
+    accent: '#b388d9',
+    soft: '#e8dcf2',
+    veryLight: '#f5f0fa',
+    gold: '#e8b84a',
+    rose: '#e11d48',
+    emerald: '#10b981',
+    slate500: '#64748b',
+    slate700: '#334155',
+};
+
 const signedIntTxt = (n) => {
     if (n == null || Number.isNaN(Number(n))) {
         return null;
@@ -69,246 +84,1005 @@ const signedIntTxt = (n) => {
     }
     return v > 0 ? `+${v}` : `${v}`;
 };
+
+const isFiniteNumber = (v) => typeof v === 'number' && Number.isFinite(v);
+
+const overviewBankPositiveCount = computed(() => {
+    const total = props.overviewBankNumericRowsLength || 0;
+    const neg = props.overviewBankNegativeCount || 0;
+    return Math.max(total - neg, 0);
+});
+
+const overviewJustOtherCount = computed(() => {
+    const total = props.overviewJustTotal;
+    const atest = props.overviewJustAtestados;
+    if (!isFiniteNumber(total) || !isFiniteNumber(atest)) {
+        return null;
+    }
+    return Math.max(total - atest, 0);
+});
+
+/** Aderência: usamos colaboradores_com_dados como denominador qualitativo */
+const overviewAdherenceColabs = computed(() => {
+    const v = props.overviewAdherence?.resumo?.colaboradores_com_dados;
+    return isFiniteNumber(v) ? v : 0;
+});
+
+/** Score qualitativo (0–100) de cobertura: dias úteis * colabs, normalizado por uma meta de 30. */
+const overviewAdherenceScore = computed(() => {
+    const dias = props.overviewAdherenceDiasCalendario || 0;
+    const colabs = overviewAdherenceColabs.value;
+    if (!dias || !colabs) {
+        return 0;
+    }
+    const score = Math.min(100, Math.round((dias / 22) * 100));
+    return score;
+});
+
+const overviewJustAtestadosPercent = computed(() => {
+    const total = props.overviewJustTotal;
+    const atest = props.overviewJustAtestados;
+    if (!isFiniteNumber(total) || total <= 0 || !isFiniteNumber(atest)) {
+        return 0;
+    }
+    return Math.round((atest / total) * 100);
+});
+
+const overviewBankNegativePercent = computed(() => {
+    const total = props.overviewBankNumericRowsLength || 0;
+    const neg = props.overviewBankNegativeCount || 0;
+    if (!total) {
+        return 0;
+    }
+    return Math.round((neg / total) * 100);
+});
+
+const overviewBankAvgHHmm = computed(() => {
+    if (!isFiniteNumber(props.overviewBankAvgMinutes)) {
+        return '—';
+    }
+    return props.formatRhidBankBalanceMinutes(props.overviewBankAvgMinutes);
+});
+
+const overviewBankAvgIsNegative = computed(
+    () => isFiniteNumber(props.overviewBankAvgMinutes) && props.overviewBankAvgMinutes < 0,
+);
+
+/* ============================ ApexCharts ============================ */
+
+const radialAderenciaChart = computed(() => {
+    const score = overviewAdherenceScore.value;
+    return {
+        series: [score],
+        options: {
+            chart: {
+                type: 'radialBar',
+                toolbar: { show: false },
+                fontFamily: 'Figtree, sans-serif',
+                sparkline: { enabled: true },
+            },
+            colors: [PALETTE.primary],
+            plotOptions: {
+                radialBar: {
+                    hollow: { size: '62%' },
+                    track: { background: PALETTE.soft, strokeWidth: '100%' },
+                    dataLabels: {
+                        name: {
+                            show: true,
+                            offsetY: -8,
+                            color: PALETTE.slate500,
+                            fontSize: '11px',
+                            fontWeight: 500,
+                        },
+                        value: {
+                            offsetY: 4,
+                            color: PALETTE.primaryDeep,
+                            fontSize: '22px',
+                            fontWeight: 700,
+                            formatter: (val) => `${val}%`,
+                        },
+                    },
+                },
+            },
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shade: 'dark',
+                    type: 'horizontal',
+                    shadeIntensity: 0.4,
+                    gradientToColors: [PALETTE.accent],
+                    inverseColors: false,
+                    opacityFrom: 1,
+                    opacityTo: 1,
+                    stops: [0, 100],
+                },
+            },
+            stroke: { lineCap: 'round' },
+            labels: ['Cobertura'],
+        },
+    };
+});
+
+const donutBankChart = computed(() => {
+    const pos = overviewBankPositiveCount.value;
+    const neg = props.overviewBankNegativeCount || 0;
+    const total = pos + neg;
+    return {
+        empty: total === 0,
+        series: [pos, neg],
+        options: {
+            chart: {
+                type: 'donut',
+                toolbar: { show: false },
+                fontFamily: 'Figtree, sans-serif',
+                events: {
+                    dataPointSelection: () => emit('go-bank'),
+                },
+            },
+            labels: ['Positivos', 'Negativos'],
+            colors: [PALETTE.primary500, PALETTE.rose],
+            stroke: { width: 2, colors: ['#ffffff'] },
+            legend: {
+                position: 'bottom',
+                fontSize: '12px',
+                labels: { colors: PALETTE.slate700 },
+                markers: { width: 10, height: 10, radius: 12 },
+            },
+            dataLabels: {
+                enabled: true,
+                style: { fontSize: '11px', fontWeight: 600 },
+                dropShadow: { enabled: false },
+                formatter: (val) => `${Math.round(val)}%`,
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '70%',
+                        labels: {
+                            show: true,
+                            name: { color: PALETTE.slate500, fontSize: '11px' },
+                            value: {
+                                color: PALETTE.primaryDeep,
+                                fontSize: '20px',
+                                fontWeight: 700,
+                                formatter: (val) => `${val}`,
+                            },
+                            total: {
+                                show: true,
+                                label: 'Colab. c/ saldo',
+                                color: PALETTE.slate500,
+                                fontSize: '11px',
+                                formatter: (w) => w.globals.seriesTotals.reduce((a, b) => a + b, 0),
+                            },
+                        },
+                    },
+                },
+            },
+            tooltip: { y: { formatter: (v) => `${v} colaborador(es)` } },
+        },
+    };
+});
+
+const donutJustChart = computed(() => {
+    const atest = isFiniteNumber(props.overviewJustAtestados) ? props.overviewJustAtestados : 0;
+    const others = isFiniteNumber(overviewJustOtherCount.value) ? overviewJustOtherCount.value : 0;
+    const total = atest + others;
+    return {
+        empty: total === 0,
+        series: [atest, others],
+        options: {
+            chart: {
+                type: 'donut',
+                toolbar: { show: false },
+                fontFamily: 'Figtree, sans-serif',
+                events: {
+                    dataPointSelection: () => emit('go-justifications'),
+                },
+            },
+            labels: ['Atestados', 'Outras'],
+            colors: [PALETTE.gold, PALETTE.primary500],
+            stroke: { width: 2, colors: ['#ffffff'] },
+            legend: {
+                position: 'bottom',
+                fontSize: '12px',
+                labels: { colors: PALETTE.slate700 },
+                markers: { width: 10, height: 10, radius: 12 },
+            },
+            dataLabels: {
+                enabled: true,
+                style: { fontSize: '11px', fontWeight: 600 },
+                formatter: (val) => `${Math.round(val)}%`,
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '70%',
+                        labels: {
+                            show: true,
+                            name: { color: PALETTE.slate500, fontSize: '11px' },
+                            value: {
+                                color: PALETTE.primaryDeep,
+                                fontSize: '20px',
+                                fontWeight: 700,
+                                formatter: (val) => `${val}`,
+                            },
+                            total: {
+                                show: true,
+                                label: 'Total RHID',
+                                color: PALETTE.slate500,
+                                fontSize: '11px',
+                                formatter: () => `${total}`,
+                            },
+                        },
+                    },
+                },
+            },
+            tooltip: { y: { formatter: (v) => `${v} ocorrência(s)` } },
+        },
+    };
+});
+
+/** Horizontal bar — piores saldos (top 3) — sempre negativos como valor absoluto em minutos */
+const barWorstBankChart = computed(() => {
+    const rows = props.overviewBankWorstThree || [];
+    const labels = [];
+    const data = [];
+    for (const r of rows.slice(0, 5)) {
+        const name = props.bankDisplayName(r) || '—';
+        labels.push(name.length > 22 ? `${name.slice(0, 22)}…` : name);
+        const display = props.bankDisplayValue(r);
+        const sign = typeof display === 'string' && display.startsWith('-') ? -1 : 1;
+        const hh = typeof display === 'string' ? display.replace('-', '').split(':') : ['0', '0'];
+        const minutes = (parseInt(hh[0], 10) || 0) * 60 + (parseInt(hh[1], 10) || 0);
+        data.push(sign * minutes);
+    }
+    return {
+        empty: data.length === 0,
+        series: [{ name: 'Saldo (min)', data }],
+        options: {
+            chart: {
+                type: 'bar',
+                toolbar: { show: false },
+                fontFamily: 'Figtree, sans-serif',
+                events: {
+                    dataPointSelection: () => emit('go-bank'),
+                },
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: true,
+                    borderRadius: 6,
+                    barHeight: '60%',
+                    distributed: true,
+                    colors: { backgroundBarColors: [PALETTE.veryLight], backgroundBarRadius: 6 },
+                },
+            },
+            colors: [PALETTE.rose, '#f87171', '#fb923c', '#fbbf24', '#facc15'],
+            dataLabels: {
+                enabled: true,
+                formatter: (val) => props.formatRhidBankBalanceMinutes(val),
+                style: { fontSize: '11px', colors: ['#ffffff'], fontWeight: 600 },
+            },
+            xaxis: {
+                categories: labels,
+                labels: {
+                    style: { colors: PALETTE.slate500, fontSize: '11px' },
+                    formatter: (v) => props.formatRhidBankBalanceMinutes(v),
+                },
+            },
+            yaxis: { labels: { style: { colors: PALETTE.slate700, fontSize: '12px' } } },
+            grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
+            legend: { show: false },
+            tooltip: { y: { formatter: (v) => props.formatRhidBankBalanceMinutes(v) } },
+        },
+    };
+});
+
+/** Horizontal bar — maiores atrasos de entrada (top 5) em minutos */
+const barWorstEntradaChart = computed(() => {
+    const rows = props.overviewAdherenceWorstEntrada || [];
+    const labels = [];
+    const data = [];
+    for (const r of rows.slice(0, 5)) {
+        const name = r?.nome || '—';
+        labels.push(name.length > 22 ? `${name.slice(0, 22)}…` : name);
+        data.push(Number(r?.total_atraso_entrada_minutos) || 0);
+    }
+    return {
+        empty: data.length === 0,
+        series: [{ name: 'Atraso (min)', data }],
+        options: {
+            chart: {
+                type: 'bar',
+                toolbar: { show: false },
+                fontFamily: 'Figtree, sans-serif',
+                events: {
+                    dataPointSelection: () => emit('go-punches-adherence'),
+                },
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: true,
+                    borderRadius: 6,
+                    barHeight: '60%',
+                    distributed: true,
+                },
+            },
+            colors: [PALETTE.primaryDeep, PALETTE.primary, PALETTE.primary600, PALETTE.primary500, PALETTE.accent],
+            dataLabels: {
+                enabled: true,
+                formatter: (val) => `${val} min`,
+                style: { fontSize: '11px', colors: ['#ffffff'], fontWeight: 600 },
+            },
+            xaxis: {
+                categories: labels,
+                labels: { style: { colors: PALETTE.slate500, fontSize: '11px' } },
+            },
+            yaxis: { labels: { style: { colors: PALETTE.slate700, fontSize: '12px' } } },
+            grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
+            legend: { show: false },
+            tooltip: { y: { formatter: (v) => `${v} min` } },
+        },
+    };
+});
+
+/* ============================ Helpers de variação ============================ */
+
+/** Cor/ícone para variação numérica simples (positivo = verde, negativo = rosa). */
+const trendInfo = (delta, inverse = false) => {
+    if (!isFiniteNumber(delta) || delta === 0) {
+        return { txt: signedIntTxt(delta), cls: 'text-white/85', arrow: '→' };
+    }
+    const positive = inverse ? delta < 0 : delta > 0;
+    return {
+        txt: signedIntTxt(delta),
+        cls: positive ? 'text-emerald-200' : 'text-rose-200',
+        arrow: delta > 0 ? '↑' : '↓',
+    };
+};
+
+const trendBank = computed(() => {
+    const m = props.overviewBankAvgMomDeltaMinutes;
+    if (!isFiniteNumber(m)) {
+        return null;
+    }
+    return {
+        txt: props.formatRhidBankBalanceMinutes(m),
+        cls: m >= 0 ? 'text-emerald-200' : 'text-rose-200',
+        arrow: m > 0 ? '↑' : m < 0 ? '↓' : '→',
+    };
+});
 </script>
 
 <template>
-    <div class="space-y-4">
-        <p class="text-sm text-slate-600">
-            Indicadores rápidos alinhados ao <span class="font-medium text-slate-800">mês corrente</span>
-            ({{ overviewCalendarRangeLabel }}) para aderência e justificativas; banco de horas na
-            <span class="font-medium text-slate-800">data de hoje</span>; marcações pela última leitura do RHID.
-        </p>
-        <p class="text-xs leading-relaxed text-slate-500">
-            <span class="font-medium text-slate-600">Comparação com o mês anterior:</span>
-            justificativas e aderência usam o <span class="font-medium">mês civil anterior completo</span>
-            ({{ overviewPreviousCalendarRangeLabel }}). Em aderência, <span class="font-medium">Δ dias úteis</span> reflete
-            a diferença no número de <span class="font-medium">dias úteis</span> com espelho analisado (não é soma por
-            colaborador). No banco de horas, comparamos a média de
-            <span class="font-medium">hoje</span> com a média do <span class="font-medium">último dia</span> desse mês
-            anterior (referência fixa — não é média do mês inteiro).
-        </p>
-        <div class="flex flex-wrap items-center gap-3">
-            <PrimaryButton type="button" :disabled="overviewLoading" @click="emit('refresh')">
-                Atualizar visão geral
-            </PrimaryButton>
-            <p v-if="overviewLoadedAt" class="text-xs text-slate-500">
-                Atualizado em
-                {{
-                    overviewLoadedAt.toLocaleString('pt-BR', {
-                        dateStyle: 'short',
-                        timeStyle: 'medium',
-                    })
-                }}
-            </p>
-        </div>
-        <p v-if="overviewLoading" class="text-sm text-slate-500">Carregando indicadores…</p>
-        <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Últimas marcações (RHID)</p>
-                <p class="mt-1 text-xs text-slate-500">
-                    Amostra de {{ overviewPunchRowsLength }} registro(s) · {{ overviewPunchDistinct }} colaborador(es)
-                    distinto(s)
+    <div class="space-y-5">
+        <!-- Cabeçalho do módulo -->
+        <div
+            class="flex flex-col gap-3 rounded-2xl border border-talents-100 bg-gradient-to-br from-talents-50 via-white to-white p-4 shadow-sm md:flex-row md:items-center md:justify-between"
+        >
+            <div class="min-w-0">
+                <h2 class="text-base font-semibold text-talents-800">Compliance de Ponto · RHID</h2>
+                <p class="mt-0.5 text-xs leading-relaxed text-slate-600">
+                    Mês corrente
+                    <span class="font-medium text-talents-700">{{ overviewCalendarRangeLabel }}</span>
+                    para aderência e justificativas · banco de horas na data de hoje · marcações pela última leitura.
                 </p>
-                <ul v-if="overviewPunchPreviewRows.length" class="mt-3 space-y-2 border-t border-slate-100 pt-3 text-sm">
-                    <li
-                        v-for="(pr, pi) in overviewPunchPreviewRows"
-                        :key="pi"
-                        class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"
+                <p class="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+                    Comparativo (Δ) usa o mês civil anterior completo
+                    ({{ overviewPreviousCalendarRangeLabel }}); banco de horas anterior fixa na referência
+                    {{ overviewBankPrevAnchorLabel }} (último dia civil).
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <p v-if="overviewLoadedAt" class="text-[11px] text-slate-500">
+                    Atualizado em
+                    <span class="font-medium text-slate-700">
+                        {{
+                            overviewLoadedAt.toLocaleString('pt-BR', {
+                                dateStyle: 'short',
+                                timeStyle: 'medium',
+                            })
+                        }}
+                    </span>
+                </p>
+                <PrimaryButton type="button" :disabled="overviewLoading" @click="emit('refresh')">
+                    <svg
+                        v-if="overviewLoading"
+                        class="mr-1.5 h-3.5 w-3.5 animate-spin"
+                        viewBox="0 0 24 24"
+                        fill="none"
                     >
-                        <span class="min-w-0 font-medium text-slate-800">
-                            <Link
-                                v-if="pr.personId != null"
-                                :href="route('client.rhid.collaborators.show', pr.personId)"
-                                class="text-talents-800 hover:underline"
-                            >
-                                {{ pr.nome }}
-                            </Link>
-                            <span v-else>{{ pr.nome }}</span>
-                        </span>
-                        <span class="shrink-0 tabular-nums text-xs text-slate-600">{{ pr.dataDisplay }}</span>
-                    </li>
-                </ul>
-                <p v-else class="mt-3 text-sm text-slate-500">Nenhuma marcação na amostra.</p>
-                <PrimaryButton type="button" class="mt-3" @click="emit('go-punches-dashboard')">
-                    Ver painel de marcações
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25" />
+                        <path
+                            d="M4 12a8 8 0 018-8"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-linecap="round"
+                            fill="none"
+                        />
+                    </svg>
+                    {{ overviewLoading ? 'Atualizando…' : 'Atualizar visão geral' }}
                 </PrimaryButton>
             </div>
-            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Banco de horas (hoje)</p>
-                <p v-if="overviewBankNumericRowsLength" class="mt-1 text-2xl font-semibold text-slate-900">
-                    {{ formatRhidBankBalanceMinutes(overviewBankAvgMinutes ?? 0) }}
-                </p>
-                <p v-else class="mt-1 text-sm text-slate-500">Sem saldos numéricos na consulta rápida.</p>
-                <p class="mt-1 text-xs text-slate-500">
-                    Saldo médio entre {{ overviewBankNumericRowsLength }} colaborador(es) com valor numérico
-                </p>
-                <p
-                    v-if="overviewBankNegativeCount > 0"
-                    class="mt-2 text-xs font-medium text-rose-800"
+        </div>
+
+        <!-- Skeleton durante carregamento inicial -->
+        <div v-if="overviewLoading" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div
+                v-for="i in 4"
+                :key="i"
+                class="h-32 animate-pulse rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50 to-slate-100"
+            />
+        </div>
+
+        <template v-else>
+            <!-- ============ Hero KPI cards ============ -->
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <!-- Card 1: Marcações -->
+                <button
+                    type="button"
+                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-700 via-talents-600 to-talents-500 p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-300 focus:ring-offset-2"
+                    @click="emit('go-punches-dashboard')"
                 >
-                    {{ overviewBankNegativeCount }} com saldo negativo — vale rever na aba Banco de horas
-                </p>
-                <template v-if="overviewBankPrevLoaded">
-                    <p
-                        v-if="overviewBankPrevNumericRowsLength"
-                        class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-600"
+                    <div
+                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl"
+                    />
+                    <div
+                        class="pointer-events-none absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/5 blur-xl"
+                    />
+                    <div class="relative z-10 flex items-start justify-between">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">Marcações RHID</p>
+                            <p class="mt-2 text-3xl font-bold tabular-nums">{{ overviewPunchRowsLength }}</p>
+                            <p class="mt-0.5 text-xs text-white/80">{{ overviewPunchDistinct }} colab. distintos</p>
+                        </div>
+                        <span
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition group-hover:bg-white/25"
+                        >
+                            <svg
+                                class="h-4 w-4"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .2.08.4.22.53l3 3a.75.75 0 101.06-1.06L10.75 9.69V5z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </span>
+                    </div>
+                    <p class="relative z-10 mt-3 text-[11px] font-medium text-white/85">
+                        Última leitura · ver painel →
+                    </p>
+                </button>
+
+                <!-- Card 2: Banco de horas -->
+                <button
+                    type="button"
+                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-800 via-talents-700 to-talents-600 p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-300 focus:ring-offset-2"
+                    @click="emit('go-bank')"
+                >
+                    <div
+                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl"
+                    />
+                    <div class="relative z-10 flex items-start justify-between">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">
+                                Banco de horas (hoje)
+                            </p>
+                            <p
+                                class="mt-2 text-3xl font-bold tabular-nums"
+                                :class="overviewBankAvgIsNegative ? 'text-rose-200' : 'text-white'"
+                            >
+                                {{ overviewBankAvgHHmm }}
+                            </p>
+                            <p class="mt-0.5 text-xs text-white/80">
+                                Média de {{ overviewBankNumericRowsLength }} colaborador(es)
+                            </p>
+                        </div>
+                        <span
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition group-hover:bg-white/25"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M3 4a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 11a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3z"
+                                />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="relative z-10 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span
+                            v-if="trendBank"
+                            class="inline-flex items-center gap-1 text-[11px] font-semibold"
+                            :class="trendBank.cls"
+                        >
+                            <span>{{ trendBank.arrow }}</span>
+                            <span>{{ trendBank.txt }}</span>
+                            <span class="font-normal text-white/65">vs. mês anterior</span>
+                        </span>
+                        <span
+                            v-if="overviewBankNegativeCount > 0"
+                            class="inline-flex items-center gap-1 rounded-full bg-rose-500/30 px-2 py-0.5 text-[10px] font-medium text-rose-100"
+                        >
+                            {{ overviewBankNegativeCount }} negativos
+                        </span>
+                    </div>
+                </button>
+
+                <!-- Card 3: Aderência -->
+                <button
+                    type="button"
+                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-500 via-talents-400 to-talents-accent p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-300 focus:ring-offset-2"
+                    @click="emit('go-punches-adherence')"
+                >
+                    <div
+                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/15 blur-xl"
+                    />
+                    <div class="relative z-10 flex items-start justify-between">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/85">
+                                Aderência (mês)
+                            </p>
+                            <p class="mt-2 text-3xl font-bold tabular-nums">
+                                {{ overviewAdherenceDiasCalendario != null ? overviewAdherenceDiasCalendario : '—' }}
+                                <span class="text-base font-semibold text-white/85">dias</span>
+                            </p>
+                            <p class="mt-0.5 text-xs text-white/85">
+                                {{ overviewAdherenceColabs }} colab. com dados
+                            </p>
+                        </div>
+                        <span
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition group-hover:bg-white/30"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="relative z-10 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                        <span
+                            v-if="overviewAdherenceDiasMomDelta != null"
+                            class="inline-flex items-center gap-1 font-semibold"
+                            :class="trendInfo(overviewAdherenceDiasMomDelta).cls"
+                        >
+                            <span>{{ trendInfo(overviewAdherenceDiasMomDelta).arrow }}</span>
+                            {{ signedIntTxt(overviewAdherenceDiasMomDelta) }} dias
+                        </span>
+                        <span
+                            v-if="overviewAdherenceColabsMomDelta != null"
+                            class="inline-flex items-center gap-1 font-semibold"
+                            :class="trendInfo(overviewAdherenceColabsMomDelta).cls"
+                        >
+                            <span>{{ trendInfo(overviewAdherenceColabsMomDelta).arrow }}</span>
+                            {{ signedIntTxt(overviewAdherenceColabsMomDelta) }} colab.
+                        </span>
+                    </div>
+                </button>
+
+                <!-- Card 4: Justificativas -->
+                <button
+                    type="button"
+                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-amber-400 to-yellow-400 p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2"
+                    @click="emit('go-justifications')"
+                >
+                    <div
+                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/20 blur-xl"
+                    />
+                    <div class="relative z-10 flex items-start justify-between">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/85">
+                                Justificativas
+                            </p>
+                            <p class="mt-2 text-3xl font-bold tabular-nums">
+                                {{ overviewJustTotal != null ? overviewJustTotal : '—' }}
+                            </p>
+                            <p class="mt-0.5 text-xs text-white/85">
+                                Atestados na 1ª pág.:
+                                <span class="font-semibold">
+                                    {{ overviewJustAtestados != null ? overviewJustAtestados : '—' }}
+                                </span>
+                            </p>
+                        </div>
+                        <span
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/25 text-white backdrop-blur-sm transition group-hover:bg-white/35"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M4 4a2 2 0 012-2h6.586A2 2 0 0114 2.586l3.414 3.414A2 2 0 0118 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm5 9a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0zm4 6a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="relative z-10 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+                        <span
+                            v-if="overviewJustTotalMomDelta != null"
+                            class="inline-flex items-center gap-1 font-semibold"
+                            :class="trendInfo(overviewJustTotalMomDelta, true).cls"
+                        >
+                            <span>{{ trendInfo(overviewJustTotalMomDelta, true).arrow }}</span>
+                            {{ signedIntTxt(overviewJustTotalMomDelta) }} total
+                        </span>
+                        <span
+                            v-if="overviewJustAtestadosMomDelta != null"
+                            class="inline-flex items-center gap-1 font-semibold"
+                            :class="trendInfo(overviewJustAtestadosMomDelta, true).cls"
+                        >
+                            <span>{{ trendInfo(overviewJustAtestadosMomDelta, true).arrow }}</span>
+                            {{ signedIntTxt(overviewJustAtestadosMomDelta) }} atest.
+                        </span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- ============ Linha de gráficos ============ -->
+            <div class="grid gap-3 lg:grid-cols-3">
+                <!-- Aderência radial -->
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-talents-800">Cobertura de aderência</p>
+                            <p class="mt-0.5 text-[11px] text-slate-500">
+                                Dias úteis com espelho analisado · meta indicativa de 22
+                            </p>
+                        </div>
+                        <span class="rounded-full bg-talents-50 px-2 py-0.5 text-[10px] font-semibold text-talents-700">
+                            Mês
+                        </span>
+                    </div>
+                    <apexchart
+                        type="radialBar"
+                        height="220"
+                        :options="radialAderenciaChart.options"
+                        :series="radialAderenciaChart.series"
+                    />
+                    <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                        <div class="rounded-lg bg-talents-50 p-2 text-talents-800">
+                            <p class="text-[10px] font-medium uppercase tracking-wide text-talents-600">Dias úteis</p>
+                            <p class="text-lg font-bold tabular-nums">
+                                {{ overviewAdherenceDiasCalendario ?? '—' }}
+                            </p>
+                        </div>
+                        <div class="rounded-lg bg-slate-50 p-2 text-slate-700">
+                            <p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">Colab. c/ dados</p>
+                            <p class="text-lg font-bold tabular-nums">{{ overviewAdherenceColabs || '—' }}</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        class="mt-3 w-full rounded-md border border-talents-200 bg-talents-50 px-3 py-1.5 text-xs font-semibold text-talents-700 transition hover:bg-talents-100"
+                        @click="emit('go-punches-adherence')"
                     >
-                        <span class="font-medium text-slate-700">Mês anterior</span>
-                        (saldo em {{ overviewBankPrevAnchorLabel }}, último dia civil): média
-                        {{ formatRhidBankBalanceMinutes(overviewBankPrevAvgMinutes ?? 0) }}
-                        · {{ overviewBankPrevNumericRowsLength }} colaborador(es)
+                        Ver aderência detalhada →
+                    </button>
+                </div>
+
+                <!-- Donut banco de horas -->
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-talents-800">Saldos de banco</p>
+                            <p class="mt-0.5 text-[11px] text-slate-500">
+                                Distribuição positivo × negativo (hoje)
+                            </p>
+                        </div>
+                        <span
+                            v-if="overviewBankNegativePercent > 0"
+                            class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
+                        >
+                            {{ overviewBankNegativePercent }}% negativos
+                        </span>
+                    </div>
+                    <apexchart
+                        v-if="!donutBankChart.empty"
+                        type="donut"
+                        height="240"
+                        :options="donutBankChart.options"
+                        :series="donutBankChart.series"
+                    />
+                    <p v-else class="mt-6 text-center text-sm text-slate-500">
+                        Sem saldos numéricos para a distribuição.
                     </p>
-                    <p v-else class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
-                        Referência do mês anterior ({{ overviewBankPrevAnchorLabel }}): sem saldos numéricos.
-                    </p>
-                    <p
-                        v-if="
-                            overviewBankAvgMomDeltaMinutes != null &&
-                            overviewBankPrevNumericRowsLength &&
-                            overviewBankNumericRowsLength
-                        "
-                        class="mt-1 text-xs font-medium text-slate-700"
+                    <button
+                        type="button"
+                        class="mt-3 w-full rounded-md border border-talents-200 bg-talents-50 px-3 py-1.5 text-xs font-semibold text-talents-700 transition hover:bg-talents-100"
+                        @click="emit('go-bank')"
                     >
-                        Δ média (hoje − referência):
-                        {{ formatRhidBankBalanceMinutes(overviewBankAvgMomDeltaMinutes) }}
+                        Abrir banco de horas →
+                    </button>
+                </div>
+
+                <!-- Donut justificativas -->
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-talents-800">Justificativas</p>
+                            <p class="mt-0.5 text-[11px] text-slate-500">Atestados × demais (1ª página RHID)</p>
+                        </div>
+                        <span
+                            v-if="overviewJustAtestadosPercent > 0"
+                            class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+                        >
+                            {{ overviewJustAtestadosPercent }}% atestados
+                        </span>
+                    </div>
+                    <apexchart
+                        v-if="!donutJustChart.empty"
+                        type="donut"
+                        height="240"
+                        :options="donutJustChart.options"
+                        :series="donutJustChart.series"
+                    />
+                    <p v-else class="mt-6 text-center text-sm text-slate-500">
+                        Sem ocorrências de justificativas no período.
                     </p>
-                </template>
-                <p v-else class="mt-2 text-xs text-amber-800">
-                    Comparação de saldo com o mês anterior indisponível nesta atualização.
-                </p>
-                <div v-if="overviewBankWorstThree.length" class="mt-2 text-sm text-slate-700">
-                    <p class="text-xs font-medium text-rose-800">Piores saldos (top 3)</p>
-                    <ul class="mt-1 list-inside list-disc">
-                        <li v-for="(row, wi) in overviewBankWorstThree" :key="wi">
+                    <p v-if="overviewJustNote" class="mt-1 text-[11px] text-amber-700">{{ overviewJustNote }}</p>
+                    <button
+                        type="button"
+                        class="mt-3 w-full rounded-md border border-talents-200 bg-talents-50 px-3 py-1.5 text-xs font-semibold text-talents-700 transition hover:bg-talents-100"
+                        @click="emit('go-justifications')"
+                    >
+                        Ver justificativas →
+                    </button>
+                </div>
+            </div>
+
+            <!-- ============ TOP críticos ============ -->
+            <div class="grid gap-3 lg:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="mb-2 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-talents-800">
+                                Maiores débitos · banco de horas
+                            </p>
+                            <p class="mt-0.5 text-[11px] text-slate-500">
+                                Top {{ Math.min((overviewBankWorstThree || []).length, 5) }} colaboradores
+                            </p>
+                        </div>
+                        <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+                            Atenção
+                        </span>
+                    </div>
+                    <apexchart
+                        v-if="!barWorstBankChart.empty"
+                        type="bar"
+                        :height="Math.max(180, (barWorstBankChart.series[0]?.data?.length || 0) * 46 + 20)"
+                        :options="barWorstBankChart.options"
+                        :series="barWorstBankChart.series"
+                    />
+                    <p v-else class="mt-4 text-center text-sm text-slate-500">
+                        Nenhum saldo negativo na amostra atual.
+                    </p>
+                    <ul v-if="(overviewBankWorstThree || []).length" class="mt-2 space-y-1 text-xs text-slate-700">
+                        <li
+                            v-for="(row, wi) in overviewBankWorstThree.slice(0, 3)"
+                            :key="wi"
+                            class="flex items-center justify-between gap-2 border-t border-slate-100 pt-1"
+                        >
                             <Link
                                 v-if="rhidPersonId(row) != null"
                                 :href="route('client.rhid.collaborators.show', rhidPersonId(row))"
-                                class="text-talents-800 hover:underline"
+                                class="truncate font-medium text-talents-800 hover:underline"
                             >
                                 {{ bankDisplayName(row) }}
                             </Link>
-                            <span v-else>{{ bankDisplayName(row) }}</span>
-                            — {{ bankDisplayValue(row) }}
+                            <span v-else class="truncate font-medium text-slate-800">{{ bankDisplayName(row) }}</span>
+                            <span class="shrink-0 tabular-nums text-rose-700">{{ bankDisplayValue(row) }}</span>
                         </li>
                     </ul>
                 </div>
-                <PrimaryButton type="button" class="mt-3" @click="emit('go-bank')">Abrir banco de horas</PrimaryButton>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Aderência (mês corrente)</p>
-                <p class="mt-1 text-xs text-slate-500">Período: {{ overviewCalendarRangeLabel }}</p>
-                <p v-if="overviewAdherence?.resumo" class="mt-2 text-sm text-slate-700">
-                    <template v-if="overviewAdherenceDiasCalendario != null">
-                        {{ overviewAdherenceDiasCalendario }} dias úteis ·
-                    </template>
-                    <template v-else> — dias úteis (atualize a visão geral) · </template>
-                    {{ overviewAdherence.resumo.colaboradores_com_dados ?? '—' }} colaborador(es) com dados
-                </p>
-                <p v-else class="mt-2 text-sm text-slate-500">
-                    Sem agregado para este período — importe espelhos e analise na sub-aba Aderência.
-                </p>
-                <template v-if="overviewAdherencePrevLoaded && overviewAdherencePrevious?.resumo">
-                    <p class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-600">
-                        <span class="font-medium text-slate-700">Mês anterior</span>
-                        ({{ overviewPreviousCalendarRangeLabel }}):
-                        <template v-if="overviewAdherencePreviousDiasCalendario != null">
-                            {{ overviewAdherencePreviousDiasCalendario }} dias úteis ·
-                        </template>
-                        <template v-else> — dias úteis · </template>
-                        {{ overviewAdherencePrevious.resumo.colaboradores_com_dados ?? '—' }} colaborador(es)
-                    </p>
-                    <p
-                        v-if="overviewAdherenceDiasMomDelta != null || overviewAdherenceColabsMomDelta != null"
-                        class="mt-1 text-xs font-medium text-slate-700"
-                    >
-                        <template v-if="overviewAdherenceDiasMomDelta != null">
-                            Δ dias úteis: {{ signedIntTxt(overviewAdherenceDiasMomDelta) }}
-                        </template>
-                        <template v-if="overviewAdherenceDiasMomDelta != null && overviewAdherenceColabsMomDelta != null">
-                            ·
-                        </template>
-                        <template v-if="overviewAdherenceColabsMomDelta != null">
-                            Δ colaboradores: {{ signedIntTxt(overviewAdherenceColabsMomDelta) }}
-                        </template>
-                    </p>
-                </template>
-                <p v-else-if="overviewAdherence?.resumo" class="mt-2 text-xs text-amber-800">
-                    Comparação de aderência com o mês anterior indisponível nesta atualização.
-                </p>
-                <ul v-if="overviewAdherenceWorstEntrada.length" class="mt-2 space-y-1 text-sm text-slate-700">
-                    <li v-for="(rw, ri) in overviewAdherenceWorstEntrada" :key="ri" class="flex flex-wrap gap-x-1">
-                        <Link
-                            v-if="rw.id_person != null"
-                            :href="route('client.rhid.collaborators.show', rw.id_person)"
-                            class="font-medium text-talents-800 hover:underline"
+
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="mb-2 flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-talents-800">
+                                Maiores atrasos · entrada
+                            </p>
+                            <p class="mt-0.5 text-[11px] text-slate-500">
+                                Top {{ Math.min((overviewAdherenceWorstEntrada || []).length, 5) }} colaboradores no mês
+                            </p>
+                        </div>
+                        <span
+                            class="rounded-full bg-talents-50 px-2 py-0.5 text-[10px] font-semibold text-talents-700"
                         >
-                            {{ rw.nome }}
-                        </Link>
-                        <span v-else class="font-medium">{{ rw.nome }}</span>
-                        <span class="text-slate-600">
-                            — {{ rw.total_atraso_entrada_minutos ?? 0 }} min (atraso na entrada)
+                            Aderência
                         </span>
-                    </li>
-                </ul>
-                <PrimaryButton type="button" class="mt-3" @click="emit('go-punches-adherence')">
-                    Ver aderência
-                </PrimaryButton>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase text-slate-500">Justificativas (mês corrente)</p>
-                <p class="mt-1 text-xs text-slate-500">Período: {{ overviewCalendarRangeLabel }}</p>
-                <p class="mt-2 text-2xl font-semibold text-slate-900">
-                    {{ overviewJustTotal != null ? overviewJustTotal : '—' }}
-                </p>
-                <p class="mt-1 text-sm text-slate-600">
-                    Atestados na primeira página carregada:
-                    {{ overviewJustAtestados != null ? overviewJustAtestados : '—' }}
-                </p>
-                <p v-if="overviewJustNote" class="mt-1 text-xs text-amber-800">{{ overviewJustNote }}</p>
-                <template v-if="overviewJustPrevLoaded">
-                    <p class="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-600">
-                        <span class="font-medium text-slate-700">Mês anterior</span>
-                        — total RHID: {{ overviewJustTotalPrevious != null ? overviewJustTotalPrevious : '—' }}
-                        · atestados (1.ª página):
-                        {{ overviewJustAtestadosPrevious != null ? overviewJustAtestadosPrevious : '—' }}
+                    </div>
+                    <apexchart
+                        v-if="!barWorstEntradaChart.empty"
+                        type="bar"
+                        :height="Math.max(180, (barWorstEntradaChart.series[0]?.data?.length || 0) * 46 + 20)"
+                        :options="barWorstEntradaChart.options"
+                        :series="barWorstEntradaChart.series"
+                    />
+                    <p v-else class="mt-4 text-center text-sm text-slate-500">
+                        Sem agregado para este período — importe espelhos e analise na sub-aba Aderência.
                     </p>
-                    <p
-                        v-if="overviewJustTotalMomDelta != null || overviewJustAtestadosMomDelta != null"
-                        class="mt-1 text-xs font-medium text-slate-700"
+                    <ul
+                        v-if="(overviewAdherenceWorstEntrada || []).length"
+                        class="mt-2 space-y-1 text-xs text-slate-700"
                     >
-                        <template v-if="overviewJustTotalMomDelta != null">
-                            Δ total: {{ signedIntTxt(overviewJustTotalMomDelta) }}
-                        </template>
-                        <template v-if="overviewJustTotalMomDelta != null && overviewJustAtestadosMomDelta != null">
-                            ·
-                        </template>
-                        <template v-if="overviewJustAtestadosMomDelta != null">
-                            Δ atestados (amostra): {{ signedIntTxt(overviewJustAtestadosMomDelta) }}
-                        </template>
-                    </p>
-                    <p v-if="overviewJustNotePrevious" class="mt-1 text-xs text-amber-800">{{ overviewJustNotePrevious }}</p>
-                </template>
-                <p v-else class="mt-2 text-xs text-amber-800">
-                    Comparação de justificativas com o mês anterior indisponível nesta atualização.
-                </p>
-                <PrimaryButton type="button" class="mt-3" @click="emit('go-justifications')">
-                    Ver justificativas
-                </PrimaryButton>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-2 xl:col-span-3">
-                <p class="text-sm font-medium text-slate-800">Atalhos</p>
-                <div class="mt-2 flex flex-wrap gap-2">
-                    <SecondaryButton type="button" @click="emit('go-espelho')">Importar espelho / PDF</SecondaryButton>
-                    <SecondaryButton type="button" @click="emit('go-collaborators')">Lista de colaboradores</SecondaryButton>
-                    <Link
-                        v-if="isAdmin"
-                        :href="route('client.rhid.settings.edit')"
-                        class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                    >
-                        Configurar horários da empresa
-                    </Link>
+                        <li
+                            v-for="(rw, ri) in overviewAdherenceWorstEntrada.slice(0, 3)"
+                            :key="ri"
+                            class="flex items-center justify-between gap-2 border-t border-slate-100 pt-1"
+                        >
+                            <Link
+                                v-if="rw.id_person != null"
+                                :href="route('client.rhid.collaborators.show', rw.id_person)"
+                                class="truncate font-medium text-talents-800 hover:underline"
+                            >
+                                {{ rw.nome }}
+                            </Link>
+                            <span v-else class="truncate font-medium text-slate-800">{{ rw.nome }}</span>
+                            <span class="shrink-0 tabular-nums text-talents-700">
+                                {{ rw.total_atraso_entrada_minutos ?? 0 }} min
+                            </span>
+                        </li>
+                    </ul>
                 </div>
             </div>
-        </div>
+
+            <!-- ============ Últimas marcações + Atalhos ============ -->
+            <div class="grid gap-3 lg:grid-cols-3">
+                <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-talents-800">Últimas marcações</p>
+                            <p class="mt-0.5 text-[11px] text-slate-500">
+                                Amostra de {{ overviewPunchRowsLength }} registro(s) ·
+                                {{ overviewPunchDistinct }} colaborador(es) distinto(s)
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-md border border-talents-200 bg-talents-50 px-3 py-1 text-xs font-semibold text-talents-700 transition hover:bg-talents-100"
+                            @click="emit('go-punches-dashboard')"
+                        >
+                            Painel completo →
+                        </button>
+                    </div>
+                    <ul
+                        v-if="overviewPunchPreviewRows.length"
+                        class="mt-3 divide-y divide-slate-100 text-sm"
+                    >
+                        <li
+                            v-for="(pr, pi) in overviewPunchPreviewRows"
+                            :key="pi"
+                            class="flex items-baseline justify-between gap-x-3 py-1.5"
+                        >
+                            <span class="flex min-w-0 items-center gap-2">
+                                <span
+                                    class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-talents-100 text-[10px] font-semibold text-talents-700"
+                                >
+                                    {{ String(pi + 1).padStart(2, '0') }}
+                                </span>
+                                <Link
+                                    v-if="pr.personId != null"
+                                    :href="route('client.rhid.collaborators.show', pr.personId)"
+                                    class="truncate font-medium text-talents-800 hover:underline"
+                                >
+                                    {{ pr.nome }}
+                                </Link>
+                                <span v-else class="truncate font-medium text-slate-800">{{ pr.nome }}</span>
+                            </span>
+                            <span class="shrink-0 tabular-nums text-[11px] text-slate-500">{{ pr.dataDisplay }}</span>
+                        </li>
+                    </ul>
+                    <p v-else class="mt-4 text-sm text-slate-500">Nenhuma marcação na amostra.</p>
+                </div>
+
+                <div
+                    class="rounded-2xl border border-talents-200 bg-gradient-to-br from-white via-talents-50 to-white p-4 shadow-sm"
+                >
+                    <p class="text-sm font-semibold text-talents-800">Atalhos rápidos</p>
+                    <p class="mt-0.5 text-[11px] text-slate-500">Pule direto para a ação que precisa</p>
+                    <div class="mt-3 grid grid-cols-1 gap-2">
+                        <button
+                            type="button"
+                            class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-talents-300 hover:bg-talents-50"
+                            @click="emit('go-espelho')"
+                        >
+                            <span class="inline-flex items-center gap-2">
+                                <span
+                                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-talents-100 text-talents-700"
+                                >
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.3 9.4a.75.75 0 10-1.1 1.02l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.06V6.75z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                </span>
+                                Importar espelho / PDF
+                            </span>
+                            <span class="text-talents-500">→</span>
+                        </button>
+                        <button
+                            type="button"
+                            class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-talents-300 hover:bg-talents-50"
+                            @click="emit('go-collaborators')"
+                        >
+                            <span class="inline-flex items-center gap-2">
+                                <span
+                                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-talents-100 text-talents-700"
+                                >
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                                    </svg>
+                                </span>
+                                Lista de colaboradores
+                            </span>
+                            <span class="text-talents-500">→</span>
+                        </button>
+                        <Link
+                            v-if="isAdmin"
+                            :href="route('client.rhid.settings.edit')"
+                            class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-talents-300 hover:bg-talents-50"
+                        >
+                            <span class="inline-flex items-center gap-2">
+                                <span
+                                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-talents-100 text-talents-700"
+                                >
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                </span>
+                                Configurar horários
+                            </span>
+                            <span class="text-talents-500">→</span>
+                        </Link>
+                    </div>
+                    <!-- Mini-comparativo MoM em destaque -->
+                    <div class="mt-3 rounded-xl bg-talents-700/95 p-3 text-white shadow-inner">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-talents-100">
+                            Mês anterior · referência
+                        </p>
+                        <p class="mt-1 text-[11px] leading-snug text-white/85">
+                            {{ overviewPreviousCalendarRangeLabel }}
+                        </p>
+                        <div class="mt-2 space-y-1 text-[11px] text-white/90">
+                            <p v-if="overviewBankPrevLoaded && overviewBankPrevNumericRowsLength">
+                                <span class="font-semibold">Banco:</span>
+                                {{ formatRhidBankBalanceMinutes(overviewBankPrevAvgMinutes ?? 0) }} ·
+                                {{ overviewBankPrevNumericRowsLength }} colab.
+                            </p>
+                            <p v-if="overviewAdherencePrevLoaded && overviewAdherencePrevious?.resumo">
+                                <span class="font-semibold">Aderência:</span>
+                                {{ overviewAdherencePreviousDiasCalendario ?? '—' }} dias ·
+                                {{ overviewAdherencePrevious.resumo.colaboradores_com_dados ?? '—' }} colab.
+                            </p>
+                            <p v-if="overviewJustPrevLoaded && overviewJustTotalPrevious != null">
+                                <span class="font-semibold">Justif.:</span>
+                                {{ overviewJustTotalPrevious }} total ·
+                                {{ overviewJustAtestadosPrevious ?? '—' }} atestados
+                            </p>
+                            <p
+                                v-if="
+                                    !overviewBankPrevLoaded &&
+                                    !overviewAdherencePrevLoaded &&
+                                    !overviewJustPrevLoaded
+                                "
+                                class="italic text-white/70"
+                            >
+                                Atualize para carregar a comparação.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
     </div>
 </template>
