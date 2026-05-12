@@ -106,6 +106,20 @@ const calendarKindLabel = (kind) => {
 
 const formatEventLong = (item) => formatDateLong(item?.occurs_on);
 
+/**
+ * Extrai "Horário: HH:MM – HH:MM" da descrição do item.
+ * Aceita os separadores "–", "-" e "—".
+ */
+function extractEventTimeRange(description) {
+    if (!description) return null;
+    const re = /Hor[áa]rio:\s*(\d{1,2}:\d{2})\s*[–\-—]\s*(\d{1,2}:\d{2})/iu;
+    const m = String(description).match(re);
+    if (!m) return null;
+    return { start: m[1].padStart(5, '0'), end: m[2].padStart(5, '0') };
+}
+
+const calendarEventTime = computed(() => extractEventTimeRange(nextCalendarEvent.value?.description));
+
 const riskLegend = computed(() => {
     const d = props.riskDistribution || {};
     return [
@@ -142,22 +156,44 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
         </template>
 
         <template #aside>
-            <div class="dashboard-panel-compact">
-                <SectionHeader title="Leads recentes" subtitle="Interessados sem e-mail de follow-up">
-                    <template #action>
-                        <Link :href="route('admin.landing-interest.index')" class="text-xs font-semibold text-talents-700 hover:underline">
-                            Ver todos
+            <div class="dashboard-accent-dark text-white">
+                <div class="dashboard-hero-blob -right-10 -top-10 h-32 w-32 bg-talents-500/25" />
+                <div class="relative flex flex-col gap-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Leads recentes</p>
+                            <h3 class="mt-1.5 text-base font-semibold text-white">
+                                Interessados
+                                <span class="text-white/55">·</span>
+                                follow-up
+                            </h3>
+                        </div>
+                        <Link
+                            :href="route('admin.landing-interest.index')"
+                            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/90 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/60"
+                            aria-label="Ver todos os leads"
+                        >
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
                         </Link>
-                    </template>
-                </SectionHeader>
-                <ul v-if="recentLeads?.length" class="mt-3 max-h-[min(70vh,28rem)] space-y-2.5 overflow-y-auto text-sm">
-                    <li v-for="lead in recentLeads" :key="lead.id" class="dashboard-inset-row">
-                        <p class="font-medium leading-snug text-slate-900">{{ lead.name }}</p>
-                        <p class="mt-0.5 text-xs text-slate-600">{{ lead.email }}</p>
-                        <p v-if="lead.company" class="mt-1 text-xs text-slate-500">{{ lead.company }}</p>
-                    </li>
-                </ul>
-                <EmptyState v-else class="mt-2 border-0 bg-transparent py-6" title="Sem leads pendentes" />
+                    </div>
+
+                    <ul v-if="recentLeads?.length" class="max-h-[min(70vh,32rem)] space-y-2 overflow-y-auto pr-1 text-sm scrollbar-none">
+                        <li
+                            v-for="lead in recentLeads"
+                            :key="lead.id"
+                            class="rounded-xl px-3 py-2.5 ring-1 ring-white/10 transition hover:bg-white/5"
+                        >
+                            <p class="truncate font-medium leading-snug text-white">{{ lead.name }}</p>
+                            <p class="mt-0.5 truncate text-xs text-white/70">{{ lead.email }}</p>
+                            <p v-if="lead.company" class="mt-1 truncate text-xs text-white/55">{{ lead.company }}</p>
+                        </li>
+                    </ul>
+                    <div v-else class="rounded-xl px-3 py-6 text-center text-sm text-white/65 ring-1 ring-white/10">
+                        Sem leads pendentes
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -220,16 +256,27 @@ const criticalCount = computed(() => props.criticalCompanies?.length ?? 0);
                             {{ nextCalendarEvent.title }}
                         </h3>
 
-                        <p class="mt-2.5 flex items-center gap-2 text-sm text-white/85 sm:text-base">
-                            <svg class="h-4 w-4 shrink-0 text-white/65" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M5.25 5.25h13.5A1.5 1.5 0 0120.25 6.75v12.75A1.5 1.5 0 0118.75 21H5.25a1.5 1.5 0 01-1.5-1.5V6.75a1.5 1.5 0 011.5-1.5z"
-                                />
-                            </svg>
-                            <span>{{ formatEventLong(nextCalendarEvent) }}</span>
-                        </p>
+                        <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-white/85 sm:text-base">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="h-4 w-4 shrink-0 text-white/65" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M5.25 5.25h13.5A1.5 1.5 0 0120.25 6.75v12.75A1.5 1.5 0 0118.75 21H5.25a1.5 1.5 0 01-1.5-1.5V6.75a1.5 1.5 0 011.5-1.5z"
+                                    />
+                                </svg>
+                                {{ formatEventLong(nextCalendarEvent) }}
+                            </span>
+                            <span v-if="calendarEventTime" class="inline-flex items-center gap-2 text-white/90">
+                                <svg class="h-4 w-4 shrink-0 text-white/65" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2" />
+                                    <circle cx="12" cy="12" r="9" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                                <span class="tabular-nums">{{ calendarEventTime.start }}</span>
+                                <span class="text-white/55">–</span>
+                                <span class="tabular-nums">{{ calendarEventTime.end }}</span>
+                            </span>
+                        </div>
 
                         <p class="mt-1.5 text-xs text-white/65">
                             {{ calendarKindLabel(nextCalendarEvent.kind) }}
