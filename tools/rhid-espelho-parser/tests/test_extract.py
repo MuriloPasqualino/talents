@@ -126,6 +126,54 @@ def test_parse_espelho_pdf_schema2_mocked(tmp_path: Path, monkeypatch: pytest.Mo
     assert out["summary"]["day_count"] == 1
 
 
+def test_normalizar_marcacoes_duplicate_morning_then_slots() -> None:
+    """RHID pode listar duas entradas de manhã; a segunda não deve virar SAÍ.1."""
+    from rhid_espelho_parser.cartao_pdf_parser import _normalizar_marcacoes_do_dia
+    from rhid_espelho_parser.extract import marcacoes_string_to_ent_sai_slots
+
+    raw = "07:10 07:32 12:34 13:31"
+    norm = _normalizar_marcacoes_do_dia(raw)
+    assert norm == "07:32 12:34 13:31"
+    slots = marcacoes_string_to_ent_sai_slots(norm)
+    assert slots["ent_1"] == "07:32"
+    assert slots["sai_1"] == "12:34"
+    assert slots["ent_2"] == "13:31"
+    assert slots["sai_2"] == ""
+
+
+def test_normalizar_marcacoes_classic_four_unchanged() -> None:
+    from rhid_espelho_parser.cartao_pdf_parser import _normalizar_marcacoes_do_dia
+    from rhid_espelho_parser.extract import marcacoes_string_to_ent_sai_slots
+
+    raw = "07:30 11:30 12:30 17:00"
+    norm = _normalizar_marcacoes_do_dia(raw)
+    assert norm == "07:30 11:30 12:30 17:00"
+    slots = marcacoes_string_to_ent_sai_slots(norm)
+    assert slots["ent_1"] == "07:30"
+    assert slots["sai_1"] == "11:30"
+    assert slots["ent_2"] == "12:30"
+    assert slots["sai_2"] == "17:00"
+
+
+def test_normalizar_marcacoes_no_collapse_early_madrugada() -> None:
+    """Virada de dia / noturno: não colapsar batidas antes das 5h com bloco noturno."""
+    from rhid_espelho_parser.cartao_pdf_parser import _normalizar_marcacoes_do_dia
+
+    raw = "02:00 05:00 22:00 23:00"
+    norm = _normalizar_marcacoes_do_dia(raw)
+    assert "02:00" in norm and "05:00" in norm
+
+
+def test_normalizar_marcacoes_no_collapse_night_first_punch() -> None:
+    from rhid_espelho_parser.cartao_pdf_parser import _normalizar_marcacoes_do_dia
+
+    raw = "22:00 23:30 00:15 02:00"
+    norm = _normalizar_marcacoes_do_dia(raw)
+    # Mantém os quatro horários (sem colapso por entrada noturna)
+    for t in ("22:00", "23:30", "00:15", "02:00"):
+        assert t in norm.split()
+
+
 def test_preencher_campos_marcacao_cartao_pdf_parser() -> None:
     from rhid_espelho_parser.cartao_pdf_parser import _preencher_campos_marcacao_pdf_linha
 

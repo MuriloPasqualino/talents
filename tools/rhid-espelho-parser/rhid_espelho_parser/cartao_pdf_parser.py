@@ -29,6 +29,43 @@ def _to_min(t: str) -> int:
     return int(a) * 60 + int(b)
 
 
+# Primeiro horário >= este minuto (desde meia-noite) inicia o bloco típico de almoço no PDF.
+_LUNCH_BLOCK_START_MIN = 11 * 60  # 11:00
+
+
+def _collapse_duplicate_morning_entries(sorted_expediente: list[str]) -> list[str]:
+    """
+    Quando o RHID lista duas batidas seguidas de manhã (ex.: entrada desconsiderada + válida),
+    o mapeamento par/ímpar trata a segunda como SAÍ.1 e distorce o almoço. Colapsa o segmento
+    pré-almoço (todos < 11:00) para um único horário: a última batida matinal (geralmente a válida).
+
+    Não aplica se a primeira marcação do dia for típica de turno noturno (>= 21:00).
+    """
+    if len(sorted_expediente) < 3:
+        return sorted_expediente
+    first_min = _to_min(sorted_expediente[0])
+    if first_min >= 21 * 60:
+        return sorted_expediente
+
+    first_lunch_idx: int | None = None
+    for i, t in enumerate(sorted_expediente):
+        if _to_min(t) >= _LUNCH_BLOCK_START_MIN:
+            first_lunch_idx = i
+            break
+    if first_lunch_idx is None or first_lunch_idx < 2:
+        return sorted_expediente
+
+    morning = sorted_expediente[:first_lunch_idx]
+    rest = sorted_expediente[first_lunch_idx:]
+    if any(_to_min(t) >= _LUNCH_BLOCK_START_MIN for t in morning):
+        return sorted_expediente
+    # Batidas antes das 5h costumam ser virada de dia / noturno — não colapsar com saída à noite.
+    if any(_to_min(t) < 5 * 60 for t in morning):
+        return sorted_expediente
+
+    return [morning[-1]] + rest
+
+
 def _eh_duracao(t: str, eh_primeira_entrada: bool) -> bool:
     """
     Verifica se o horário parece ser DURAÇÃO (ex: 08:00 = 8h trabalhadas).
@@ -86,6 +123,7 @@ def _normalizar_marcacoes_do_dia(marcacoes_str: str) -> str:
     # Padrão: ENT.1 SAÍ.1 ENT.2 SAÍ.2 [ENT.3 SAÍ.3] [ENT.4 SAÍ.4]
     # Ordenar e manter pares entrada/saída
     dentro_expediente.sort(key=_to_min)
+    dentro_expediente = _collapse_duplicate_morning_entries(dentro_expediente)
 
     if len(dentro_expediente) <= 4:
         resultado = dentro_expediente
