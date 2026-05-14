@@ -32,12 +32,28 @@ const cardUpdate = useForm({
     title: '',
     description: '',
     visibility: 'inherit',
+    cover_color: '',
     due_date: '',
     start_date: '',
     company_id: '',
     member_ids: [],
     label_ids: [],
 });
+
+const COVER_COLOR_PRESETS = [
+    { value: '#ef4444', label: 'Vermelho' },
+    { value: '#f97316', label: 'Laranja' },
+    { value: '#eab308', label: 'Amarelo' },
+    { value: '#22c55e', label: 'Verde' },
+    { value: '#14b8a6', label: 'Turquesa' },
+    { value: '#3b82f6', label: 'Azul' },
+    { value: '#8b5cf6', label: 'Roxo' },
+    { value: '#ec4899', label: 'Rosa' },
+];
+
+function setCoverColor(color) {
+    cardUpdate.cover_color = color || '';
+}
 
 const commentForm = useForm({ body: '', mentioned_user_ids: [] });
 const checklistForm = useForm({ name: '' });
@@ -67,6 +83,7 @@ watch(
         cardUpdate.title = c.title || '';
         cardUpdate.description = c.description || '';
         cardUpdate.visibility = c.visibility || 'inherit';
+        cardUpdate.cover_color = c.cover_color || '';
         cardUpdate.due_date = c.due_date || '';
         cardUpdate.start_date = c.start_date || '';
         cardUpdate.company_id = c.company_id || '';
@@ -131,6 +148,7 @@ function saveCard() {
                 company_id: data.company_id || null,
                 due_date: data.due_date || null,
                 start_date: data.start_date || null,
+                cover_color: data.cover_color || null,
             }))
             .patch(url, {
                 preserveScroll: true,
@@ -669,6 +687,37 @@ function formatDateLabel(value) {
 
             <div v-else-if="activeTab === 'settings'" class="overflow-y-auto p-6">
                 <div class="space-y-4 rounded-lg border border-slate-100 p-4">
+                    <div v-if="isAdmin">
+                        <InputLabel value="Cor do cartão" />
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                class="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-slate-300 text-[11px] font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700"
+                                :class="{ 'ring-2 ring-talents-500 ring-offset-1': !cardUpdate.cover_color }"
+                                title="Sem cor"
+                                @click="setCoverColor(null)"
+                            >
+                                ×
+                            </button>
+                            <button
+                                v-for="preset in COVER_COLOR_PRESETS"
+                                :key="preset.value"
+                                type="button"
+                                class="h-7 w-7 rounded-full border border-white shadow ring-1 ring-slate-200 transition hover:scale-110"
+                                :class="{
+                                    'ring-2 ring-talents-500 ring-offset-1':
+                                        cardUpdate.cover_color?.toLowerCase() === preset.value,
+                                }"
+                                :style="{ backgroundColor: preset.value }"
+                                :title="preset.label"
+                                @click="setCoverColor(preset.value)"
+                            />
+                        </div>
+                        <p class="mt-1 text-xs text-slate-500">
+                            A cor aparece como faixa no topo do cartão no quadro.
+                        </p>
+                    </div>
+
                     <div v-if="isAdmin && visibilityCardOptions.length">
                         <InputLabel value="Visibilidade do cartão" />
                         <select
