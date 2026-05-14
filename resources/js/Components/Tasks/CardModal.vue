@@ -151,6 +151,23 @@ function saveCard() {
     }
 }
 
+function deleteCard() {
+    if (!props.card?.id || !props.isAdmin) return;
+    const title = props.card.title || 'esta tarefa';
+    if (
+        !window.confirm(
+            `Excluir "${title}"?\n\nA tarefa e todos os seus anexos, comentários e checklists serão removidos.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(route('admin.tarefas.cards.destroy', props.card.id), {
+        preserveScroll: true,
+        onSuccess: () => emit('close'),
+    });
+}
+
 function reloadBoardPayloadAndSyncCard() {
     if (!props.card) return;
     router.reload({
@@ -851,6 +868,13 @@ function formatDateLabel(value) {
                     </button>
                 </template>
                 <template v-else>
+                    <button
+                        type="button"
+                        class="mr-auto rounded-md border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                        @click="deleteCard"
+                    >
+                        Excluir tarefa
+                    </button>
                     <button
                         type="button"
                         class="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"

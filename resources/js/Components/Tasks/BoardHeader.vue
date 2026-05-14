@@ -3,6 +3,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import {
     PencilSquareIcon,
     StarIcon as StarOutlineIcon,
+    TrashIcon,
     UserPlusIcon,
 } from '@heroicons/vue/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/vue/24/solid';
@@ -139,6 +140,22 @@ function saveBoardName() {
     });
 }
 
+function deleteBoard() {
+    if (!props.isAdmin) return;
+    const name = props.boardPayload?.name || 'este quadro';
+    if (
+        !window.confirm(
+            `Excluir "${name}" permanentemente?\n\nTodas as listas, tarefas, anexos, comentários e checklists serão removidos. Esta ação NÃO pode ser desfeita.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(route('admin.tarefas.quadros.destroy', props.boardPayload.id), {
+        preserveScroll: false,
+    });
+}
+
 </script>
 
 <template>
@@ -179,6 +196,16 @@ function saveBoardName() {
                 @click="editingName = true"
             >
                 <PencilSquareIcon class="h-4 w-4" />
+            </button>
+
+            <button
+                v-if="isAdmin && !editingName"
+                type="button"
+                class="rounded-md p-1 text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                title="Excluir quadro"
+                @click="deleteBoard"
+            >
+                <TrashIcon class="h-4 w-4" />
             </button>
 
             <button

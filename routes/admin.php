@@ -171,6 +171,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->only(['index', 'show'])
             ->parameters(['quadros' => 'board']);
         Route::patch('quadros/{board}', [TasksTaskBoardController::class, 'update'])->name('quadros.update');
+        Route::delete('quadros/{board}', [TasksTaskBoardController::class, 'destroy'])->name('quadros.destroy');
 
         Route::post('quadros/{board}/listas', [TaskBoardListController::class, 'store'])->name('quadros.listas.store');
         Route::patch('listas/{list}', [TaskBoardListController::class, 'update'])->name('listas.update');

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin\Tasks;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\TaskAttachment;
 use App\Models\TaskBoard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -63,6 +65,7 @@ class TaskBoardController extends Controller
     public function index(Request $request): RedirectResponse
     {
         $board = $this->getOrCreateSingleBoard($request->user()->id);
+
         return redirect()->route('admin.tarefas.quadros.show', $board);
     }
 
@@ -113,4 +116,22 @@ class TaskBoardController extends Controller
         return back()->with('success', 'Nome do quadro atualizado.');
     }
 
+    public function destroy(TaskBoard $board): RedirectResponse
+    {
+        $attachments = TaskAttachment::query()
+            ->whereHas('card.list', fn ($q) => $q->where('board_id', $board->id))
+            ->get(['id', 'disk', 'path']);
+
+        foreach ($attachments as $attachment) {
+            if (Storage::disk($attachment->disk)->exists($attachment->path)) {
+                Storage::disk($attachment->disk)->delete($attachment->path);
+            }
+        }
+
+        $board->delete();
+
+        return redirect()
+            ->route('admin.tarefas.processos.index')
+            ->with('success', 'Quadro excluído.');
+    }
 }

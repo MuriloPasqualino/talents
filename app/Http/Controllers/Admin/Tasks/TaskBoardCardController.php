@@ -13,6 +13,7 @@ use App\Notifications\TaskCardMemberAssignedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class TaskBoardCardController extends Controller
@@ -144,6 +145,13 @@ class TaskBoardCardController extends Controller
     public function destroy(TaskCard $card, LogTaskActivity $log): RedirectResponse
     {
         $board = $card->list->board;
+
+        foreach ($card->attachments()->get(['id', 'disk', 'path']) as $attachment) {
+            if (Storage::disk($attachment->disk)->exists($attachment->path)) {
+                Storage::disk($attachment->disk)->delete($attachment->path);
+            }
+        }
+
         $card->delete();
         $log->handle($board, null, 'card.deleted', request()->user(), []);
 
