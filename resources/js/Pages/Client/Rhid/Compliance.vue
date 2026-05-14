@@ -926,6 +926,32 @@ const punchExtractHour = (dataRaw) => {
     return null;
 };
 
+/** Instantâneo em ms para ordenar / extremos (ISO ou dd/mm/aaaa com hora). */
+const punchParseInstantMs = (dataRaw) => {
+    const s = String(dataRaw ?? '').trim();
+    if (!s) {
+        return null;
+    }
+    const isoTry = Date.parse(s);
+    if (!Number.isNaN(isoTry)) {
+        return isoTry;
+    }
+    const dm = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!dm) {
+        return null;
+    }
+    const day = parseInt(dm[1], 10);
+    const month = parseInt(dm[2], 10) - 1;
+    const year = parseInt(dm[3], 10);
+    const hm = s.match(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/);
+    const hh = hm ? parseInt(hm[1], 10) : 0;
+    const mm = hm ? parseInt(hm[2], 10) : 0;
+    const ss = hm && hm[3] != null ? parseInt(hm[3], 10) : 0;
+    const d = new Date(year, month, day, hh, mm, ss);
+    const x = d.getTime();
+    return Number.isNaN(x) ? null : x;
+};
+
 const punchDashboardRows = computed(() => {
     const list = normalizeLastPunchesPayload(lastPunches.value);
     return list.map((row, i) => {
@@ -1102,34 +1128,40 @@ const overviewAdherencePrevLoaded = computed(() => overviewAdherencePrevious.val
 
 const overviewJustPrevLoaded = computed(() => overviewJustTotalPrevious.value != null);
 
-const PUNCH_HOUR_BUCKET_LABELS = ['0h–5h', '6h–11h', '12h–17h', '18h–23h'];
-
-const punchHourBucketIndex = (hour) => {
-    if (hour == null || hour < 0 || hour > 23) {
-        return null;
-    }
-    if (hour <= 5) {
-        return 0;
-    }
-    if (hour <= 11) {
-        return 1;
-    }
-    if (hour <= 17) {
-        return 2;
-    }
-    return 3;
-};
-
-const punchHourDistributionChart = computed(() => {
-    const counts = [0, 0, 0, 0];
+const punchDashboardDistinctPeople = computed(() => {
+    const keys = new Set();
     for (const r of punchDashboardRows.value) {
-        const h = punchExtractHour(r.dataRaw);
-        const bi = punchHourBucketIndex(h);
-        if (bi != null) {
-            counts[bi] += 1;
-        }
+        const k = r.personId != null ? `id:${r.personId}` : `nome:${r.nome}`;
+        keys.add(k);
     }
-    const empty = counts.every((c) => c === 0);
+    return keys.size;
+});
+
+const punchDashboardHourlyBarChart = computed(() => {
+    const rows = punchDashboardRows.value;
+    const full = Array.from({ length: 24 }, () => 0);
+    const hoursFound = [];
+    for (const r of rows) {
+        const h = punchExtractHour(r.dataRaw);
+        if (h == null) {
+            continue;
+        }
+        full[h] += 1;
+        hoursFound.push(h);
+    }
+    const totalWithHour = full.reduce((a, b) => a + b, 0);
+    if (!totalWithHour) {
+        return { series: [{ name: 'Marcações', data: [] }], options: {}, empty: true };
+    }
+    let minH = Math.min(...hoursFound);
+    let maxH = Math.max(...hoursFound);
+    minH = Math.max(0, minH - 1);
+    maxH = Math.min(23, maxH + 1);
+    const slice = full.slice(minH, maxH + 1);
+    const categories = [];
+    for (let h = minH; h <= maxH; h += 1) {
+        categories.push(`${h}h`);
+    }
     const options = {
         chart: {
             type: 'bar',
@@ -1137,18 +1169,60 @@ const punchHourDistributionChart = computed(() => {
             fontFamily: 'Figtree, sans-serif',
             foreColor: '#334155',
         },
-        plotOptions: { bar: { borderRadius: 4, columnWidth: '62%' } },
+        plotOptions: { bar: { borderRadius: 4, columnWidth: '72%' } },
         colors: ['#6366f1'],
-        dataLabels: { enabled: true, style: { fontSize: '11px', colors: ['#334155'] } },
-        xaxis: { categories: PUNCH_HOUR_BUCKET_LABELS },
+        dataLabels: { enabled: slice.length <= 16, style: { fontSize: '11px', colors: ['#334155'] } },
+        xaxis: { categories, labels: { rotate: slice.length > 14 ? -45 : 0 } },
+        yaxis: { min: 0, tickAmount: 4, labels: { formatter: (val) => (Number.isInteger(val) ? String(val) : '') } },
         tooltip: { y: { formatter: (val) => `${val} marcação(ões)` } },
         states: { hover: { filter: { type: 'lighten', value: 0.08 } } },
     };
     return {
-        series: [{ name: 'Marcações', data: counts }],
+        series: [{ name: 'Marcações', data: slice }],
         options,
-        empty,
+        empty: false,
     };
+});
+
+const punchDashboardWithValidHour = computed(() =>
+    punchDashboardRows.value.reduce((n, r) => n + (punchExtractHour(r.dataRaw) != null ? 1 : 0), 0),
+);
+
+const punchDashboardSampleTimeBounds = computed(() => {
+    let minMs = null;
+    let maxMs = null;
+    for (const r of punchDashboardRows.value) {
+        const ms = punchParseInstantMs(r.dataRaw);
+        if (ms == null) {
+            continue;
+        }
+        if (minMs == null || ms < minMs) {
+            minMs = ms;
+        }
+        if (maxMs == null || ms > maxMs) {
+            maxMs = ms;
+        }
+    }
+    if (minMs == null || maxMs == null) {
+        return null;
+    }
+    const fmt = (ms) =>
+        new Date(ms).toLocaleString('pt-BR', {
+            dateStyle: 'short',
+            timeStyle: 'medium',
+        });
+    return { earliest: fmt(minMs), latest: fmt(maxMs) };
+});
+
+const punchDashboardTopInSample = computed(() => {
+    const map = new Map();
+    for (const r of punchDashboardRows.value) {
+        const key = r.personId != null ? `id:${r.personId}` : `n:${r.nome}`;
+        const cur = map.get(key) ?? { personId: r.personId, nome: r.nome, count: 0 };
+        cur.count += 1;
+        map.set(key, cur);
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count).slice(0, 6);
 });
 
 const loadLastPunches = async () => {
@@ -3097,22 +3171,113 @@ const justDeptBarChart = computed(() => {
                         </div>
                     </div>
 
-                    <div class="grid gap-4 lg:grid-cols-2">
-                        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2">
-                            <h3 class="mb-1 text-sm font-semibold text-slate-800">Marcações por faixa de hora</h3>
-                            <p class="mb-3 text-xs text-slate-500">
-                                Quando a data/hora puder ser interpretada, a hora da marcação é agrupada em faixas.
-                            </p>
-                            <apexchart
-                                v-if="!punchHourDistributionChart.empty"
-                                type="bar"
-                                height="280"
-                                :options="punchHourDistributionChart.options"
-                                :series="punchHourDistributionChart.series"
-                            />
-                            <p v-else class="text-sm text-slate-500">
-                                Nenhuma hora reconhecida nos registros (formato de data variável).
-                            </p>
+                    <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <h3 class="text-sm font-semibold text-slate-800">Resumo da leitura</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-500">
+                            Indicadores calculados em cima da mesma amostra da tabela abaixo (últimas marcações do RHID).
+                            A distribuição por hora usa o relógio de cada batida — útil para ver picos de entrada e dispersão
+                            ao longo da manhã.
+                        </p>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div class="rounded-lg border border-slate-100 bg-slate-50/80 p-3">
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                    Colaboradores distintos
+                                </p>
+                                <p class="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+                                    {{ punchDashboardDistinctPeople }}
+                                </p>
+                            </div>
+                            <div class="rounded-lg border border-slate-100 bg-talents-50/60 p-3">
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-talents-700">
+                                    Com horário interpretável
+                                </p>
+                                <p class="mt-1 text-2xl font-semibold tabular-nums text-talents-900">
+                                    {{ punchDashboardWithValidHour }}
+                                    <span class="text-sm font-normal text-talents-700/80">
+                                        / {{ punchDashboardRows.length }}
+                                    </span>
+                                </p>
+                            </div>
+                            <div
+                                v-if="punchDashboardSampleTimeBounds"
+                                class="rounded-lg border border-slate-100 bg-white p-3 sm:col-span-2 lg:col-span-2"
+                            >
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                    Janela de tempo na amostra
+                                </p>
+                                <p class="mt-1 text-xs leading-snug text-slate-700">
+                                    <span class="font-medium text-slate-800">Mais antiga:</span>
+                                    {{ punchDashboardSampleTimeBounds.earliest }}
+                                </p>
+                                <p class="mt-0.5 text-xs leading-snug text-slate-700">
+                                    <span class="font-medium text-slate-800">Mais recente:</span>
+                                    {{ punchDashboardSampleTimeBounds.latest }}
+                                </p>
+                            </div>
+                            <div
+                                v-else
+                                class="flex items-center rounded-lg border border-amber-100 bg-amber-50/70 p-3 sm:col-span-2 lg:col-span-2"
+                            >
+                                <p class="text-xs text-amber-900">
+                                    Não foi possível ordenar todas as datas no formato retornado pelo RHID; o gráfico por hora
+                                    ainda usa a hora extraída do texto quando existir.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 grid gap-4 lg:grid-cols-12">
+                            <div class="lg:col-span-7">
+                                <h4 class="text-xs font-semibold text-slate-800">Distribuição por hora do dia</h4>
+                                <p class="mt-0.5 text-[11px] text-slate-500">
+                                    Contagem por hora cheia (ex.: 08:29 conta como 8h). Faixa do eixo reduzida ao entorno
+                                    das horas que aparecem na amostra.
+                                </p>
+                                <apexchart
+                                    v-if="!punchDashboardHourlyBarChart.empty"
+                                    type="bar"
+                                    height="260"
+                                    class="mt-2"
+                                    :options="punchDashboardHourlyBarChart.options"
+                                    :series="punchDashboardHourlyBarChart.series"
+                                />
+                                <p v-else class="mt-3 text-sm text-slate-500">
+                                    Nenhuma hora reconhecida nos registros (formato de data/hora variável).
+                                </p>
+                            </div>
+                            <div class="lg:col-span-5">
+                                <h4 class="text-xs font-semibold text-slate-800">Mais batidas nesta amostra</h4>
+                                <p class="mt-0.5 text-[11px] text-slate-500">
+                                    Quem aparece mais vezes na lista retornada (várias marcações ou leitura concentrada).
+                                </p>
+                                <ul
+                                    v-if="punchDashboardTopInSample.length"
+                                    class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-100"
+                                >
+                                    <li
+                                        v-for="(tp, ti) in punchDashboardTopInSample"
+                                        :key="ti"
+                                        class="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+                                    >
+                                        <div class="min-w-0 flex-1">
+                                            <Link
+                                                v-if="tp.personId != null"
+                                                :href="route('client.rhid.collaborators.show', tp.personId)"
+                                                class="block truncate font-medium text-talents-800 hover:underline"
+                                            >
+                                                {{ tp.nome }}
+                                            </Link>
+                                            <span v-else class="block truncate font-medium text-slate-800">{{ tp.nome }}</span>
+                                        </div>
+                                        <span
+                                            class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-700"
+                                        >
+                                            {{ tp.count }}×
+                                        </span>
+                                    </li>
+                                </ul>
+                                <p v-else class="mt-3 text-sm text-slate-500">Sem linhas para ranquear.</p>
+                            </div>
                         </div>
                     </div>
 
