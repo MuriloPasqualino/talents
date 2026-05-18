@@ -13,7 +13,7 @@ import {
     XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { VueDraggable } from 'vue-draggable-plus';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
     boardPayload: { type: Object, required: true },
@@ -51,6 +51,47 @@ function cloneLists(lists) {
 function reload() {
     emit('refresh');
 }
+
+const listMenuOpenId = ref(null);
+
+function closeListMenu() {
+    listMenuOpenId.value = null;
+}
+
+function toggleListMenu(listId, event) {
+    event?.stopPropagation?.();
+    listMenuOpenId.value = listMenuOpenId.value === listId ? null : listId;
+}
+
+function deleteList(list, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !list?.id) return;
+
+    closeListMenu();
+
+    const name = list.name || 'esta lista';
+    const cardCount = list.cards?.length ?? 0;
+    const cardsWarning =
+        cardCount > 0
+            ? `\n\n${cardCount} tarefa(s) nesta coluna também serão removidas.`
+            : '';
+
+    if (
+        !window.confirm(
+            `Excluir a lista "${name}"?${cardsWarning}\n\nEsta ação não pode ser desfeita.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(route('admin.tarefas.listas.destroy', list.id), {
+        preserveScroll: true,
+        onSuccess: () => reload(),
+    });
+}
+
+onMounted(() => document.addEventListener('click', closeListMenu));
+onUnmounted(() => document.removeEventListener('click', closeListMenu));
 
 function requestDeleteCard(card) {
     if (!props.isAdmin || !card?.id) return;
@@ -295,14 +336,30 @@ function dueClass(card) {
                             {{ list.allow_company_drop_in ? 'sim' : 'não' }}
                         </p>
                     </div>
-                    <button
-                        v-if="isAdmin"
-                        type="button"
-                        class="rounded p-1 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
-                        title="Ações da lista"
-                    >
-                        <EllipsisHorizontalIcon class="h-4 w-4" />
-                    </button>
+                    <div v-if="isAdmin" class="relative shrink-0">
+                        <button
+                            type="button"
+                            class="rounded p-1 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+                            title="Ações da lista"
+                            @click.stop="toggleListMenu(list.id, $event)"
+                        >
+                            <EllipsisHorizontalIcon class="h-4 w-4" />
+                        </button>
+                        <div
+                            v-if="listMenuOpenId === list.id"
+                            class="absolute right-0 top-full z-20 mt-1 min-w-[9.5rem] overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-slate-200"
+                            @click.stop
+                        >
+                            <button
+                                type="button"
+                                class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-50"
+                                @click="deleteList(list, $event)"
+                            >
+                                <TrashIcon class="h-3.5 w-3.5" />
+                                Excluir lista
+                            </button>
+                        </div>
+                    </div>
                 </header>
 
                 <VueDraggable

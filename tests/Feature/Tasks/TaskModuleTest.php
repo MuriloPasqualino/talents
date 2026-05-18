@@ -388,6 +388,41 @@ class TaskModuleTest extends TestCase
         $this->assertSame('Original', $card->fresh()->title);
     }
 
+    public function test_admin_can_delete_board_list_and_its_cards(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro teste',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Coluna extra',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa na coluna',
+            'position' => 1000,
+            'visibility' => 'inherit',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->delete('/admin/tarefas/listas/'.$list->id)
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('task_lists', ['id' => $list->id]);
+        $this->assertDatabaseMissing('task_cards', ['id' => $card->id]);
+    }
+
     public function test_client_company_user_cannot_move_card_even_when_allowed(): void
     {
         $company = $this->baseCompany();
