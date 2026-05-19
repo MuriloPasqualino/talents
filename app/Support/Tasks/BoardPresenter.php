@@ -18,6 +18,53 @@ final class BoardPresenter
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Resumo leve para listagem de quadros (expandir com cartões visíveis).
+     *
+     * @return array<string, mixed>
+     */
+    public static function forAdminIndex(TaskBoard $board): array
+    {
+        $board->loadMissing([
+            'company:id,name',
+            'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id'),
+            'lists.cards' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id')->with('company:id,name'),
+        ]);
+
+        $cardsCount = 0;
+        $lists = $board->lists->map(function ($list) use (&$cardsCount) {
+            $cards = $list->cards->map(fn (TaskCard $card) => [
+                'id' => $card->id,
+                'title' => $card->title,
+                'due_date' => $card->due_date?->toDateString(),
+                'completed_at' => $card->completed_at?->toIso8601String(),
+                'company' => $card->company ? ['id' => $card->company->id, 'name' => $card->company->name] : null,
+            ])->values();
+            $cardsCount += $cards->count();
+
+            return [
+                'id' => $list->id,
+                'name' => $list->name,
+                'color' => $list->color,
+                'cards' => $cards,
+            ];
+        })->values();
+
+        return [
+            'id' => $board->id,
+            'name' => $board->name,
+            'description' => $board->description,
+            'cover_color' => $board->cover_color,
+            'company_id' => $board->company_id,
+            'company' => $board->company ? ['id' => $board->company->id, 'name' => $board->company->name] : null,
+            'is_internal' => $board->company_id === null,
+            'lists_count' => $lists->count(),
+            'cards_count' => $cardsCount,
+            'updated_at' => $board->updated_at?->toIso8601String(),
+            'lists' => $lists,
+        ];
+    }
+
     public static function forAdmin(TaskBoard $board): array
     {
         $board->loadMissing([

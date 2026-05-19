@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import BoardIndexPreview from '@/Components/Tasks/BoardIndexPreview.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -171,19 +172,11 @@ const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_in
                             Abrir
                         </Link>
                     </div>
-                    <div v-show="!isCollapsed(board.id)" class="flex flex-wrap gap-4 px-4 py-3 text-sm text-slate-600">
-                        <span>{{ board.lists_count }} lista(s)</span>
-                        <span>{{ board.cards_count }} tarefa(s)</span>
-                        <span v-if="board.updated_at">
-                            Atualizado
-                            {{
-                                new Date(board.updated_at).toLocaleString('pt-BR', {
-                                    dateStyle: 'short',
-                                    timeStyle: 'short',
-                                })
-                            }}
-                        </span>
-                    </div>
+                    <BoardIndexPreview
+                        v-show="!isCollapsed(board.id)"
+                        :board="board"
+                        :show-route="route('admin.tarefas.quadros.show', board.id)"
+                    />
                 </li>
             </ul>
         </section>
@@ -217,10 +210,11 @@ const companyBoards = computed(() => filteredBoards.value.filter((b) => !b.is_in
                             Abrir
                         </Link>
                     </div>
-                    <div v-show="!isCollapsed(board.id)" class="flex flex-wrap gap-4 px-4 py-3 text-sm text-slate-600">
-                        <span>{{ board.lists_count }} lista(s)</span>
-                        <span>{{ board.cards_count }} tarefa(s)</span>
-                    </div>
+                    <BoardIndexPreview
+                        v-show="!isCollapsed(board.id)"
+                        :board="board"
+                        :show-route="route('admin.tarefas.quadros.show', board.id)"
+                    />
                 </li>
             </ul>
         </section>

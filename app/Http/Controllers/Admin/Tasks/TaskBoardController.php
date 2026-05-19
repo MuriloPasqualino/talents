@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\TaskAttachment;
 use App\Models\TaskBoard;
-use App\Models\TaskCard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -70,32 +69,10 @@ class TaskBoardController extends Controller
 
         $boards = TaskBoard::query()
             ->where('is_archived', false)
-            ->with(['company:id,name'])
-            ->withCount([
-                'lists' => fn ($q) => $q->where('is_archived', false),
-            ])
             ->orderByRaw('company_id is null desc')
             ->orderBy('name')
             ->get()
-            ->map(function (TaskBoard $board) {
-                $cardsCount = TaskCard::query()
-                    ->whereHas('list', fn ($q) => $q->where('board_id', $board->id)->where('is_archived', false))
-                    ->where('is_archived', false)
-                    ->count();
-
-                return [
-                    'id' => $board->id,
-                    'name' => $board->name,
-                    'description' => $board->description,
-                    'cover_color' => $board->cover_color,
-                    'company_id' => $board->company_id,
-                    'company' => $board->company ? ['id' => $board->company->id, 'name' => $board->company->name] : null,
-                    'is_internal' => $board->company_id === null,
-                    'lists_count' => $board->lists_count,
-                    'cards_count' => $cardsCount,
-                    'updated_at' => $board->updated_at?->toIso8601String(),
-                ];
-            });
+            ->map(fn (TaskBoard $board) => BoardPresenter::forAdminIndex($board));
 
         return Inertia::render('Admin/Tarefas/Quadros/Index', [
             'boards' => $boards,
