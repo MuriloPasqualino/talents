@@ -68,7 +68,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Novo template Metodologia" />
+    <Head title="Novo template — Direcionamento Estratégico" />
 
     <AdminLayout>
         <template #header>

@@ -13,7 +13,7 @@ class MethodologyCompanyController extends Controller
     {
         $company->methodologyFormTemplates()->syncWithoutDetaching([$template->id]);
 
-        return back()->with('success', 'Template de Metodologia vinculado à empresa.');
+        return back()->with('success', 'Template de Direcionamento Estratégico vinculado à empresa.');
     }
 
     public function detachTemplate(Company $company, MethodologyFormTemplate $template): RedirectResponse

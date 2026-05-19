@@ -47,7 +47,7 @@ defineProps({ surveys: Object });
             </table>
         </div>
         <p class="mt-4">
-            <Link :href="route('client.metodologia.index')" class="text-sm text-talents-700 hover:underline">← Metodologia</Link>
+            <Link :href="route('client.metodologia.index')" class="text-sm text-talents-700 hover:underline">← Direcionamento Estratégico</Link>
         </p>
     </ClientLayout>
 </template>

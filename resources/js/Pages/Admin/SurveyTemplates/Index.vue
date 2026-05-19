@@ -6,17 +6,17 @@ defineProps({ templates: Object });
 </script>
 
 <template>
-    <Head title="Templates NR1" />
+    <Head title="MAPEAMENTOS" />
 
     <AdminLayout>
         <template #header>
             <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold leading-tight text-gray-900">Templates de pesquisa</h2>
+                <h2 class="text-xl font-semibold leading-tight text-gray-900">MAPEAMENTOS</h2>
                 <Link
                     :href="route('admin.survey-templates.create')"
                     class="rounded-md bg-talents-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-talents-700"
                 >
-                    Novo template
+                    Novo mapeamento
                 </Link>
             </div>
         </template>

@@ -26,12 +26,26 @@ const addSection = () => {
     state.sections.push({
         title: 'Dimensão',
         description: '',
-        questions: [{ body: 'Pergunta', reverse_score: false, response_scale: 'frequency' }],
+        questions: [{ body: 'Pergunta', reverse_score: false, weight: 1, response_scale: 'frequency' }],
     });
 };
 
 const addQuestion = (section) => {
     section.questions.push({ body: '', reverse_score: false, weight: 1, response_scale: 'frequency' });
+};
+
+const removeSection = (si) => {
+    if (state.sections.length <= 1) {
+        return;
+    }
+    state.sections.splice(si, 1);
+};
+
+const removeQuestion = (section, qi) => {
+    if (section.questions.length <= 1) {
+        return;
+    }
+    section.questions.splice(qi, 1);
 };
 
 const submit = () => {
@@ -44,11 +58,11 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Novo template" />
+    <Head title="Novo mapeamento" />
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold leading-tight text-gray-900">Novo template NR1</h2>
+            <h2 class="text-xl font-semibold leading-tight text-gray-900">Novo mapeamento</h2>
         </template>
 
         <form class="space-y-6 text-gray-900" @submit.prevent="submit">
@@ -64,8 +78,16 @@ const submit = () => {
             </div>
 
             <div v-for="(section, si) in state.sections" :key="si" class="surface-card p-6">
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between gap-3">
                     <h3 class="font-semibold text-talents-700">Dimensão {{ si + 1 }}</h3>
+                    <button
+                        v-if="state.sections.length > 1"
+                        type="button"
+                        class="text-sm font-medium text-red-600 hover:text-red-800 hover:underline"
+                        @click="removeSection(si)"
+                    >
+                        Excluir dimensão
+                    </button>
                 </div>
                 <div class="mt-3">
                     <InputLabel :for="'sec-title-' + si" value="Título da dimensão" />
@@ -77,7 +99,17 @@ const submit = () => {
                 </div>
                 <div class="mt-4 space-y-3">
                     <div v-for="(q, qi) in section.questions" :key="qi" class="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                        <InputLabel :for="'q-' + si + '-' + qi" :value="'Pergunta ' + (qi + 1)" />
+                        <div class="flex items-start justify-between gap-2">
+                            <InputLabel :for="'q-' + si + '-' + qi" :value="'Pergunta ' + (qi + 1)" class="flex-1" />
+                            <button
+                                v-if="section.questions.length > 1"
+                                type="button"
+                                class="shrink-0 text-xs font-medium text-red-600 hover:text-red-800 hover:underline"
+                                @click="removeQuestion(section, qi)"
+                            >
+                                Excluir
+                            </button>
+                        </div>
                         <TextInput :id="'q-' + si + '-' + qi" v-model="q.body" class="mt-1 block w-full" required />
                         <div class="mt-2 flex flex-wrap items-end gap-4">
                             <div>
@@ -112,7 +144,7 @@ const submit = () => {
 
             <button type="button" class="text-sm font-medium text-talents-700 hover:underline" @click="addSection">+ Dimensão</button>
 
-            <PrimaryButton :disabled="form.processing">Salvar template</PrimaryButton>
+            <PrimaryButton :disabled="form.processing">Salvar mapeamento</PrimaryButton>
         </form>
     </AdminLayout>
 </template>

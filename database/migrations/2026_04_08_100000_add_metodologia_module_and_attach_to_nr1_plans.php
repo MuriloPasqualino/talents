@@ -13,8 +13,8 @@ return new class extends Migration
         if (! $metaId) {
             $metaId = DB::table('modules')->insertGetId([
                 'key' => 'metodologia',
-                'name' => 'Metodologia Talents',
-                'description' => 'Jornada de diagnóstico, pesquisa de satisfação e etapas da metodologia.',
+                'name' => 'Direcionamento Estratégico',
+                'description' => 'Jornada de diagnóstico, pesquisa de satisfação e etapas do direcionamento estratégico.',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);

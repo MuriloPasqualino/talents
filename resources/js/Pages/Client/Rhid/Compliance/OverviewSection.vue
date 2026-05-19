@@ -1,4 +1,5 @@
 <script setup>
+import RhidOverviewKpiCards from '@/Components/Rhid/RhidOverviewKpiCards.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -505,222 +506,30 @@ const trendBank = computed(() => {
             </div>
         </div>
 
-        <!-- Skeleton durante carregamento inicial -->
-        <div v-if="overviewLoading" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div
-                v-for="i in 4"
-                :key="i"
-                class="h-32 animate-pulse rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50 to-slate-100"
-            />
-        </div>
+        <RhidOverviewKpiCards
+            :loading="overviewLoading"
+            :interactive="true"
+            :overview-punch-rows-length="overviewPunchRowsLength"
+            :overview-punch-distinct="overviewPunchDistinct"
+            :overview-bank-numeric-rows-length="overviewBankNumericRowsLength"
+            :overview-bank-negative-count="overviewBankNegativeCount"
+            :overview-bank-avg-minutes="overviewBankAvgMinutes"
+            :overview-bank-avg-mom-delta-minutes="overviewBankAvgMomDeltaMinutes"
+            :overview-adherence-dias-calendario="overviewAdherenceDiasCalendario"
+            :overview-adherence-colabs="overviewAdherenceColabs"
+            :overview-adherence-dias-mom-delta="overviewAdherenceDiasMomDelta"
+            :overview-adherence-colabs-mom-delta="overviewAdherenceColabsMomDelta"
+            :overview-just-total="overviewJustTotal"
+            :overview-just-atestados="overviewJustAtestados"
+            :overview-just-total-mom-delta="overviewJustTotalMomDelta"
+            :overview-just-atestados-mom-delta="overviewJustAtestadosMomDelta"
+            :format-rhid-bank-balance-minutes="formatRhidBankBalanceMinutes"
+            @go-punches-adherence="emit('go-punches-adherence')"
+            @go-bank="emit('go-bank')"
+            @go-justifications="emit('go-justifications')"
+        />
 
-        <template v-else>
-            <!-- ============ Hero KPI cards ============ -->
-            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <!-- Card 1: Marcações -->
-                <button
-                    type="button"
-                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-700 via-talents-600 to-talents-500 p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-300 focus:ring-offset-2"
-                    @click="emit('go-punches-adherence')"
-                >
-                    <div
-                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl"
-                    />
-                    <div
-                        class="pointer-events-none absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-white/5 blur-xl"
-                    />
-                    <div class="relative z-10 flex items-start justify-between">
-                        <div>
-                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">Marcações RHID</p>
-                            <p class="mt-2 text-3xl font-bold tabular-nums">{{ overviewPunchRowsLength }}</p>
-                            <p class="mt-0.5 text-xs text-white/80">{{ overviewPunchDistinct }} colab. distintos</p>
-                        </div>
-                        <span
-                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition group-hover:bg-white/25"
-                        >
-                            <svg
-                                class="h-4 w-4"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .2.08.4.22.53l3 3a.75.75 0 101.06-1.06L10.75 9.69V5z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </span>
-                    </div>
-                    <p class="relative z-10 mt-3 text-[11px] font-medium text-white/85">
-                        Última leitura · aderência ao horário →
-                    </p>
-                </button>
-
-                <!-- Card 2: Banco de horas -->
-                <button
-                    type="button"
-                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-800 via-talents-700 to-talents-600 p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-300 focus:ring-offset-2"
-                    @click="emit('go-bank')"
-                >
-                    <div
-                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl"
-                    />
-                    <div class="relative z-10 flex items-start justify-between">
-                        <div>
-                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">
-                                Banco de horas (hoje)
-                            </p>
-                            <p
-                                class="mt-2 text-3xl font-bold tabular-nums"
-                                :class="overviewBankAvgIsNegative ? 'text-rose-200' : 'text-white'"
-                            >
-                                {{ overviewBankAvgHHmm }}
-                            </p>
-                            <p class="mt-0.5 text-xs text-white/80">
-                                Média de {{ overviewBankNumericRowsLength }} colaborador(es)
-                            </p>
-                        </div>
-                        <span
-                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition group-hover:bg-white/25"
-                        >
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                    d="M3 4a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 11a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3z"
-                                />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="relative z-10 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span
-                            v-if="trendBank"
-                            class="inline-flex items-center gap-1 text-[11px] font-semibold"
-                            :class="trendBank.cls"
-                        >
-                            <span>{{ trendBank.arrow }}</span>
-                            <span>{{ trendBank.txt }}</span>
-                            <span class="font-normal text-white/65">vs. mês anterior</span>
-                        </span>
-                        <span
-                            v-if="overviewBankNegativeCount > 0"
-                            class="inline-flex items-center gap-1 rounded-full bg-rose-500/30 px-2 py-0.5 text-[10px] font-medium text-rose-100"
-                        >
-                            {{ overviewBankNegativeCount }} negativos
-                        </span>
-                    </div>
-                </button>
-
-                <!-- Card 3: Aderência -->
-                <button
-                    type="button"
-                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-talents-500 via-talents-400 to-talents-accent p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-talents-300 focus:ring-offset-2"
-                    @click="emit('go-punches-adherence')"
-                >
-                    <div
-                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/15 blur-xl"
-                    />
-                    <div class="relative z-10 flex items-start justify-between">
-                        <div>
-                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/85">
-                                Aderência (mês)
-                            </p>
-                            <p class="mt-2 text-3xl font-bold tabular-nums">
-                                {{ overviewAdherenceDiasCalendario != null ? overviewAdherenceDiasCalendario : '—' }}
-                                <span class="text-base font-semibold text-white/85">dias</span>
-                            </p>
-                            <p class="mt-0.5 text-xs text-white/85">
-                                {{ overviewAdherenceColabs }} colab. com dados
-                            </p>
-                        </div>
-                        <span
-                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition group-hover:bg-white/30"
-                        >
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="relative z-10 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                        <span
-                            v-if="overviewAdherenceDiasMomDelta != null"
-                            class="inline-flex items-center gap-1 font-semibold"
-                            :class="trendInfo(overviewAdherenceDiasMomDelta).cls"
-                        >
-                            <span>{{ trendInfo(overviewAdherenceDiasMomDelta).arrow }}</span>
-                            {{ signedIntTxt(overviewAdherenceDiasMomDelta) }} dias
-                        </span>
-                        <span
-                            v-if="overviewAdherenceColabsMomDelta != null"
-                            class="inline-flex items-center gap-1 font-semibold"
-                            :class="trendInfo(overviewAdherenceColabsMomDelta).cls"
-                        >
-                            <span>{{ trendInfo(overviewAdherenceColabsMomDelta).arrow }}</span>
-                            {{ signedIntTxt(overviewAdherenceColabsMomDelta) }} colab.
-                        </span>
-                    </div>
-                </button>
-
-                <!-- Card 4: Justificativas -->
-                <button
-                    type="button"
-                    class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-amber-400 to-yellow-400 p-4 text-left text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-amber-200 focus:ring-offset-2"
-                    @click="emit('go-justifications')"
-                >
-                    <div
-                        class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/20 blur-xl"
-                    />
-                    <div class="relative z-10 flex items-start justify-between">
-                        <div>
-                            <p class="text-[11px] font-medium uppercase tracking-wider text-white/85">
-                                Justificativas
-                            </p>
-                            <p class="mt-2 text-3xl font-bold tabular-nums">
-                                {{ overviewJustTotal != null ? overviewJustTotal : '—' }}
-                            </p>
-                            <p class="mt-0.5 text-xs text-white/85">
-                                Atestados na 1ª pág.:
-                                <span class="font-semibold">
-                                    {{ overviewJustAtestados != null ? overviewJustAtestados : '—' }}
-                                </span>
-                            </p>
-                        </div>
-                        <span
-                            class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/25 text-white backdrop-blur-sm transition group-hover:bg-white/35"
-                        >
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M4 4a2 2 0 012-2h6.586A2 2 0 0114 2.586l3.414 3.414A2 2 0 0118 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm5 9a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0zm4 6a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0zm0-3a1 1 0 11-2 0 1 1 0 012 0z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </span>
-                    </div>
-                    <div class="relative z-10 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                        <span
-                            v-if="overviewJustTotalMomDelta != null"
-                            class="inline-flex items-center gap-1 font-semibold"
-                            :class="trendInfo(overviewJustTotalMomDelta, true).cls"
-                        >
-                            <span>{{ trendInfo(overviewJustTotalMomDelta, true).arrow }}</span>
-                            {{ signedIntTxt(overviewJustTotalMomDelta) }} total
-                        </span>
-                        <span
-                            v-if="overviewJustAtestadosMomDelta != null"
-                            class="inline-flex items-center gap-1 font-semibold"
-                            :class="trendInfo(overviewJustAtestadosMomDelta, true).cls"
-                        >
-                            <span>{{ trendInfo(overviewJustAtestadosMomDelta, true).arrow }}</span>
-                            {{ signedIntTxt(overviewJustAtestadosMomDelta) }} atest.
-                        </span>
-                    </div>
-                </button>
-            </div>
-
+        <template v-if="!overviewLoading">
             <!-- ============ Linha de gráficos ============ -->
             <div class="grid gap-3 lg:grid-cols-3">
                 <!-- Aderência radial -->

@@ -121,7 +121,7 @@ class Company extends Model
     }
 
     /**
-     * Metodologia Talents disponível quando a assinatura ativa inclui o módulo "metodologia" no plano.
+     * Direcionamento Estratégico disponível quando a assinatura ativa inclui o módulo "metodologia" no plano.
      */
     public function hasMethodologyEnabled(): bool
     {

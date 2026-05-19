@@ -9,11 +9,11 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Mail\UserInvitationMail;
 use App\Models\User;
+use App\Support\InvitationPassword;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -75,8 +75,8 @@ class AdminUserController extends Controller
 
         $mailMessage = 'Utilizador criado.';
         try {
-            $token = Password::broker()->createToken($user);
-            $resetUrl = route('password.reset', ['token' => $token]).'?email='.urlencode($user->email);
+            $token = InvitationPassword::createToken($user);
+            $resetUrl = InvitationPassword::setPasswordUrl($user, $token);
             Mail::to($user->email)->send(new UserInvitationMail($user, null, $resetUrl));
             $mailMessage = 'Utilizador criado. Foi enviado um e-mail com o link para definir a senha.';
         } catch (\Throwable $e) {

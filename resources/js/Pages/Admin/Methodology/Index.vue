@@ -13,14 +13,14 @@ const selectedStep = ref(2);
 </script>
 
 <template>
-    <Head title="Metodologia Talents" />
+    <Head title="Direcionamento Estratégico" />
 
     <AdminLayout>
         <template #header>
             <div>
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">Metodologia Talents</h2>
+                <h2 class="text-xl font-semibold leading-tight text-talents-900">Direcionamento Estratégico</h2>
                 <p class="mt-1 text-sm text-gray-600">
-                    Templates editáveis e empresas cujo <strong>plano</strong> inclui o módulo Metodologia Talents.
+                    Templates editáveis e empresas cujo <strong>plano</strong> inclui o módulo Direcionamento Estratégico.
                 </p>
             </div>
         </template>
@@ -31,7 +31,7 @@ const selectedStep = ref(2);
                 <div v-if="selectedStep === 2" class="space-y-6">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="rounded-xl border border-talents-200 bg-white p-5 shadow-sm">
-                            <p class="text-sm text-gray-500">Empresas com plano + módulo Metodologia</p>
+                            <p class="text-sm text-gray-500">Empresas com plano + módulo Direcionamento Estratégico</p>
                             <p class="mt-1 text-3xl font-bold text-talents-700">{{ stats.companies_with_methodology }}</p>
                         </div>
                         <div class="rounded-xl border border-talents-200 bg-white p-5 shadow-sm">
@@ -72,7 +72,7 @@ const selectedStep = ref(2);
                 </div>
                 <div v-else class="rounded-xl border border-dashed border-talents-200 bg-white/60 p-10 text-center">
                     <p class="text-lg font-medium text-talents-900">Etapa em desenvolvimento</p>
-                    <p class="mt-2 text-sm text-gray-600">Em breve você poderá configurar e acompanhar esta fase da metodologia aqui.</p>
+                    <p class="mt-2 text-sm text-gray-600">Em breve você poderá configurar e acompanhar esta fase do direcionamento estratégico aqui.</p>
                 </div>
             </div>
         </div>

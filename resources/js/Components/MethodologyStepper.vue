@@ -1,6 +1,6 @@
 <script setup>
 /**
- * Stepper horizontal — Metodologia Talents (5 etapas).
+ * Stepper horizontal — Direcionamento Estratégico (5 etapas).
  * Icones estilo Heroicons (outline), cores palette talents.
  */
 defineProps({

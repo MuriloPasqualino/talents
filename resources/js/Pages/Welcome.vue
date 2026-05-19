@@ -237,9 +237,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                             </p>
                         </div>
                         <div class="surface-card-soft p-6">
-                            <h3 class="text-lg font-semibold text-slate-900">Metodologia e calendário</h3>
+                            <h3 class="text-lg font-semibold text-slate-900">Direcionamento Estratégico e calendário</h3>
                             <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                                Conteúdo de capacitação, metodologia aplicável por empresa e calendário estratégico para organizar o
+                                Conteúdo de capacitação, jornada de direcionamento estratégico por empresa e calendário estratégico para organizar o
                                 ciclo ao longo do ano.
                             </p>
                         </div>

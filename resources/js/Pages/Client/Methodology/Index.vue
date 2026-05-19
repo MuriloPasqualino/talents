@@ -12,12 +12,12 @@ const selectedStep = ref(2);
 </script>
 
 <template>
-    <Head title="Metodologia Talents" />
+    <Head title="Direcionamento Estratégico" />
 
     <ClientLayout>
         <template #header>
             <div>
-                <h2 class="text-xl font-semibold leading-tight text-talents-900">Metodologia Talents</h2>
+                <h2 class="text-xl font-semibold leading-tight text-talents-900">Direcionamento Estratégico</h2>
                 <p class="mt-1 text-sm text-gray-600">Acompanhe as etapas da jornada de diagnóstico e engajamento.</p>
             </div>
         </template>
@@ -97,7 +97,7 @@ const selectedStep = ref(2);
                         </svg>
                     </div>
                     <p class="mt-4 text-lg font-medium text-talents-900">Etapa em desenvolvimento</p>
-                    <p class="mt-2 text-sm text-gray-600">Estamos preparando esta fase da Metodologia Talents.</p>
+                    <p class="mt-2 text-sm text-gray-600">Estamos preparando esta fase do Direcionamento Estratégico.</p>
                 </div>
             </div>
         </div>

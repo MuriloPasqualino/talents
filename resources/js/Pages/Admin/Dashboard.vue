@@ -8,6 +8,7 @@ import Modal from '@/Components/Modal.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { useDashboardGreeting } from '@/composables/useDashboardGreeting';
 import { daysFromToday, formatDateLong, formatDateShort } from '@/utils/dateOnly';
+import RhidPortfolioSection from '@/Components/Admin/RhidPortfolioSection.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -554,6 +555,8 @@ const leadWhatsappUrl = computed(() => {
                 </div>
             </div>
         </div>
+
+        <RhidPortfolioSection />
 
         <Modal :show="showCalendarModal" max-width="2xl" @close="showCalendarModal = false">
             <div class="dashboard-accent-dark !rounded-lg text-white">

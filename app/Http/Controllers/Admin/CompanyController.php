@@ -12,13 +12,13 @@ use App\Models\Subscription;
 use App\Models\SurveyTemplate;
 use App\Models\User;
 use App\Services\ReceitaWsService;
+use App\Support\InvitationPassword;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -42,9 +42,16 @@ class CompanyController extends Controller
 
         $companies = $q->paginate(15)->withQueryString();
 
+        $rhidConfiguredIds = Company::query()
+            ->whereNotNull('rhid_email')
+            ->whereNotNull('rhid_password')
+            ->pluck('id')
+            ->all();
+
         return Inertia::render('Admin/Companies/Index', [
             'companies' => $companies,
             'filters' => $request->only(['search']),
+            'rhidConfiguredIds' => $rhidConfiguredIds,
         ]);
     }
 
@@ -140,8 +147,8 @@ class CompanyController extends Controller
         $mailMessage = ' Empresa criada. O primeiro administrador da empresa receberá um e-mail com o link para definir a senha e acessar o portal.';
 
         try {
-            $token = Password::broker()->createToken($adminUser);
-            $resetUrl = route('password.reset', ['token' => $token]).'?email='.urlencode($adminUser->email);
+            $token = InvitationPassword::createToken($adminUser);
+            $resetUrl = InvitationPassword::setPasswordUrl($adminUser, $token);
 
             Mail::to($adminUser->email)->send(new CompanyAdminInvitationMail($adminUser, $company, $resetUrl));
         } catch (\Throwable $e) {
@@ -164,6 +171,7 @@ class CompanyController extends Controller
 
         return Inertia::render('Admin/Companies/Show', [
             'company' => $company,
+            'rhidConfigured' => $company->rhidConfigured(),
             'planIncludesMetodologia' => $company->hasMethodologyEnabled(),
             'complaintsPublicUrl' => $company->complaints_public_token
                 ? url('/denuncia/'.$company->complaints_public_token)
@@ -282,13 +290,13 @@ class CompanyController extends Controller
     {
         $company->surveyTemplates()->syncWithoutDetaching([$template->id]);
 
-        return back()->with('success', 'Template vinculado à empresa.');
+        return back()->with('success', 'Mapeamento vinculado à empresa.');
     }
 
     public function detachTemplate(Company $company, SurveyTemplate $template): RedirectResponse
     {
         $company->surveyTemplates()->detach($template->id);
 
-        return back()->with('success', 'Template removido.');
+        return back()->with('success', 'Mapeamento desvinculado da empresa.');
     }
 }

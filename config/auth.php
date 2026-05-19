@@ -96,7 +96,18 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => 60,
+            'expire' => (int) env('AUTH_PASSWORD_RESET_EXPIRE_MINUTES', 60),
+            'throttle' => 60,
+        ],
+
+        /*
+        | Convites (admin da empresa, usuários convidados): link para definir senha
+        | sem expiração por tempo — válido até o primeiro uso.
+        */
+        'invitations' => [
+            'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'repository' => 'non_expiring',
             'throttle' => 60,
         ],
     ],

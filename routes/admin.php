@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\MethodologyController as AdminMethodologyControll
 use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PlatformCompanyController;
+use App\Http\Controllers\Admin\RhidPortfolioController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
@@ -44,6 +45,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::middleware('admin.can:dashboard')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        Route::get('rhid/portfolio-metrics', [RhidPortfolioController::class, 'portfolioMetrics'])
+            ->name('rhid.portfolio-metrics');
     });
 
     Route::middleware('admin.can:empresa_talents')->group(function () {
@@ -71,6 +74,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     });
 
     Route::middleware('admin.can:companies')->group(function () {
+        Route::get('companies/{company}/rhid-metrics', [RhidPortfolioController::class, 'companyMetrics'])
+            ->name('companies.rhid-metrics');
         Route::get('companies/lookup-cnpj', [CompanyController::class, 'lookupCnpj'])->name('companies.lookup-cnpj');
         Route::get('companies/{company}/surveys/{survey}/action-plan', [ActionPlanAdminController::class, 'edit'])
             ->name('companies.surveys.action-plan.edit');

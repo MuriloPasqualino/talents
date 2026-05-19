@@ -6,7 +6,7 @@ defineProps({ templates: Object });
 </script>
 
 <template>
-    <Head title="Templates Metodologia" />
+    <Head title="Templates — Direcionamento Estratégico" />
 
     <AdminLayout>
         <template #header>

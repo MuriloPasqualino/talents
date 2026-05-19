@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auth\NonExpiringDatabaseTokenRepository;
 use App\Models\MailSetting;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
@@ -9,6 +10,7 @@ use App\Models\TaskComment;
 use App\Policies\TaskBoardPolicy;
 use App\Policies\TaskCardPolicy;
 use App\Policies\TaskCommentPolicy;
+use Illuminate\Auth\Passwords\PasswordBrokerManager;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -24,7 +26,31 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->extend('auth.password', function (PasswordBrokerManager $manager, $app) {
+            return new class($app) extends PasswordBrokerManager
+            {
+                protected function createTokenRepository(array $config)
+                {
+                    if (($config['repository'] ?? null) !== 'non_expiring') {
+                        return parent::createTokenRepository($config);
+                    }
+
+                    $key = $this->app['config']['app.key'];
+                    if (str_starts_with($key, 'base64:')) {
+                        $key = base64_decode(substr($key, 7));
+                    }
+
+                    return new NonExpiringDatabaseTokenRepository(
+                        $this->app['db']->connection($config['connection'] ?? null),
+                        $this->app['hash'],
+                        $config['table'],
+                        $key,
+                        expires: PHP_INT_MAX,
+                        throttle: $config['throttle'] ?? 0,
+                    );
+                }
+            };
+        });
     }
 
     /**

@@ -76,7 +76,7 @@ class SurveyTemplateController extends Controller
             }
         });
 
-        return redirect()->route('admin.survey-templates.index')->with('success', 'Template criado.');
+        return redirect()->route('admin.survey-templates.index')->with('success', 'Mapeamento criado.');
     }
 
     public function show(SurveyTemplate $surveyTemplate): Response
@@ -143,13 +143,13 @@ class SurveyTemplateController extends Controller
             }
         });
 
-        return redirect()->route('admin.survey-templates.index')->with('success', 'Template atualizado.');
+        return redirect()->route('admin.survey-templates.index')->with('success', 'Mapeamento atualizado.');
     }
 
     public function destroy(SurveyTemplate $surveyTemplate): RedirectResponse
     {
         $surveyTemplate->delete();
 
-        return redirect()->route('admin.survey-templates.index')->with('success', 'Template removido.');
+        return redirect()->route('admin.survey-templates.index')->with('success', 'Mapeamento removido.');
     }
 }

@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Company;
+use App\Services\Rhid\RhidAdminPortfolioMetricsService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class RhidPortfolioController extends Controller
+{
+    public function portfolioMetrics(Request $request, RhidAdminPortfolioMetricsService $metrics): JsonResponse
+    {
+        $refresh = $request->boolean('refresh');
+        $segment = $request->filled('segment') ? $request->string('segment')->toString() : null;
+
+        $data = $metrics->portfolioMetrics($request->user(), $refresh, $segment);
+
+        return response()->json($data);
+    }
+
+    public function companyMetrics(Request $request, Company $company, RhidAdminPortfolioMetricsService $metrics): JsonResponse
+    {
+        $refresh = $request->boolean('refresh');
+
+        return response()->json(
+            $metrics->metricsForCompany($company, $request->user(), $refresh),
+        );
+    }
+}

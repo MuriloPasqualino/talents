@@ -30,8 +30,8 @@ class TalentsSeeder extends Seeder
         $metodologia = Module::query()->firstOrCreate(
             ['key' => Module::KEY_METODOLOGIA],
             [
-                'name' => 'Metodologia Talents',
-                'description' => 'Jornada de diagnóstico, pesquisa de satisfação e etapas da metodologia.',
+                'name' => 'Direcionamento Estratégico',
+                'description' => 'Jornada de diagnóstico, pesquisa de satisfação e etapas do direcionamento estratégico.',
             ]
         );
 

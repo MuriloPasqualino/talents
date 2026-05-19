@@ -62,7 +62,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Editar template Metodologia" />
+    <Head title="Editar template — Direcionamento Estratégico" />
 
     <AdminLayout>
         <template #header>

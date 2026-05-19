@@ -30,7 +30,7 @@ const submit = () => {
 
         <form class="surface-card max-w-xl space-y-4 p-6" @submit.prevent="submit">
             <div>
-                <InputLabel for="survey_template_id" value="Template" />
+                <InputLabel for="survey_template_id" value="Mapeamento" />
                 <select
                     id="survey_template_id"
                     v-model="form.survey_template_id"

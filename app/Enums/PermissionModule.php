@@ -23,7 +23,7 @@ enum PermissionModule: string
             self::Pesquisas => 'Pesquisas NR1',
             self::PlanosAcao => 'Planos de ação',
             self::Denuncias => 'Denúncias',
-            self::Metodologia => 'Metodologia Talents',
+            self::Metodologia => 'Direcionamento Estratégico',
             self::CalendarioEstrategico => 'Calendário estratégico',
             self::Rhid => 'RHID / Ponto',
             self::DepartamentosCargos => 'Setores e cargos',

@@ -1,4 +1,5 @@
 <script setup>
+import RhidMetricsCard from '@/Components/Admin/Companies/RhidMetricsCard.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
@@ -8,6 +9,7 @@ import { ref } from 'vue';
 
 const props = defineProps({
     company: Object,
+    rhidConfigured: { type: Boolean, default: false },
     planIncludesMetodologia: { type: Boolean, default: false },
     complaintsPublicUrl: { type: String, default: null },
     plans: Array,
@@ -84,10 +86,14 @@ const deleteCompany = () => {
             </div>
         </div>
 
+        <div class="mt-8 grid gap-6 lg:grid-cols-2">
+            <RhidMetricsCard :company-id="company.id" :rhid-configured="rhidConfigured" />
+        </div>
+
         <div class="mt-8 rounded-xl border border-talents-200 bg-white p-6 text-gray-900 shadow-sm">
-            <h3 class="font-semibold text-talents-700">Metodologia Talents</h3>
+            <h3 class="font-semibold text-talents-700">Direcionamento Estratégico</h3>
             <p class="mt-2 text-sm text-gray-600">
-                O acesso no portal da empresa é definido pelo <strong>plano</strong>: inclua o módulo <strong>Metodologia Talents</strong> em
+                O acesso no portal da empresa é definido pelo <strong>plano</strong>: inclua o módulo <strong>Direcionamento Estratégico</strong> em
                 <Link :href="route('admin.plans.index')" class="font-medium text-talents-700 hover:underline">Planos</Link>
                 (assinatura ativa).
             </p>
@@ -95,7 +101,7 @@ const deleteCompany = () => {
                 class="mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
                 :class="planIncludesMetodologia ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-900'"
             >
-                {{ planIncludesMetodologia ? 'Plano ativo inclui Metodologia Talents.' : 'Plano ativo não inclui Metodologia Talents — ajuste o plano da empresa.' }}
+                {{ planIncludesMetodologia ? 'Plano ativo inclui Direcionamento Estratégico.' : 'Plano ativo não inclui Direcionamento Estratégico — ajuste o plano da empresa.' }}
             </p>
 
             <h4 class="mt-6 text-sm font-semibold text-gray-800">Templates de satisfação (etapa 02)</h4>
@@ -121,12 +127,12 @@ const deleteCompany = () => {
                         </button>
                     </span>
                 </li>
-                <li v-if="!methodologyTemplates.length" class="text-gray-500">Nenhum template cadastrado. Crie em Admin → Metodologia → Templates.</li>
+                <li v-if="!methodologyTemplates.length" class="text-gray-500">Nenhum template cadastrado. Crie em Admin → Direcionamento Estratégico → Templates.</li>
             </ul>
         </div>
 
         <div class="mt-8 surface-card p-6 text-slate-900">
-            <h3 class="font-semibold text-talents-700">Templates disponíveis para a empresa</h3>
+            <h3 class="font-semibold text-talents-700">Mapeamentos disponíveis para a empresa</h3>
             <ul class="mt-4 space-y-2 text-sm">
                 <li v-for="t in templates" :key="t.id" class="flex items-center justify-between">
                     <span>{{ t.title }}</span>

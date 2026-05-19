@@ -86,7 +86,7 @@ const { canAdmin } = useAdminPermissions();
                 :href="route('admin.survey-templates.index')"
                 :active="route().current('admin.survey-templates.*')"
                 :icon="DocumentDuplicateIcon"
-                label="Templates NR1"
+                label="MAPEAMENTOS"
                 :collapsed="collapsed"
             />
             <SidebarNavItem
@@ -97,7 +97,7 @@ const { canAdmin } = useAdminPermissions();
                     route().current('admin.methodology-templates.*')
                 "
                 :icon="BeakerIcon"
-                label="Metodologia"
+                label="Direcionamento Estratégico"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

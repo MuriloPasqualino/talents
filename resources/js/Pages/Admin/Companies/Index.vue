@@ -7,7 +7,12 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 const props = defineProps({
     companies: Object,
     filters: Object,
+    rhidConfiguredIds: { type: Array, default: () => [] },
 });
+
+const rhidIdSet = new Set(props.rhidConfiguredIds.map((id) => Number(id)));
+
+const isRhidConfigured = (companyId) => rhidIdSet.has(Number(companyId));
 
 const form = useForm({
     search: props.filters?.search ?? '',
@@ -47,6 +52,7 @@ const submit = () => {
                         <th class="px-4 py-3 text-left font-medium text-gray-700">CNPJ</th>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Segmento</th>
                         <th class="px-4 py-3 text-left font-medium text-gray-700">Ativa</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-700">RHID</th>
                         <th class="px-4 py-3"></th>
                     </tr>
                 </thead>
@@ -56,6 +62,15 @@ const submit = () => {
                         <td class="px-4 py-3">{{ c.cnpj || '—' }}</td>
                         <td class="px-4 py-3">{{ c.segment || '—' }}</td>
                         <td class="px-4 py-3">{{ c.is_active ? 'Sim' : 'Não' }}</td>
+                        <td class="px-4 py-3">
+                            <span
+                                v-if="isRhidConfigured(c.id)"
+                                class="inline-flex rounded-full bg-talents-100 px-2 py-0.5 text-[11px] font-semibold text-talents-800 ring-1 ring-talents-200"
+                            >
+                                Configurado
+                            </span>
+                            <span v-else class="text-xs text-gray-400">—</span>
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
                         </td>

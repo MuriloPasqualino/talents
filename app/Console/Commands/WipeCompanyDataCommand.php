@@ -145,7 +145,7 @@ class WipeCompanyDataCommand extends Command
             $counts['  → audit logs (complaint_audit_logs)'] = DB::table('complaint_audit_logs')->whereIn('complaint_id', $complaintIds)->count();
         }
 
-        $counts['Pesquisas Metodologia (methodology_surveys)'] = $methSurveyIds->count();
+        $counts['Pesquisas Direcionamento Estratégico (methodology_surveys)'] = $methSurveyIds->count();
         if ($methSurveyIds->isNotEmpty()) {
             $methRespIds = DB::table('methodology_survey_responses')->whereIn('methodology_survey_id', $methSurveyIds)->pluck('id');
             $counts['  → respostas (methodology_survey_responses)'] = $methRespIds->count();
@@ -153,7 +153,7 @@ class WipeCompanyDataCommand extends Command
                 ? DB::table('methodology_survey_answers')->whereIn('methodology_survey_response_id', $methRespIds)->count()
                 : 0;
         }
-        $counts['Vínculo metodologia (company_methodology)'] = DB::table('company_methodology')->where('company_id', $companyId)->count();
+        $counts['Vínculo direcionamento estratégico (company_methodology)'] = DB::table('company_methodology')->where('company_id', $companyId)->count();
         $counts['Pivot company_methodology_form_template'] = DB::table('company_methodology_form_template')->where('company_id', $companyId)->count();
         $counts['Pivot company_survey_template'] = DB::table('company_survey_template')->where('company_id', $companyId)->count();
 

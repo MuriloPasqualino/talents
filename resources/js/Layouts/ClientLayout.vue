@@ -62,7 +62,7 @@ import {
                 :href="route('client.metodologia.index')"
                 :active="route().current('client.metodologia.*')"
                 :icon="RocketLaunchIcon"
-                label="Metodologia Talents"
+                label="Direcionamento Estratégico"
                 :collapsed="collapsed"
             />
             <SidebarNavItem
