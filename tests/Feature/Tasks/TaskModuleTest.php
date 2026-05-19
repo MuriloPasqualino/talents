@@ -597,6 +597,33 @@ class TaskModuleTest extends TestCase
         $this->assertSame(3, $board->lists()->count());
     }
 
+    public function test_admin_can_update_board_cover_color(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro com capa',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/quadros/'.$board->id, [
+                'cover_color' => '#6366f1',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('#6366f1', $board->fresh()->cover_color);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/quadros/'.$board->id, [
+                'cover_color' => null,
+            ])
+            ->assertRedirect();
+
+        $this->assertNull($board->fresh()->cover_color);
+    }
+
     public function test_admin_boards_index_lists_boards(): void
     {
         $admin = User::factory()->superAdmin()->create();

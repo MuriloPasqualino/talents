@@ -151,16 +151,35 @@ class TaskBoardController extends Controller
     public function update(Request $request, TaskBoard $board): RedirectResponse
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'cover_color' => ['sometimes', 'nullable', 'string', 'max:32'],
         ]);
 
-        $board->update([
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-        ]);
+        $payload = [];
 
-        return back()->with('success', 'Nome do quadro atualizado.');
+        if (array_key_exists('name', $data)) {
+            $payload['name'] = $data['name'];
+        }
+
+        if (array_key_exists('description', $data)) {
+            $payload['description'] = $data['description'];
+        }
+
+        if (array_key_exists('cover_color', $data)) {
+            $cover = $data['cover_color'] !== null ? trim($data['cover_color']) : null;
+            $payload['cover_color'] = ($cover === '' || $cover === null) ? null : $cover;
+        }
+
+        if ($payload !== []) {
+            $board->update($payload);
+        }
+
+        $message = array_key_exists('cover_color', $data)
+            ? 'Quadro atualizado.'
+            : 'Nome do quadro atualizado.';
+
+        return back()->with('success', $message);
     }
 
     public function destroy(TaskBoard $board): RedirectResponse

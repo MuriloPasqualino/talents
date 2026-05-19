@@ -1,6 +1,8 @@
 <script setup>
+import ColorPresetPicker from '@/Components/Tasks/ColorPresetPicker.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import {
+    PaintBrushIcon,
     PencilSquareIcon,
     StarIcon as StarOutlineIcon,
     TrashIcon,
@@ -23,10 +25,12 @@ const isStarred = ref(Boolean(props.boardPayload?.is_starred));
 const inviting = ref(false);
 const inviteUserId = ref(null);
 const editingName = ref(false);
+const editingCover = ref(false);
 
 const boardForm = useForm({
     name: props.boardPayload?.name || '',
     description: props.boardPayload?.description || '',
+    cover_color: props.boardPayload?.cover_color || '',
 });
 
 watch(
@@ -34,6 +38,7 @@ watch(
     (val) => {
         boardForm.name = val?.name || '';
         boardForm.description = val?.description || '';
+        boardForm.cover_color = val?.cover_color || '';
     },
     { deep: true },
 );
@@ -129,14 +134,36 @@ function removeMember(userId) {
     );
 }
 
-function saveBoardName() {
-    if (!props.isAdmin) return;
-    boardForm.patch(route('admin.tarefas.quadros.update', props.boardPayload.id), {
+function patchBoard(fields) {
+    if (!props.isAdmin) {
+        return;
+    }
+
+    router.patch(route('admin.tarefas.quadros.update', props.boardPayload.id), fields, {
         preserveScroll: true,
-        onSuccess: () => {
-            editingName.value = false;
-            emit('refresh');
-        },
+        onSuccess: () => emit('refresh'),
+    });
+}
+
+function saveBoardName() {
+    if (!props.isAdmin) {
+        return;
+    }
+    patchBoard({
+        name: boardForm.name,
+        description: boardForm.description || null,
+    });
+    editingName.value = false;
+}
+
+function saveCoverColor(color) {
+    if (!props.isAdmin) {
+        return;
+    }
+    boardForm.cover_color = color || '';
+    patchBoard({
+        name: props.boardPayload.name,
+        cover_color: color || null,
     });
 }
 
@@ -159,9 +186,16 @@ function deleteBoard() {
 </script>
 
 <template>
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 shadow-sm ring-1 ring-slate-200 backdrop-blur">
-        <div class="flex min-w-0 items-center gap-2">
-            <template v-if="editingName && isAdmin">
+    <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2 shadow-sm ring-1 ring-slate-200 backdrop-blur">
+            <div class="flex min-w-0 items-center gap-2">
+                <span
+                    v-if="boardPayload.cover_color"
+                    class="hidden h-8 w-1 shrink-0 rounded-full sm:inline-block"
+                    :style="{ backgroundColor: boardPayload.cover_color }"
+                    title="Cor de capa"
+                />
+                <template v-if="editingName && isAdmin">
                 <form class="flex items-center gap-2" @submit.prevent="saveBoardName">
                     <input
                         v-model="boardForm.name"
@@ -193,9 +227,20 @@ function deleteBoard() {
                 type="button"
                 class="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
                 title="Alterar nome do quadro"
-                @click="editingName = true"
+                @click="editingName = true; editingCover = false"
             >
                 <PencilSquareIcon class="h-4 w-4" />
+            </button>
+
+            <button
+                v-if="isAdmin && !editingName"
+                type="button"
+                class="rounded-md p-1 transition"
+                :class="editingCover ? 'bg-talents-100 text-talents-700' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'"
+                title="Cor de capa do quadro"
+                @click="editingCover = !editingCover; editingName = false"
+            >
+                <PaintBrushIcon class="h-4 w-4" />
             </button>
 
             <button
@@ -349,5 +394,18 @@ function deleteBoard() {
                 </div>
             </div>
         </Teleport>
+        </div>
+
+        <div
+            v-if="isAdmin && editingCover"
+            class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+        >
+            <ColorPresetPicker
+                :model-value="boardForm.cover_color"
+                label="Cor de capa do quadro"
+                hint="A cor aparece na listagem de quadros e na faixa ao lado do título."
+                @update:model-value="saveCoverColor"
+            />
+        </div>
     </div>
 </template>
