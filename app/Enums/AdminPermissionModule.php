@@ -27,7 +27,7 @@ enum AdminPermissionModule: string
             self::LandingInterest => 'Interessados',
             self::Companies => 'Empresas',
             self::Plans => 'Planos',
-            self::SurveyTemplates => 'MAPEAMENTOS',
+            self::SurveyTemplates => 'Mapeamentos',
             self::Methodology => 'Direcionamento Estratégico',
             self::StrategicCalendar => 'Calendário estratégico',
             self::Tarefas => 'Tarefas',

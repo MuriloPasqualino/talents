@@ -87,7 +87,7 @@ const { canAdmin } = useAdminPermissions();
                 :href="route('admin.survey-templates.index')"
                 :active="route().current('admin.survey-templates.*')"
                 :icon="DocumentDuplicateIcon"
-                label="MAPEAMENTOS"
+                label="Mapeamentos"
                 :collapsed="collapsed"
             />
             <SidebarNavItem
