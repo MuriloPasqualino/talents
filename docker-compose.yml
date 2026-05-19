@@ -75,7 +75,7 @@ services:
       - .env
     environment:
       CONTAINER_ROLE: queue
-    command: php artisan queue:work --sleep=3 --tries=3
+    command: php artisan queue:work --sleep=3 --tries=1 --timeout=1800 --memory=512
     volumes:
       - ./:/var/www/html
     networks:

@@ -30,7 +30,7 @@ FROM php:8.3-fpm-alpine AS php
 
 RUN apk add --no-cache \
     git curl zip unzip libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev \
-    oniguruma-dev postgresql-dev icu-dev \
+    oniguruma-dev postgresql-dev icu-dev ffmpeg \
     linux-headers $PHPIZE_DEPS \
     && docker-php-ext-configure intl \
     && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql bcmath intl opcache mbstring \

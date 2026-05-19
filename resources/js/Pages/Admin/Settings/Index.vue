@@ -20,6 +20,7 @@ const aiForm = useForm({
     provider: props.aiSettings.provider,
     model: props.aiSettings.model,
     api_key: '',
+    openai_transcription_api_key: '',
     is_enabled: props.aiSettings.is_enabled,
     max_tokens: props.aiSettings.max_tokens,
     temperature: props.aiSettings.temperature,
@@ -64,6 +65,18 @@ const testConnection = () => {
             api_key: aiForm.api_key || null,
             max_tokens: aiForm.max_tokens,
             temperature: aiForm.temperature,
+        },
+        { preserveScroll: true },
+    );
+};
+
+const testTranscription = () => {
+    router.post(
+        route('admin.settings.ai.test-transcription'),
+        {
+            provider: aiForm.provider,
+            api_key: aiForm.api_key || null,
+            openai_transcription_api_key: aiForm.openai_transcription_api_key || null,
         },
         { preserveScroll: true },
     );
@@ -200,6 +213,27 @@ const setTab = (name) => {
                 />
                 <p v-if="aiSettings.api_key_set" class="mt-1 text-xs text-gray-500">Uma chave já está salva (criptografada).</p>
             </div>
+            <div v-if="aiForm.provider === 'anthropic'">
+                <InputLabel for="openai_transcription_api_key" value="Chave OpenAI para transcrição (Whisper)" />
+                <TextInput
+                    id="openai_transcription_api_key"
+                    v-model="aiForm.openai_transcription_api_key"
+                    type="password"
+                    class="mt-1 block w-full"
+                    autocomplete="off"
+                    :placeholder="
+                        aiSettings.openai_transcription_api_key_set
+                            ? 'Deixe em branco para manter a chave atual'
+                            : 'Obrigatória para transcrever entrevistas em áudio'
+                    "
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                    A Anthropic não oferece transcrição de áudio. Use uma chave OpenAI dedicada ao Whisper.
+                </p>
+            </div>
+            <div v-else class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Com provedor OpenAI, a mesma chave da API acima é usada para transcrição (Whisper) nas entrevistas.
+            </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <InputLabel for="max_tokens" value="Máx. tokens (resposta)" />
@@ -226,6 +260,9 @@ const setTab = (name) => {
             <div class="flex flex-wrap gap-3">
                 <PrimaryButton :disabled="aiForm.processing">Salvar Mia</PrimaryButton>
                 <SecondaryButton type="button" :disabled="aiForm.processing" @click="testConnection">Testar conexão</SecondaryButton>
+                <SecondaryButton type="button" :disabled="aiForm.processing" @click="testTranscription">
+                    Testar transcrição
+                </SecondaryButton>
             </div>
         </form>
 

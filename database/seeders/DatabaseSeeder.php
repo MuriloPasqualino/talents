@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             TalentsSeeder::class,
             MethodologyFormTemplateSeeder::class,
             CommercialSellersSeeder::class,
+            InterviewQuestionnaireSeeder::class,
         ]);
 
         try {

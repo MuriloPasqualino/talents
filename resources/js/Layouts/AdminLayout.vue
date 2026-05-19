@@ -22,6 +22,7 @@ import {
     HomeIcon,
     UserCircleIcon,
     UsersIcon,
+    MicrophoneIcon,
 } from '@heroicons/vue/24/outline';
 
 const { canAdmin } = useAdminPermissions();
@@ -138,6 +139,14 @@ const { canAdmin } = useAdminPermissions();
                 :active="route().current('admin.solides.*')"
                 :icon="DocumentTextIcon"
                 label="Sólides — Currículos"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="canAdmin('entrevistas')"
+                :href="route('admin.entrevistas.index')"
+                :active="route().current('admin.entrevistas.*')"
+                :icon="MicrophoneIcon"
+                label="Entrevistas (IA)"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

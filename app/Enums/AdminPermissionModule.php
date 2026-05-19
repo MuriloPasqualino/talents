@@ -18,6 +18,7 @@ enum AdminPermissionModule: string
     case Settings = 'settings';
     case Training = 'training';
     case Equipe = 'equipe';
+    case Entrevistas = 'entrevistas';
 
     public function label(): string
     {
@@ -36,6 +37,7 @@ enum AdminPermissionModule: string
             self::Settings => 'Configurações',
             self::Training => 'Capacitação',
             self::Equipe => 'Equipe',
+            self::Entrevistas => 'Entrevistas (IA)',
         };
     }
 
@@ -59,6 +61,7 @@ enum AdminPermissionModule: string
             self::Settings,
             self::Training,
             self::Equipe,
+            self::Entrevistas,
         ];
     }
 }

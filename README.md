@@ -88,6 +88,27 @@ Chaves de API e senhas SMTP são guardadas **criptografadas** com a `APP_KEY`. S
 docker compose exec app php artisan app:check-encryption
 ```
 
+### Módulo Entrevistas (IA)
+
+Painel admin em **`/admin/entrevistas`**: upload de gravação de entrevista (até ~500 MB / ~1 h), transcrição via **OpenAI Whisper** e relatório estruturado pelas perguntas do roteiro (PDF + DOCX).
+
+**Requisitos**
+
+- **ffmpeg** no container PHP (já incluído no `docker/Dockerfile`).
+- **Fila Redis** ativa (`queue` no compose) — o processamento roda em background (`ProcessInterviewAudioJob`, timeout 30 min).
+- **Configurações → Mia (IA):** IA habilitada + chave do provedor de análise (OpenAI ou Anthropic). Para transcrição: com OpenAI, a mesma chave; com Anthropic, informe também a chave OpenAI dedicada (Whisper).
+- Após `migrate`, o seeder `InterviewQuestionnaireSeeder` cria o roteiro padrão com as 7 seções do processo seletivo Talents.
+
+**Variáveis opcionais (`.env`)**
+
+- `INTERVIEW_MAX_UPLOAD_MB` (padrão 500)
+- `INTERVIEW_KEEP_AUDIO` (padrão `true` — manter arquivo após processar)
+- `INTERVIEW_WHISPER_MODEL` (padrão `whisper-1`)
+
+**Produção (Coolify):** o volume `talents_storage` monta `storage/` (inclui áudios em `storage/app/private/interviews`). Nginx e PHP aceitam uploads até 512 MB.
+
+**Permissão admin:** módulo `entrevistas` — concedida automaticamente aos super admins não-owner na migration; owners têm acesso total.
+
 ### Usuários de demonstração (após `migrate --seed`)
 
 | Perfil | E-mail | Senha |
@@ -104,6 +125,7 @@ Use `docker-compose.prod.yml` no Coolify. Variáveis de ambiente e segredos fica
 - `/` — Landing
 - `/login` — Autenticação (cadastro público desativado)
 - `/admin/*` — Painel Talents (super admin)
+- `/admin/entrevistas` — Entrevistas por áudio (IA): upload, transcrição e relatório
 - `/client/*` — Painel da empresa
 - `/pesquisa/{token}` — Pesquisa anônima (link da campanha)
 - `/denuncia/{token}` — Canal de denúncia da empresa (token público)

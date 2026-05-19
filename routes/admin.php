@@ -39,6 +39,9 @@ use App\Http\Controllers\Admin\Tasks\TaskBoardListController;
 use App\Http\Controllers\Admin\Tasks\TaskBoardMemberController;
 use App\Http\Controllers\Admin\Tasks\TemplateCardController as TasksTemplateCardController;
 use App\Http\Controllers\Admin\Tasks\TemplateListController as TasksTemplateListController;
+use App\Http\Controllers\Admin\Entrevistas\InterviewController;
+use App\Http\Controllers\Admin\Entrevistas\InterviewQuestionnaireController;
+use App\Http\Controllers\Admin\Entrevistas\InterviewReportController;
 use App\Http\Controllers\Admin\TrainingController as AdminTrainingController;
 use Illuminate\Support\Facades\Route;
 
@@ -108,6 +111,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings/ai', [AiSettingsController::class, 'update'])->name('settings.ai.update');
         Route::post('settings/ai/test', [AiSettingsController::class, 'test'])->name('settings.ai.test');
+        Route::post('settings/ai/test-transcription', [AiSettingsController::class, 'testTranscription'])->name('settings.ai.test-transcription');
         Route::put('settings/solides', [SolidesSettingsController::class, 'update'])->name('settings.solides.update');
         Route::post('settings/solides/test', [SolidesSettingsController::class, 'test'])->name('settings.solides.test');
         Route::put('settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
@@ -210,6 +214,20 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::post('quadros/{board}/membros', [TaskBoardMemberController::class, 'store'])->name('quadros.membros.store');
         Route::delete('quadros/{board}/membros/{user}', [TaskBoardMemberController::class, 'destroy'])->name('quadros.membros.destroy');
+    });
+
+    Route::middleware('admin.can:entrevistas')->prefix('entrevistas')->name('entrevistas.')->group(function () {
+        Route::get('/', [InterviewController::class, 'index'])->name('index');
+        Route::get('nova', [InterviewController::class, 'create'])->name('create');
+        Route::post('/', [InterviewController::class, 'store'])->name('store');
+        Route::resource('roteiros', InterviewQuestionnaireController::class)
+            ->except(['show'])
+            ->parameters(['roteiros' => 'questionnaire']);
+        Route::get('{interview}/relatorio.pdf', [InterviewReportController::class, 'pdf'])->name('report.pdf');
+        Route::get('{interview}/relatorio.docx', [InterviewReportController::class, 'docx'])->name('report.docx');
+        Route::post('{interview}/reprocessar', [InterviewController::class, 'reprocess'])->name('reprocess');
+        Route::get('{interview}', [InterviewController::class, 'show'])->name('show');
+        Route::delete('{interview}', [InterviewController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware('admin.can:equipe')->group(function () {

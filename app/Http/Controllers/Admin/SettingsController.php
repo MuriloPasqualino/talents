@@ -54,6 +54,8 @@ class SettingsController extends Controller
                 // Não acesse api_key com cast (encrypted): falha com APP_KEY diferente ou payload inválido
                 'api_key_set' => filled($aiRow->getRawOriginal('api_key')),
                 'api_key_readable' => $aiRow->canDecrypt('api_key'),
+                'openai_transcription_api_key_set' => filled($aiRow->getRawOriginal('openai_transcription_api_key')),
+                'openai_transcription_api_key_readable' => $aiRow->canDecrypt('openai_transcription_api_key'),
             ],
             'mailSettings' => [
                 'id' => $mailRow->id,

@@ -13,6 +13,7 @@ class AiSetting extends Model
     protected $fillable = [
         'provider',
         'api_key',
+        'openai_transcription_api_key',
         'model',
         'is_enabled',
         'max_tokens',
@@ -24,6 +25,7 @@ class AiSetting extends Model
     {
         return [
             'api_key' => 'encrypted',
+            'openai_transcription_api_key' => 'encrypted',
             'is_enabled' => 'boolean',
             'max_tokens' => 'integer',
             'temperature' => 'float',
@@ -54,6 +56,25 @@ class AiSetting extends Model
     public function safeApiKey(): ?string
     {
         $key = $this->safeDecrypt('api_key');
+
+        return ($key !== null && $key !== '') ? $key : null;
+    }
+
+    public function hasStoredTranscriptionApiKey(): bool
+    {
+        return $this->hasStoredEncrypted('openai_transcription_api_key');
+    }
+
+    /**
+     * Chave OpenAI para Whisper. Se provider=openai, reutiliza api_key; senão usa openai_transcription_api_key.
+     */
+    public function safeTranscriptionApiKey(): ?string
+    {
+        if ($this->provider === 'openai') {
+            return $this->safeApiKey();
+        }
+
+        $key = $this->safeDecrypt('openai_transcription_api_key');
 
         return ($key !== null && $key !== '') ? $key : null;
     }
