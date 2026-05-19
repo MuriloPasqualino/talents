@@ -3,20 +3,14 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { formatInterviewTranscript } from '@/utils/formatInterviewTranscript.js';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
     interview: Object,
     sections: Array,
 });
 
-const showTranscript = ref(false);
 let pollTimer = null;
-
-const transcriptParagraphs = computed(() =>
-    formatInterviewTranscript(props.interview?.transcript_text ?? ''),
-);
 
 const statusClass = (value) => {
     const map = {
@@ -151,28 +145,6 @@ onUnmounted(() => {
                 </div>
             </section>
 
-            <section v-if="interview.status === 'completed'" class="surface-card p-5">
-                <button
-                    type="button"
-                    class="flex w-full items-center justify-between text-left text-sm font-semibold text-gray-900"
-                    @click="showTranscript = !showTranscript"
-                >
-                    Transcrição completa
-                    <span>{{ showTranscript ? '▲' : '▼' }}</span>
-                </button>
-                <div
-                    v-if="showTranscript && transcriptParagraphs.length"
-                    class="mt-4 max-h-[28rem] space-y-4 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-5"
-                >
-                    <p
-                        v-for="(paragraph, index) in transcriptParagraphs"
-                        :key="index"
-                        class="text-sm leading-relaxed text-slate-800"
-                    >
-                        {{ paragraph }}
-                    </p>
-                </div>
-            </section>
         </div>
 
         <div v-else-if="!interview.is_processing && interview.status !== 'completed'" class="surface-card p-8 text-center text-sm text-gray-600">
