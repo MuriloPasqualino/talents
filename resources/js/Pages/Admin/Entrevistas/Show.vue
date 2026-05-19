@@ -3,7 +3,8 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { formatInterviewTranscript } from '@/utils/formatInterviewTranscript.js';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps({
     interview: Object,
@@ -12,6 +13,10 @@ const props = defineProps({
 
 const showTranscript = ref(false);
 let pollTimer = null;
+
+const transcriptParagraphs = computed(() =>
+    formatInterviewTranscript(props.interview?.transcript_text ?? ''),
+);
 
 const statusClass = (value) => {
     const map = {
@@ -155,11 +160,18 @@ onUnmounted(() => {
                     Transcrição completa
                     <span>{{ showTranscript ? '▲' : '▼' }}</span>
                 </button>
-                <pre
-                    v-if="showTranscript && interview.transcript_text"
-                    class="mt-4 max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-xs text-slate-800"
-                    >{{ interview.transcript_text }}</pre
+                <div
+                    v-if="showTranscript && transcriptParagraphs.length"
+                    class="mt-4 max-h-[28rem] space-y-4 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-5"
                 >
+                    <p
+                        v-for="(paragraph, index) in transcriptParagraphs"
+                        :key="index"
+                        class="text-sm leading-relaxed text-slate-800"
+                    >
+                        {{ paragraph }}
+                    </p>
+                </div>
             </section>
         </div>
 
