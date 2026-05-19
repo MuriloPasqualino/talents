@@ -7,13 +7,14 @@ import {
     ChatBubbleOvalLeftEllipsisIcon,
     CheckCircleIcon,
     EllipsisHorizontalIcon,
+    PencilSquareIcon,
     PaperClipIcon,
     PlusIcon,
     TrashIcon,
     XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { VueDraggable } from 'vue-draggable-plus';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
     boardPayload: { type: Object, required: true },
@@ -65,6 +66,8 @@ function reload() {
 
 const listMenuOpenId = ref(null);
 const listMenuPosition = ref(null);
+const editingListId = ref(null);
+const editingListName = ref('');
 
 function closeListMenu() {
     listMenuOpenId.value = null;
@@ -142,6 +145,54 @@ function isListColorSelected(list, color) {
     const next = (color || '').toLowerCase();
     if (!next) return !current;
     return current === next;
+}
+
+function startRenameList(list, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !list?.id) {
+        return;
+    }
+    closeListMenu();
+    editingListId.value = list.id;
+    editingListName.value = list.name || '';
+    nextTick(() => {
+        document.querySelector(`[data-list-rename-input="${list.id}"]`)?.focus();
+    });
+}
+
+function cancelRenameList() {
+    editingListId.value = null;
+    editingListName.value = '';
+}
+
+function submitRenameList(list) {
+    if (!props.isAdmin || !list?.id) {
+        return;
+    }
+
+    const name = editingListName.value.trim();
+    if (!name) {
+        cancelRenameList();
+        return;
+    }
+
+    if (name === (list.name || '').trim()) {
+        cancelRenameList();
+        return;
+    }
+
+    router.patch(
+        route('admin.tarefas.listas.update', list.id),
+        { name },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                list.name = name;
+                cancelRenameList();
+                reload();
+            },
+        },
+    );
 }
 
 function setListColor(list, color, event) {
@@ -440,10 +491,29 @@ function dueClass(card) {
                 :style="listColumnStyle(list)"
             >
                 <header class="flex items-start justify-between gap-2 px-1.5 pb-1 pt-1">
-                    <div class="min-w-0">
-                        <h3 class="truncate text-sm font-semibold text-slate-900">{{ list.name }}</h3>
+                    <div class="min-w-0 flex-1">
+                        <input
+                            v-if="isAdmin && editingListId === list.id"
+                            :data-list-rename-input="list.id"
+                            v-model="editingListName"
+                            type="text"
+                            class="block w-full rounded-md border-slate-300 bg-white px-2 py-1 text-sm font-semibold text-slate-900 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            @click.stop
+                            @keydown.enter.prevent="submitRenameList(list)"
+                            @keydown.esc.prevent="cancelRenameList"
+                            @blur="submitRenameList(list)"
+                        />
+                        <h3
+                            v-else
+                            class="truncate text-sm font-semibold text-slate-900"
+                            :class="isAdmin ? 'cursor-text rounded px-1 py-0.5 hover:bg-white/60' : ''"
+                            :title="isAdmin ? 'Clique para renomear' : undefined"
+                            @click.stop="isAdmin && startRenameList(list, $event)"
+                        >
+                            {{ list.name }}
+                        </h3>
                         <p
-                            v-if="isAdmin"
+                            v-if="isAdmin && editingListId !== list.id"
                             class="mt-0.5 text-[10px] uppercase tracking-wide text-slate-500"
                         >
                             {{ list.visibility }} · drop-in
@@ -711,6 +781,14 @@ function dueClass(card) {
                 }"
                 @click.stop
             >
+                <button
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    @click="startRenameList(listMenuPosition.list, $event)"
+                >
+                    <PencilSquareIcon class="h-3.5 w-3.5" />
+                    Renomear lista
+                </button>
                 <div class="border-b border-slate-100 px-3 pb-2">
                     <p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">
                         Cor da lista

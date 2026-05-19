@@ -3,7 +3,8 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const form = useForm({
     name: '',
@@ -42,7 +43,12 @@ function submit() {
                 <InputLabel for="cover_color" value="Cor de capa (hex)" />
                 <TextInput id="cover_color" v-model="form.cover_color" class="mt-1 w-full" placeholder="#4F46E5" />
             </div>
-            <PrimaryButton :disabled="form.processing">Criar</PrimaryButton>
+            <div class="flex flex-wrap gap-3">
+                <PrimaryButton :disabled="form.processing">Criar quadro</PrimaryButton>
+                <Link :href="route('admin.tarefas.quadros.index')">
+                    <SecondaryButton type="button">Cancelar</SecondaryButton>
+                </Link>
+            </div>
         </form>
     </AdminLayout>
 </template>

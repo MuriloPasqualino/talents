@@ -3,7 +3,7 @@ import BoardHeader from '@/Components/Tasks/BoardHeader.vue';
 import CardModal from '@/Components/Tasks/CardModal.vue';
 import KanbanBoard from '@/Components/Tasks/KanbanBoard.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -82,7 +82,15 @@ function formatDate(value) {
 
     <AdminLayout>
         <template #header>
-            <h2 class="text-xl font-semibold text-gray-900">Tarefas</h2>
+            <div>
+                <p class="text-sm text-gray-500">
+                    <Link :href="route('admin.tarefas.quadros.index')" class="text-talents-700 hover:underline">
+                        Quadros
+                    </Link>
+                    / {{ boardPayload.name }}
+                </p>
+                <h2 class="text-xl font-semibold text-gray-900">{{ boardPayload.name }}</h2>
+            </div>
         </template>
 
         <div class="space-y-4 p-4">

@@ -177,7 +177,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::post('processos/{template}/ativar', [TasksBoardActivationController::class, 'store'])->name('processos.ativar');
 
         Route::resource('quadros', TasksTaskBoardController::class)
-            ->only(['index', 'show'])
+            ->only(['index', 'create', 'store', 'show'])
             ->parameters(['quadros' => 'board']);
         Route::patch('quadros/{board}', [TasksTaskBoardController::class, 'update'])->name('quadros.update');
         Route::delete('quadros/{board}', [TasksTaskBoardController::class, 'destroy'])->name('quadros.destroy');

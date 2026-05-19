@@ -554,6 +554,68 @@ class TaskModuleTest extends TestCase
         $this->assertNull($list->fresh()->color);
     }
 
+    public function test_admin_can_rename_board_list(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro teste',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Coluna antiga',
+            'position' => 1000,
+            'visibility' => 'company',
+            'allow_company_drop_in' => true,
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/listas/'.$list->id, ['name' => 'Coluna renomeada'])
+            ->assertRedirect();
+
+        $this->assertSame('Coluna renomeada', $list->fresh()->name);
+    }
+
+    public function test_admin_can_create_internal_board(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/quadros', [
+                'name' => 'Novo quadro interno',
+                'description' => 'Descrição teste',
+            ])
+            ->assertRedirect();
+
+        $board = TaskBoard::query()->where('name', 'Novo quadro interno')->first();
+        $this->assertNotNull($board);
+        $this->assertNull($board->company_id);
+        $this->assertSame(3, $board->lists()->count());
+    }
+
+    public function test_admin_boards_index_lists_boards(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro A',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/tarefas/quadros')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Tarefas/Quadros/Index')
+                ->has('boards', 1)
+            );
+    }
+
     public function test_admin_can_delete_board_list_and_its_cards(): void
     {
         $admin = User::factory()->superAdmin()->create();

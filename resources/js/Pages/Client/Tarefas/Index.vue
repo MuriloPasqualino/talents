@@ -1,18 +1,55 @@
 <script setup>
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
+import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps({
     boards: Array,
 });
 
+const STORAGE_KEY = 'talents-client-tarefas-boards-collapsed';
+
 const search = ref('');
+const collapsedIds = ref(new Set());
+
+onMounted(() => {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const ids = JSON.parse(raw);
+            if (Array.isArray(ids)) {
+                collapsedIds.value = new Set(ids.map(Number));
+            }
+        }
+    } catch (_e) {
+        collapsedIds.value = new Set();
+    }
+});
+
+function persistCollapsed() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...collapsedIds.value]));
+}
+
+function isCollapsed(boardId) {
+    return collapsedIds.value.has(boardId);
+}
+
+function toggleCollapsed(boardId) {
+    if (collapsedIds.value.has(boardId)) {
+        collapsedIds.value.delete(boardId);
+    } else {
+        collapsedIds.value.add(boardId);
+    }
+    collapsedIds.value = new Set(collapsedIds.value);
+    persistCollapsed();
+}
 
 const filteredBoards = computed(() => {
     const term = search.value.trim().toLowerCase();
-    if (!term) return props.boards || [];
-
+    if (!term) {
+        return props.boards || [];
+    }
     return (props.boards || []).filter((board) =>
         String(board.name || '')
             .toLowerCase()
@@ -44,28 +81,51 @@ const filteredBoards = computed(() => {
                 <p class="text-sm font-medium text-white/80">Módulo de processos e tarefas</p>
                 <h3 class="mt-1 text-2xl font-semibold">Seus quadros</h3>
                 <p class="mt-2 text-sm text-white/80">
-                    Acompanhe processos em colunas, mova cartões e visualize o andamento em tempo real.
+                    Clique na seta para recolher ou expandir cada quadro. Abra o quadro para ver as colunas e tarefas.
                 </p>
             </section>
 
             <section class="surface-card p-4">
-                <p class="mb-3 text-sm text-slate-600">Quadros partilhados consigo pela Talents.</p>
-                <ul class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <li v-for="b in filteredBoards" :key="b.id">
-                        <Link
-                            :href="route('client.tarefas.show', b.id)"
-                            class="group block rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-talents-300 hover:shadow-md"
-                        >
-                            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Quadro
-                            </p>
-                            <p class="mt-1 line-clamp-2 text-base font-semibold text-slate-900">
-                                {{ b.name }}
-                            </p>
-                            <p class="mt-3 text-xs font-medium text-talents-700 group-hover:underline">
-                                Abrir quadro
-                            </p>
-                        </Link>
+                <p class="mb-3 text-sm text-slate-600">Quadros compartilhados com sua empresa pela Talents.</p>
+                <ul class="space-y-2">
+                    <li
+                        v-for="b in filteredBoards"
+                        :key="b.id"
+                        class="overflow-hidden rounded-xl border border-slate-200 bg-white ring-1 ring-slate-100"
+                    >
+                        <div class="flex items-center gap-2 border-b border-slate-100 bg-slate-50/80 px-3 py-2">
+                            <button
+                                type="button"
+                                class="rounded p-1 text-slate-600 hover:bg-slate-200"
+                                :title="isCollapsed(b.id) ? 'Expandir' : 'Recolher'"
+                                @click="toggleCollapsed(b.id)"
+                            >
+                                <ChevronDownIcon v-if="!isCollapsed(b.id)" class="h-5 w-5" />
+                                <ChevronRightIcon v-else class="h-5 w-5" />
+                            </button>
+                            <div
+                                v-if="b.cover_color"
+                                class="h-8 w-1 shrink-0 rounded-full"
+                                :style="{ backgroundColor: b.cover_color }"
+                            />
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate font-semibold text-slate-900">{{ b.name }}</p>
+                                <p v-if="!isCollapsed(b.id)" class="truncate text-xs text-slate-500">
+                                    <span v-if="b.is_internal">Quadro Talents</span>
+                                    <span v-else-if="b.company">{{ b.company.name }}</span>
+                                </p>
+                            </div>
+                            <Link
+                                :href="route('client.tarefas.show', b.id)"
+                                class="shrink-0 rounded-md bg-talents-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-talents-700"
+                            >
+                                Abrir
+                            </Link>
+                        </div>
+                        <div v-show="!isCollapsed(b.id)" class="flex flex-wrap gap-4 px-4 py-3 text-sm text-slate-600">
+                            <span>{{ b.lists_count }} lista(s)</span>
+                            <span>{{ b.cards_count }} tarefa(s) sua empresa</span>
+                        </div>
                     </li>
                 </ul>
 

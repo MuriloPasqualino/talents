@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\TaskAttachment;
 use App\Models\TaskBoard;
+use App\Models\TaskCard;
 use App\Support\Tasks\BoardPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,26 @@ use Inertia\Response;
 
 class TaskBoardController extends Controller
 {
-    private function getOrCreateSingleBoard(int $userId): TaskBoard
+    private function createDefaultLists(TaskBoard $board): void
+    {
+        foreach (
+            [
+                ['name' => 'A fazer', 'position' => 1000],
+                ['name' => 'Em andamento', 'position' => 2000],
+                ['name' => 'Concluído', 'position' => 3000],
+            ] as $list
+        ) {
+            $board->lists()->create([
+                'name' => $list['name'],
+                'position' => $list['position'],
+                'visibility' => 'company',
+                'allow_company_drop_in' => true,
+                'is_archived' => false,
+            ]);
+        }
+    }
+
+    private function ensureDefaultBoard(int $userId): TaskBoard
     {
         $board = TaskBoard::query()
             ->whereNull('company_id')
@@ -37,36 +57,84 @@ class TaskBoardController extends Controller
             'created_by_user_id' => $userId,
         ]);
 
-        $board->lists()->create([
-            'name' => 'A fazer',
-            'position' => 1000,
-            'visibility' => 'company',
-            'allow_company_drop_in' => true,
-            'is_archived' => false,
-        ]);
-        $board->lists()->create([
-            'name' => 'Em andamento',
-            'position' => 2000,
-            'visibility' => 'company',
-            'allow_company_drop_in' => true,
-            'is_archived' => false,
-        ]);
-        $board->lists()->create([
-            'name' => 'Concluído',
-            'position' => 3000,
-            'visibility' => 'company',
-            'allow_company_drop_in' => true,
-            'is_archived' => false,
-        ]);
+        $this->createDefaultLists($board);
 
         return $board;
     }
 
-    public function index(Request $request): RedirectResponse
+    public function index(Request $request): Response
     {
-        $board = $this->getOrCreateSingleBoard($request->user()->id);
+        if (TaskBoard::query()->where('is_archived', false)->doesntExist()) {
+            $this->ensureDefaultBoard($request->user()->id);
+        }
 
-        return redirect()->route('admin.tarefas.quadros.show', $board);
+        $boards = TaskBoard::query()
+            ->where('is_archived', false)
+            ->with(['company:id,name'])
+            ->withCount([
+                'lists' => fn ($q) => $q->where('is_archived', false),
+            ])
+            ->orderByRaw('company_id is null desc')
+            ->orderBy('name')
+            ->get()
+            ->map(function (TaskBoard $board) {
+                $cardsCount = TaskCard::query()
+                    ->whereHas('list', fn ($q) => $q->where('board_id', $board->id)->where('is_archived', false))
+                    ->where('is_archived', false)
+                    ->count();
+
+                return [
+                    'id' => $board->id,
+                    'name' => $board->name,
+                    'description' => $board->description,
+                    'cover_color' => $board->cover_color,
+                    'company_id' => $board->company_id,
+                    'company' => $board->company ? ['id' => $board->company->id, 'name' => $board->company->name] : null,
+                    'is_internal' => $board->company_id === null,
+                    'lists_count' => $board->lists_count,
+                    'cards_count' => $cardsCount,
+                    'updated_at' => $board->updated_at?->toIso8601String(),
+                ];
+            });
+
+        return Inertia::render('Admin/Tarefas/Quadros/Index', [
+            'boards' => $boards,
+        ]);
+    }
+
+    public function create(): Response
+    {
+        return Inertia::render('Admin/Tarefas/Quadros/Create');
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'cover_color' => ['nullable', 'string', 'max:32'],
+        ]);
+
+        $cover = isset($data['cover_color']) ? trim($data['cover_color']) : null;
+        if ($cover === '') {
+            $cover = null;
+        }
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'process_template_id' => null,
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'cover_color' => $cover,
+            'is_archived' => false,
+            'created_by_user_id' => $request->user()->id,
+        ]);
+
+        $this->createDefaultLists($board);
+
+        return redirect()
+            ->route('admin.tarefas.quadros.show', $board)
+            ->with('success', 'Quadro criado.');
     }
 
     public function show(TaskBoard $board): Response
@@ -133,7 +201,7 @@ class TaskBoardController extends Controller
         $board->delete();
 
         return redirect()
-            ->route('admin.tarefas.processos.index')
+            ->route('admin.tarefas.quadros.index')
             ->with('success', 'Quadro excluído.');
     }
 }
