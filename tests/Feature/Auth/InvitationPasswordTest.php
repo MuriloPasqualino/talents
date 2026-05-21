@@ -55,5 +55,6 @@ class InvitationPasswordTest extends TestCase
 
         $user->refresh();
         $this->assertTrue(Hash::check('new-password-123', $user->password));
+        $this->assertNotNull($user->password_set_at);
     }
 }

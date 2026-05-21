@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'password_set_at',
         'role',
         'company_id',
         'is_active',
@@ -38,6 +39,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'password_set_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',
@@ -64,6 +66,11 @@ class User extends Authenticatable
     public function isActive(): bool
     {
         return (bool) $this->is_active;
+    }
+
+    public function hasCompletedRegistration(): bool
+    {
+        return $this->password_set_at !== null;
     }
 
     public function isCompanyUser(): bool

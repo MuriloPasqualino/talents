@@ -3,6 +3,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { useAdminPermissions } from '@/composables/useAdminPermissions';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({
     users: Array,
@@ -11,6 +12,8 @@ const props = defineProps({
 const { canAdmin } = useAdminPermissions();
 const page = usePage();
 
+const resendingId = ref(null);
+
 const remove = (user) => {
     if (user.is_owner || user.id === page.props.auth?.user?.id) {
         return;
@@ -18,6 +21,22 @@ const remove = (user) => {
     if (confirm('Remover este utilizador?')) {
         router.delete(route('admin.users.destroy', user.id));
     }
+};
+
+const resendInvitation = (user) => {
+    if (!user.pending_registration || resendingId.value) {
+        return;
+    }
+    if (!confirm(`Reenviar o link de cadastro para ${user.email}?`)) {
+        return;
+    }
+    resendingId.value = user.id;
+    router.post(route('admin.users.resend-invitation', user.id), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            resendingId.value = null;
+        },
+    });
 };
 </script>
 
@@ -66,11 +85,21 @@ const remove = (user) => {
                             {{ u.is_commercial ? 'Sim' : 'Não' }}
                         </td>
                         <td class="px-4 py-2">
-                            <span :class="u.is_active ? 'text-emerald-700' : 'text-red-600'">
+                            <span v-if="u.pending_registration" class="text-amber-700">Aguarda cadastro</span>
+                            <span v-else :class="u.is_active ? 'text-emerald-700' : 'text-red-600'">
                                 {{ u.is_active ? 'Ativo' : 'Inativo' }}
                             </span>
                         </td>
                         <td class="space-x-3 px-4 py-2 text-right">
+                            <button
+                                v-if="canAdmin('equipe', 'edit') && u.pending_registration"
+                                type="button"
+                                class="font-medium text-amber-700 hover:underline disabled:opacity-50"
+                                :disabled="resendingId === u.id"
+                                @click="resendInvitation(u)"
+                            >
+                                {{ resendingId === u.id ? 'Enviando…' : 'Reenviar convite' }}
+                            </button>
                             <Link
                                 v-if="canAdmin('equipe', 'edit')"
                                 :href="route('admin.users.edit', u.id)"

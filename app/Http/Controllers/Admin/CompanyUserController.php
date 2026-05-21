@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ResendUserInvitation;
 use App\Actions\SyncUserPermissions;
 use App\Enums\PermissionAction;
 use App\Enums\PermissionModule;
@@ -25,6 +26,7 @@ class CompanyUserController extends Controller
 {
     public function __construct(
         private SyncUserPermissions $syncUserPermissions,
+        private ResendUserInvitation $resendUserInvitation,
     ) {}
 
     public function index(Company $company): Response
@@ -39,6 +41,7 @@ class CompanyUserController extends Controller
                 'email' => $u->email,
                 'role' => $u->role->value,
                 'is_active' => $u->isActive(),
+                'pending_registration' => ! $u->hasCompletedRegistration(),
             ]),
         ]);
     }
@@ -153,6 +156,31 @@ class CompanyUserController extends Controller
         return redirect()
             ->route('admin.companies.users.index', $company)
             ->with('success', 'Utilizador removido.');
+    }
+
+    public function resendInvitation(Company $company, User $user): RedirectResponse
+    {
+        abort_unless($user->company_id === $company->id, 404);
+
+        if ($user->hasCompletedRegistration()) {
+            return redirect()
+                ->route('admin.companies.users.index', $company)
+                ->with('error', 'Este utilizador já concluiu o cadastro.');
+        }
+
+        try {
+            $this->resendUserInvitation->execute($user, $company);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->route('admin.companies.users.index', $company)
+                ->with('error', 'Não foi possível reenviar o convite. Erro: '.$e->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.companies.users.index', $company)
+            ->with('success', 'Convite reenviado para '.$user->email.'.');
     }
 
     /**

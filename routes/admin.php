@@ -89,6 +89,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
         Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
         Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');
+        Route::post('companies/{company}/users/{user}/resend-invitation', [CompanyUserController::class, 'resendInvitation'])->name('companies.users.resend-invitation');
         Route::get('companies/{company}/users/{user}/edit', [CompanyUserController::class, 'edit'])->name('companies.users.edit');
         Route::match(['put', 'patch'], 'companies/{company}/users/{user}', [CompanyUserController::class, 'update'])->name('companies.users.update');
         Route::delete('companies/{company}/users/{user}', [CompanyUserController::class, 'destroy'])->name('companies.users.destroy');
@@ -234,6 +235,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('users/create', [AdminUserController::class, 'create'])->name('users.create');
         Route::post('users', [AdminUserController::class, 'store'])->name('users.store');
+        Route::post('users/{user}/resend-invitation', [AdminUserController::class, 'resendInvitation'])->name('users.resend-invitation');
         Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::match(['put', 'patch'], 'users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');

@@ -46,6 +46,7 @@ class NewPasswordController extends Controller
         $resetCallback = function ($user) use ($request) {
             $user->forceFill([
                 'password' => Hash::make($request->password),
+                'password_set_at' => now(),
                 'remember_token' => Str::random(60),
             ])->save();
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ResendUserInvitation;
 use App\Actions\SyncAdminUserPermissions;
 use App\Enums\AdminPermissionModule;
 use App\Enums\PermissionAction;
@@ -24,6 +25,7 @@ class AdminUserController extends Controller
 {
     public function __construct(
         private SyncAdminUserPermissions $syncAdminUserPermissions,
+        private ResendUserInvitation $resendUserInvitation,
     ) {}
 
     public function index(): Response
@@ -39,6 +41,7 @@ class AdminUserController extends Controller
                 'is_owner' => $u->isOwner(),
                 'is_active' => $u->isActive(),
                 'is_commercial' => (bool) $u->is_commercial,
+                'pending_registration' => ! $u->hasCompletedRegistration(),
             ]);
 
         return Inertia::render('Admin/Users/Index', [
@@ -166,6 +169,31 @@ class AdminUserController extends Controller
         $user->delete();
 
         return redirect()->route('admin.users.index')->with('success', 'Utilizador removido.');
+    }
+
+    public function resendInvitation(User $user): RedirectResponse
+    {
+        $this->assertSuperAdminUser($user);
+
+        if ($user->hasCompletedRegistration()) {
+            return redirect()->route('admin.users.index')->with('error', 'Este utilizador já concluiu o cadastro.');
+        }
+
+        try {
+            $this->resendUserInvitation->execute($user);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('admin.users.index')->with(
+                'error',
+                'Não foi possível reenviar o convite. Erro: '.$e->getMessage()
+            );
+        }
+
+        return redirect()->route('admin.users.index')->with(
+            'success',
+            'Convite reenviado para '.$user->email.'.'
+        );
     }
 
     private function assertSuperAdminUser(User $user): void

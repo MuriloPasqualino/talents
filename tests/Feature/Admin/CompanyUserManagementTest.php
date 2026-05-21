@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Mail\UserInvitationMail;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -45,5 +47,49 @@ class CompanyUserManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.companies.users.index', $company))
             ->assertForbidden();
+    }
+
+    public function test_super_admin_can_resend_invitation_for_pending_company_user(): void
+    {
+        Mail::fake();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa Convite',
+            'cnpj' => '99.999.999/0001-99',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+
+        $super = User::factory()->superAdmin()->create();
+
+        $pending = User::factory()->companyUser($company->id)->pendingRegistration()->create();
+
+        $this->actingAs($super)
+            ->post(route('admin.companies.users.resend-invitation', [$company, $pending]))
+            ->assertRedirect(route('admin.companies.users.index', $company));
+
+        Mail::assertSent(UserInvitationMail::class, fn ($mail) => $mail->hasTo($pending->email));
+    }
+
+    public function test_resend_invitation_is_rejected_for_registered_company_user(): void
+    {
+        Mail::fake();
+
+        $company = Company::query()->create([
+            'name' => 'Empresa OK',
+            'cnpj' => '11.111.111/0001-11',
+            'is_active' => true,
+            'complaints_public_token' => (string) Str::uuid(),
+        ]);
+
+        $super = User::factory()->superAdmin()->create();
+        $registered = User::factory()->companyUser($company->id)->create();
+
+        $this->actingAs($super)
+            ->post(route('admin.companies.users.resend-invitation', [$company, $registered]))
+            ->assertRedirect(route('admin.companies.users.index', $company))
+            ->assertSessionHas('error');
+
+        Mail::assertNothingSent();
     }
 }
