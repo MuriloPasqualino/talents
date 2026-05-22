@@ -4,10 +4,12 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const props = defineProps({
     companies: Array,
     kinds: Array,
+    recurrences: Array,
 });
 
 const form = useForm({
@@ -15,14 +17,27 @@ const form = useForm({
     description: '',
     kind: props.kinds[0]?.value ?? 'event',
     occurs_on: new Date().toISOString().slice(0, 10),
+    recurrence: '',
+    recurrence_ends_on: '',
     company_id: '',
+    attachment: null,
 });
+
+const showRecurrenceEnd = computed(() => Boolean(form.recurrence));
 
 const submit = () => {
     form.transform((data) => ({
         ...data,
         company_id: data.company_id || null,
-    })).post(route('admin.strategic-calendar.store'));
+        recurrence: data.recurrence || null,
+        recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
+    })).post(route('admin.strategic-calendar.store'), {
+        forceFormData: true,
+    });
+};
+
+const onFileChange = (e) => {
+    form.attachment = e.target.files?.[0] ?? null;
 };
 </script>
 
@@ -58,8 +73,30 @@ const submit = () => {
                 </select>
             </div>
             <div>
-                <InputLabel for="occurs_on" value="Data" />
+                <InputLabel for="occurs_on" value="Data inicial" />
                 <TextInput id="occurs_on" v-model="form.occurs_on" type="date" class="mt-1 block w-full max-w-[12rem]" required />
+                <p class="mt-0.5 text-xs text-gray-500">Primeira ocorrência do evento ou rito.</p>
+            </div>
+            <div>
+                <InputLabel for="recurrence" value="Repetição" />
+                <select
+                    id="recurrence"
+                    v-model="form.recurrence"
+                    class="mt-1 block w-full rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="">Não se repete</option>
+                    <option v-for="r in recurrences" :key="r.value" :value="r.value">{{ r.label }}</option>
+                </select>
+            </div>
+            <div v-if="showRecurrenceEnd">
+                <InputLabel for="recurrence_ends_on" value="Repetir até (opcional)" />
+                <TextInput
+                    id="recurrence_ends_on"
+                    v-model="form.recurrence_ends_on"
+                    type="date"
+                    class="mt-1 block w-full max-w-[12rem]"
+                />
+                <p class="mt-0.5 text-xs text-gray-500">Em branco = repete indefinidamente no calendário.</p>
             </div>
             <div>
                 <InputLabel for="description" value="Como fazer (orientações)" />
@@ -70,6 +107,16 @@ const submit = () => {
                     class="mt-1 block w-full rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                     placeholder="Descreva como esta ação pode ou deve ser realizada."
                 />
+            </div>
+            <div>
+                <InputLabel for="attachment" value="Anexo" />
+                <input
+                    id="attachment"
+                    type="file"
+                    class="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:rounded-md file:border-0 file:bg-talents-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-talents-700"
+                    @change="onFileChange"
+                />
+                <p class="mt-0.5 text-xs text-gray-500">PDF, imagens ou documentos de apoio (máx. 10 MB).</p>
             </div>
             <div>
                 <InputLabel for="company_id" value="Empresa (opcional)" />

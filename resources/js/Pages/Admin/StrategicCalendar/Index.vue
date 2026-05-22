@@ -15,6 +15,7 @@ const props = defineProps({
     filters: Object,
     companies: Array,
     kindLabels: Object,
+    recurrenceLabels: { type: Object, default: () => ({}) },
 });
 
 const companyFilter = ref(props.filters?.company_id ? String(props.filters.company_id) : '');
@@ -200,9 +201,16 @@ function setKind(v) {
                                 row.occurs_on ? new Date(row.occurs_on).toLocaleDateString('pt-BR') : '—'
                             }}</span>
                             <StrategicKindBadge :kind="row.kind" :label="kindLabels[row.kind] ?? row.kind" compact />
+                            <span
+                                v-if="row.recurrence && recurrenceLabels?.[row.recurrence]"
+                                class="text-xs font-medium text-violet-600"
+                            >
+                                ↻ {{ recurrenceLabels[row.recurrence] }}
+                            </span>
                         </div>
                         <p class="font-medium text-slate-900">{{ row.title }}</p>
                         <p class="text-sm text-slate-500">{{ row.company?.name ?? 'Todas as empresas' }}</p>
+                        <p v-if="row.attachment_path" class="text-xs text-talents-700">Com anexo</p>
                     </div>
                     <div class="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
                         <Link

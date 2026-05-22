@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\LandingInterestSubmission;
 use App\Models\StrategicCalendarItem;
+use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Models\Subscription;
 use App\Models\Survey;
 use App\Models\SurveyResponse;
@@ -109,15 +110,19 @@ class DashboardController extends Controller
             ->limit(8)
             ->get(['id', 'name', 'email', 'phone', 'company', 'message', 'mail_sent_at', 'created_at']);
 
-        $today = Carbon::today();
-        $weekEnd = $today->copy()->addDays(7);
-        $upcomingCalendar = StrategicCalendarItem::query()
-            ->with('company:id,name')
-            ->whereBetween('occurs_on', [$today->toDateString(), $weekEnd->toDateString()])
-            ->orderBy('occurs_on')
-            ->orderBy('id')
-            ->limit(5)
-            ->get();
+        $today = Carbon::today()->startOfDay();
+        $weekEnd = $today->copy()->addDays(7)->endOfDay();
+        $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
+            StrategicCalendarItem::query()->with('company:id,name'),
+            $today,
+            $weekEnd,
+        )->orderBy('occurs_on')->orderBy('id')->get();
+
+        $upcomingCalendar = StrategicCalendarOccurrenceExpander::expandCollection(
+            $masters,
+            $today,
+            $weekEnd,
+        )->take(5)->values();
 
         $subscriptionsDueSoon = Subscription::query()
             ->where('status', 'active')

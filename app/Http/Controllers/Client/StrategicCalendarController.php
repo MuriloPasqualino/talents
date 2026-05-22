@@ -5,15 +5,19 @@ namespace App\Http\Controllers\Client;
 use App\Enums\StrategicCalendarItemKind;
 use App\Http\Controllers\Controller;
 use App\Models\StrategicCalendarItem;
+use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StrategicCalendarController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): InertiaResponse
     {
         $user = $request->user();
         $company = $user->company;
@@ -29,34 +33,44 @@ class StrategicCalendarController extends Controller
         $monthEnd = $monthStart->copy()->endOfMonth()->endOfDay();
 
         $range = $view['range'];
-        $periodStart = $range ? $range['start']->toDateString() : null;
-        $periodEnd = $range ? $range['end']->toDateString() : null;
+        $queryStart = $range ? max($monthStart, $range['start']) : $monthStart;
+        $queryEnd = $range ? min($monthEnd, $range['end']) : $monthEnd;
 
-        $monthQueryStart = $range
-            ? max($monthStart->toDateString(), $periodStart)
-            : $monthStart->toDateString();
-        $monthQueryEnd = $range
-            ? min($monthEnd->toDateString(), $periodEnd)
-            : $monthEnd->toDateString();
+        $monthMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
+            StrategicCalendarItem::query()->forCompany($company),
+            $queryStart,
+            $queryEnd,
+        )->orderBy('occurs_on')->orderBy('id')->get();
 
-        $monthItems = StrategicCalendarItem::query()
-            ->forCompany($company)
-            ->whereBetween('occurs_on', [$monthQueryStart, $monthQueryEnd])
-            ->orderBy('occurs_on')
-            ->orderBy('id')
-            ->get();
+        $monthItems = StrategicCalendarOccurrenceExpander::expandCollection(
+            $monthMasters,
+            $queryStart,
+            $queryEnd,
+            'client.strategic-calendar.attachment',
+        );
 
-        $upcomingQuery = StrategicCalendarItem::query()
-            ->forCompany($company)
-            ->whereDate('occurs_on', '>=', now()->toDateString())
-            ->orderBy('occurs_on')
-            ->orderBy('id');
+        $upcomingStart = now()->startOfDay();
+        $upcomingEnd = $range
+            ? $range['end']->copy()->endOfDay()
+            : now()->copy()->addYears(2)->endOfDay();
 
-        if ($range) {
-            $upcomingQuery->whereDate('occurs_on', '<=', $periodEnd);
-        }
+        $upcomingMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
+            StrategicCalendarItem::query()->forCompany($company),
+            $upcomingStart,
+            $upcomingEnd,
+        )->orderBy('occurs_on')->orderBy('id')->get();
 
-        $upcoming = $upcomingQuery->limit(12)->get();
+        $upcomingExpanded = StrategicCalendarOccurrenceExpander::expandCollection(
+            $upcomingMasters,
+            $upcomingStart,
+            $upcomingEnd,
+            'client.strategic-calendar.attachment',
+        );
+
+        $upcoming = $upcomingExpanded
+            ->filter(fn (array $row) => $row['occurs_on'] >= $upcomingStart->toDateString())
+            ->take(12)
+            ->values();
 
         $agendaStart = now()->toDateString();
         $agendaEndCarbon = now()->copy()->addDays(60)->endOfDay();
@@ -64,13 +78,18 @@ class StrategicCalendarController extends Controller
             $agendaEndCarbon = $agendaEndCarbon->min($range['end']);
         }
 
-        $agendaItems = StrategicCalendarItem::query()
-            ->forCompany($company)
-            ->whereDate('occurs_on', '>=', $agendaStart)
-            ->whereDate('occurs_on', '<=', $agendaEndCarbon->toDateString())
-            ->orderBy('occurs_on')
-            ->orderBy('id')
-            ->get();
+        $agendaMasters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
+            StrategicCalendarItem::query()->forCompany($company),
+            Carbon::parse($agendaStart)->startOfDay(),
+            $agendaEndCarbon,
+        )->orderBy('occurs_on')->orderBy('id')->get();
+
+        $agendaItems = StrategicCalendarOccurrenceExpander::expandCollection(
+            $agendaMasters,
+            Carbon::parse($agendaStart)->startOfDay(),
+            $agendaEndCarbon,
+            'client.strategic-calendar.attachment',
+        );
 
         return Inertia::render('Client/StrategicCalendar/Index', [
             'monthItems' => $monthItems,
@@ -85,5 +104,23 @@ class StrategicCalendarController extends Controller
                 fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
             ),
         ]);
+    }
+
+    public function attachment(Request $request, StrategicCalendarItem $item): StreamedResponse|Response
+    {
+        $company = $request->user()->company;
+
+        if ($item->company_id !== null && (int) $item->company_id !== (int) $company->id) {
+            abort(404);
+        }
+
+        if (! $item->hasAttachment()) {
+            abort(404);
+        }
+
+        return Storage::disk($item->attachment_disk)->download(
+            $item->attachment_path,
+            $item->attachment_original_name ?? 'anexo',
+        );
     }
 }

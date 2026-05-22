@@ -3,7 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\StrategicCalendarItemKind;
+use App\Enums\StrategicCalendarRecurrence;
 use App\Enums\StrategicCalendarViewPeriod;
+use App\Support\StrategicCalendarOccurrenceExpander;
+use Carbon\Carbon;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Company;
 use App\Models\Module;
 use App\Models\Plan;
@@ -287,5 +292,82 @@ class StrategicCalendarTest extends TestCase
                 ->where('visiblePeriod', null)
                 ->where('canNavigatePrev', true)
                 ->where('canNavigateNext', true));
+    }
+
+    public function test_weekly_recurrence_expands_occurrences_in_month(): void
+    {
+        Carbon::setTestNow('2026-05-15');
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Rito semanal',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Rito,
+            'occurs_on' => '2026-05-01',
+            'recurrence' => StrategicCalendarRecurrence::Weekly,
+            'company_id' => null,
+        ]);
+
+        $rangeStart = Carbon::parse('2026-05-01')->startOfDay();
+        $rangeEnd = Carbon::parse('2026-05-31')->endOfDay();
+
+        $occurrences = StrategicCalendarOccurrenceExpander::occurrencesForItem($item, $rangeStart, $rangeEnd);
+
+        $this->assertCount(5, $occurrences);
+        $this->assertSame('2026-05-01', $occurrences[0]['occurs_on']);
+        $this->assertSame('2026-05-29', $occurrences[4]['occurs_on']);
+    }
+
+    public function test_admin_can_create_item_with_attachment(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($admin)
+            ->post('/admin/calendario-estrategico', [
+                'title' => 'Com material',
+                'description' => 'Guia PDF',
+                'kind' => StrategicCalendarItemKind::Event->value,
+                'occurs_on' => '2026-07-01',
+                'recurrence' => StrategicCalendarRecurrence::Monthly->value,
+                'attachment' => UploadedFile::fake()->create('guia.pdf', 100, 'application/pdf'),
+            ])
+            ->assertRedirect();
+
+        $item = StrategicCalendarItem::query()->where('title', 'Com material')->first();
+        $this->assertNotNull($item);
+        $this->assertSame(StrategicCalendarRecurrence::Monthly, $item->recurrence);
+        $this->assertTrue($item->hasAttachment());
+        Storage::disk('public')->assertExists($item->attachment_path);
+    }
+
+    public function test_client_can_download_attachment_for_global_item(): void
+    {
+        Storage::fake('public');
+
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+
+        $path = 'strategic-calendar/test.pdf';
+        Storage::disk('public')->put($path, 'conteudo-teste');
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Global com PDF',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-05-20',
+            'company_id' => null,
+            'attachment_disk' => 'public',
+            'attachment_path' => $path,
+            'attachment_original_name' => 'guia.pdf',
+            'attachment_mime' => 'application/pdf',
+            'attachment_size' => 14,
+        ]);
+
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $this->actingAs($user)
+            ->get('/client/calendario-estrategico/'.$item->id.'/anexo')
+            ->assertOk();
     }
 }

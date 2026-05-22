@@ -97,6 +97,15 @@ const goToday = () => {
                             <p v-if="row.description" class="mt-2 line-clamp-2 text-sm text-slate-600">
                                 {{ row.description }}
                             </p>
+                            <a
+                                v-if="row.attachment_url"
+                                :href="row.attachment_url"
+                                class="mt-2 inline-flex text-sm font-medium text-talents-700 hover:underline"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {{ row.attachment_name ? `Anexo: ${row.attachment_name}` : 'Baixar anexo' }}
+                            </a>
                         </div>
                         <span class="shrink-0 text-sm tabular-nums text-slate-500">{{
                             row.occurs_on ? new Date(row.occurs_on).toLocaleDateString('pt-BR') : ''

@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Complaint;
 use App\Models\StrategicCalendarItem;
 use App\Models\Survey;
+use App\Support\StrategicCalendarOccurrenceExpander;
 use App\Support\StrategicCalendarPeriod;
 use App\Models\SurveyResult;
 use App\Models\TaskCard;
@@ -119,20 +120,25 @@ class DashboardController extends Controller
 
         $upcomingCalendar = null;
         if ($company) {
-            $today = Carbon::today();
-            $weekEnd = $today->copy()->addDays(7);
-            $upcomingQuery = StrategicCalendarItem::query()
-                ->forCompany($company)
-                ->whereBetween('occurs_on', [$today->toDateString(), $weekEnd->toDateString()])
-                ->orderBy('occurs_on')
-                ->orderBy('id');
-
+            $today = Carbon::today()->startOfDay();
+            $weekEnd = $today->copy()->addDays(7)->endOfDay();
             $calendarRange = StrategicCalendarPeriod::forCompany($company);
             if ($calendarRange) {
-                $upcomingQuery->whereDate('occurs_on', '<=', $calendarRange['end']->toDateString());
+                $weekEnd = $weekEnd->min($calendarRange['end']);
             }
 
-            $upcomingCalendar = $upcomingQuery->limit(7)->get();
+            $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
+                StrategicCalendarItem::query()->forCompany($company),
+                $today,
+                $weekEnd,
+            )->orderBy('occurs_on')->orderBy('id')->get();
+
+            $upcomingCalendar = StrategicCalendarOccurrenceExpander::expandCollection(
+                $masters,
+                $today,
+                $weekEnd,
+                'client.strategic-calendar.attachment',
+            )->take(7)->values();
         }
 
         $calendarKindLabels = collect(StrategicCalendarItemKind::cases())->mapWithKeys(
@@ -151,19 +157,21 @@ class DashboardController extends Controller
             $monthEnd = $monthStart->copy()->endOfMonth()->endOfDay();
 
             $range = $view['range'];
-            $monthQueryStart = $range
-                ? max($monthStart->toDateString(), $range['start']->toDateString())
-                : $monthStart->toDateString();
-            $monthQueryEnd = $range
-                ? min($monthEnd->toDateString(), $range['end']->toDateString())
-                : $monthEnd->toDateString();
+            $queryStart = $range ? max($monthStart, $range['start']) : $monthStart;
+            $queryEnd = $range ? min($monthEnd, $range['end']) : $monthEnd;
 
-            $items = StrategicCalendarItem::query()
-                ->forCompany($company)
-                ->whereBetween('occurs_on', [$monthQueryStart, $monthQueryEnd])
-                ->orderBy('occurs_on')
-                ->orderBy('id')
-                ->get();
+            $masters = StrategicCalendarOccurrenceExpander::baseQueryForRange(
+                StrategicCalendarItem::query()->forCompany($company),
+                $queryStart,
+                $queryEnd,
+            )->orderBy('occurs_on')->orderBy('id')->get();
+
+            $items = StrategicCalendarOccurrenceExpander::expandCollection(
+                $masters,
+                $queryStart,
+                $queryEnd,
+                'client.strategic-calendar.attachment',
+            );
 
             $dashboardCalendar = [
                 'year' => $calYear,

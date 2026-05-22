@@ -397,6 +397,16 @@ function monthCellClass(cell) {
                         <p v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
                             {{ it.description }}
                         </p>
+                        <p v-if="it.recurrence_label" class="mt-2 text-xs text-violet-600">Repete: {{ it.recurrence_label }}</p>
+                        <a
+                            v-if="it.attachment_url"
+                            :href="it.attachment_url"
+                            class="mt-2 inline-flex text-sm font-medium text-talents-700 hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            {{ it.attachment_name ? `Anexo: ${it.attachment_name}` : 'Baixar anexo' }}
+                        </a>
                         <p v-if="it.company?.name" class="mt-2 text-xs text-slate-500">
                             Empresa: {{ it.company.name }}
                         </p>
@@ -435,6 +445,16 @@ function monthCellClass(cell) {
                                     <p v-if="it.description" class="mt-1 line-clamp-2 text-sm text-slate-600">
                                         {{ it.description }}
                                     </p>
+                                    <p v-if="it.recurrence_label" class="mt-1 text-xs text-violet-600">{{ it.recurrence_label }}</p>
+                                    <a
+                                        v-if="it.attachment_url"
+                                        :href="it.attachment_url"
+                                        class="mt-1 inline-block text-xs font-medium text-talents-700 hover:underline"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Anexo
+                                    </a>
                                     <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
                                 </div>
                             </li>
@@ -472,6 +492,15 @@ function monthCellClass(cell) {
                                 <p v-if="it.description" class="mt-2 line-clamp-3 text-sm text-slate-600">
                                     {{ it.description }}
                                 </p>
+                                <a
+                                    v-if="it.attachment_url"
+                                    :href="it.attachment_url"
+                                    class="mt-2 inline-flex text-sm font-medium text-talents-700 hover:underline"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    {{ it.attachment_name ? `Anexo: ${it.attachment_name}` : 'Baixar anexo' }}
+                                </a>
                                 <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
                             </li>
                         </ul>

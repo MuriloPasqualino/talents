@@ -63,6 +63,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     });
 
     Route::middleware('admin.can:strategic_calendar')->group(function () {
+        Route::get('calendario-estrategico/{item}/anexo', [AdminStrategicCalendarController::class, 'attachment'])
+            ->name('strategic-calendar.attachment');
         Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)
             ->except(['show'])
             ->names([
