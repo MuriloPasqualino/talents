@@ -204,7 +204,10 @@ function reloadBoardPayloadAndSyncCard() {
         only: ['boardPayload'],
         preserveState: true,
         preserveScroll: true,
-        onSuccess: () => emit('sync-card', props.card.id),
+        onSuccess: () => {
+            emit('sync-card', props.card.id);
+            emit('refresh');
+        },
     });
 }
 

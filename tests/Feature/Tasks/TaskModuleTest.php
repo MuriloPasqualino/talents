@@ -5,6 +5,8 @@ namespace Tests\Feature\Tasks;
 use App\Models\Company;
 use App\Models\TaskBoard;
 use App\Models\TaskCard;
+use App\Models\TaskChecklist;
+use App\Models\TaskChecklistItem;
 use App\Models\TaskList;
 use App\Models\TaskProcessTemplate;
 use App\Models\TaskTemplateCard;
@@ -724,5 +726,101 @@ class TaskModuleTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame($listA->id, (int) $card->fresh()->list_id);
+    }
+
+    public function test_admin_board_show_includes_checklist_items_on_internal_board_cards(): void
+    {
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'GESTÃO TALENTS',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'PLATAFORMAS',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'SOLIDES',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Jobs',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'Publicar vaga',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $payload = BoardPresenter::forAdmin($board->fresh());
+        $cardPayload = collect($payload['lists'])->flatMap(fn ($l) => $l['cards'])->firstWhere('id', $card->id);
+
+        $this->assertNotNull($cardPayload);
+        $this->assertCount(1, $cardPayload['checklists']);
+        $this->assertSame('Jobs', $cardPayload['checklists'][0]['name']);
+        $this->assertCount(1, $cardPayload['checklists'][0]['items']);
+        $this->assertSame('Publicar vaga', $cardPayload['checklists'][0]['items'][0]['text']);
+    }
+
+    public function test_admin_board_index_includes_checklist_items_on_internal_board_cards(): void
+    {
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'GESTÃO TALENTS',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'PLATAFORMAS',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'SOLIDES',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Jobs',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'Publicar vaga',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $payload = BoardPresenter::forAdminIndex($board->fresh());
+        $cardPayload = collect($payload['lists'])->flatMap(fn ($l) => $l['cards'])->firstWhere('id', $card->id);
+
+        $this->assertNotNull($cardPayload);
+        $this->assertCount(1, $cardPayload['checklists']);
+        $this->assertCount(1, $cardPayload['checklists'][0]['items']);
     }
 }

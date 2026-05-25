@@ -70,10 +70,19 @@ final class BoardPresenter
 
     public static function forAdmin(TaskBoard $board): array
     {
-        $board->loadMissing([
+        $board->load([
             'company:id,name',
-            'lists.cards' => fn ($q) => $q->where('is_archived', false)->orderBy('position'),
-            'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position'),
+            'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id'),
+            'lists.cards' => fn ($q) => $q->where('is_archived', false)
+                ->orderBy('position')
+                ->orderBy('id')
+                ->with([
+                    'company:id,name',
+                    'labels:id,name,color',
+                    'members:id,name,email,company_id',
+                    'checklists.items',
+                ])
+                ->withCount(['comments', 'attachments']),
             'labels',
             'members:id,name,email,company_id',
         ]);
@@ -197,7 +206,7 @@ final class BoardPresenter
 
     public static function serializeCard(TaskCard $card): array
     {
-        $card->loadMissing([
+        $card->load([
             'company:id,name',
             'labels:id,name,color',
             'members:id,name,email,company_id',
