@@ -19,6 +19,13 @@ const modalOpen = ref(false);
 const selectedCard = ref(null);
 const viewMode = ref('kanban');
 
+const boardKanbanKey = computed(() =>
+    (props.boardPayload?.lists || [])
+        .flatMap((list) => list.cards || [])
+        .map((card) => `${card.id}:${card.checklist_total ?? 0}:${card.checklist_done ?? 0}`)
+        .join('|'),
+);
+
 function openCard(card) {
     selectedCard.value = card;
     modalOpen.value = true;
@@ -122,6 +129,7 @@ function formatDate(value) {
 
             <KanbanBoard
                 v-if="viewMode === 'kanban'"
+                :key="boardKanbanKey"
                 :board-payload="boardPayload"
                 :is-admin="true"
                 :companies="companies || []"

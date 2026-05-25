@@ -16,8 +16,71 @@ use Throwable;
 final class BoardPresenter
 {
     /**
-     * @return array<string, mixed>
+     * Eager load de listas + cartões num único nível (evita conflito lists vs lists.cards no Laravel).
      */
+    private static function loadAdminBoardListsWithCards(TaskBoard $board, bool $fullCardRelations = false): void
+    {
+        $cardWith = $fullCardRelations
+            ? [
+                'company:id,name',
+                'labels:id,name,color',
+                'members:id,name,email,company_id',
+                'checklists.items',
+                'attachments',
+                'comments.user:id,name',
+            ]
+            : [
+                'company:id,name',
+                'labels:id,name,color',
+                'members:id,name',
+                'checklists.items:id,task_checklist_id,is_completed,due_date',
+            ];
+
+        $board->load([
+            'company:id,name',
+            'lists' => fn ($q) => $q->where('is_archived', false)
+                ->orderBy('position')
+                ->orderBy('id')
+                ->with([
+                    'cards' => fn ($cq) => $cq->where('is_archived', false)
+                        ->orderBy('position')
+                        ->orderBy('id')
+                        ->with($cardWith)
+                        ->withCount(['comments', 'attachments']),
+                ]),
+        ]);
+    }
+
+    /**
+     * @return array{done: int, total: int}
+     */
+    private static function checklistCounts(TaskCard $card): array
+    {
+        if (! $card->relationLoaded('checklists')) {
+            $card->load(['checklists.items']);
+        } else {
+            foreach ($card->checklists as $checklist) {
+                if (! $checklist->relationLoaded('items')) {
+                    $checklist->load('items');
+                }
+            }
+        }
+
+        $total = 0;
+        $done = 0;
+
+        foreach ($card->checklists as $checklist) {
+            foreach ($checklist->items as $item) {
+                $total++;
+                if ($item->is_completed) {
+                    $done++;
+                }
+            }
+        }
+
+        return ['done' => $done, 'total' => $total];
+    }
+
     /**
      * Resumo leve para listagem de quadros (expandir com cartões visíveis).
      *
@@ -25,20 +88,7 @@ final class BoardPresenter
      */
     public static function forAdminIndex(TaskBoard $board): array
     {
-        $board->load([
-            'company:id,name',
-            'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id'),
-            'lists.cards' => fn ($q) => $q->where('is_archived', false)
-                ->orderBy('position')
-                ->orderBy('id')
-                ->with([
-                    'company:id,name',
-                    'labels:id,name,color',
-                    'members:id,name',
-                    'checklists.items:id,task_checklist_id,is_completed,due_date',
-                ])
-                ->withCount(['comments', 'attachments']),
-        ]);
+        self::loadAdminBoardListsWithCards($board, false);
 
         $cardsCount = 0;
         $lists = $board->lists->map(function ($list) use (&$cardsCount) {
@@ -70,19 +120,9 @@ final class BoardPresenter
 
     public static function forAdmin(TaskBoard $board): array
     {
-        $board->load([
-            'company:id,name',
-            'lists' => fn ($q) => $q->where('is_archived', false)->orderBy('position')->orderBy('id'),
-            'lists.cards' => fn ($q) => $q->where('is_archived', false)
-                ->orderBy('position')
-                ->orderBy('id')
-                ->with([
-                    'company:id,name',
-                    'labels:id,name,color',
-                    'members:id,name,email,company_id',
-                    'checklists.items',
-                ])
-                ->withCount(['comments', 'attachments']),
+        self::loadAdminBoardListsWithCards($board, true);
+
+        $board->loadMissing([
             'labels',
             'members:id,name,email,company_id',
         ]);
@@ -158,7 +198,9 @@ final class BoardPresenter
      */
     private static function serializeList($list, bool $clientMode): array
     {
-        $cards = $list->cards->map(fn (TaskCard $card) => self::serializeCard($card));
+        $cards = $list->cards->map(
+            fn (TaskCard $card) => $clientMode ? self::serializeCard($card) : self::serializeCardForBoard($card),
+        );
 
         return [
             'id' => $list->id,
@@ -181,6 +223,8 @@ final class BoardPresenter
      */
     public static function serializeCardPreview(TaskCard $card): array
     {
+        $checklist = self::checklistCounts($card);
+
         return [
             'id' => $card->id,
             'title' => $card->title,
@@ -195,18 +239,39 @@ final class BoardPresenter
                 'id' => $cl->id,
                 'items' => $cl->items->map(fn ($it) => [
                     'id' => $it->id,
-                    'is_completed' => $it->is_completed,
+                    'is_completed' => (bool) $it->is_completed,
                     'due_date' => $it->due_date?->toDateString(),
                 ])->values(),
             ])->values(),
+            'checklist_done' => $checklist['done'],
+            'checklist_total' => $checklist['total'],
             'comments_count' => (int) ($card->comments_count ?? 0),
             'attachments_count' => (int) ($card->attachments_count ?? 0),
         ];
     }
 
+    /**
+     * Cartão completo para o quadro admin (kanban + modal), com meta explícita para ícones.
+     *
+     * @return array<string, mixed>
+     */
+    public static function serializeCardForBoard(TaskCard $card): array
+    {
+        $preview = self::serializeCardPreview($card);
+        $full = self::serializeCard($card);
+
+        return array_merge($full, [
+            'checklist_done' => $preview['checklist_done'],
+            'checklist_total' => $preview['checklist_total'],
+            'comments_count' => $preview['comments_count'],
+            'attachments_count' => $preview['attachments_count'],
+            'checklists' => $full['checklists'],
+        ]);
+    }
+
     public static function serializeCard(TaskCard $card): array
     {
-        $card->load([
+        $card->loadMissing([
             'company:id,name',
             'labels:id,name,color',
             'members:id,name,email,company_id',
@@ -214,6 +279,8 @@ final class BoardPresenter
             'attachments',
             'comments.user:id,name',
         ]);
+
+        $checklist = self::checklistCounts($card);
 
         return [
             'id' => $card->id,
@@ -264,6 +331,10 @@ final class BoardPresenter
                 'created_at' => $c->created_at?->toIso8601String(),
                 'user' => $c->user ? ['id' => $c->user->id, 'name' => $c->user->name] : null,
             ])->values(),
+            'comments_count' => (int) ($card->comments_count ?? $card->comments->count()),
+            'attachments_count' => (int) ($card->attachments_count ?? $card->attachments->count()),
+            'checklist_done' => $checklist['done'],
+            'checklist_total' => $checklist['total'],
         ];
     }
 

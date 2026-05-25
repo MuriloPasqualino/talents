@@ -40,9 +40,11 @@ const LIST_COLOR_PRESETS = [
 const localLists = ref(cloneLists(props.boardPayload.lists));
 
 watch(
-    () => props.boardPayload.lists,
-    (lists) => {
-        localLists.value = cloneLists(lists);
+    () => props.boardPayload,
+    (payload) => {
+        if (payload?.lists) {
+            localLists.value = cloneLists(payload.lists);
+        }
     },
     { deep: true },
 );

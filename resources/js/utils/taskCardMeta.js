@@ -4,6 +4,12 @@ export function descriptionPresent(card) {
 }
 
 export function checklistTotals(card) {
+    const explicitTotal = Number(card?.checklist_total);
+    if (Number.isFinite(explicitTotal) && explicitTotal > 0) {
+        const done = Number(card?.checklist_done) || 0;
+        return { done, total: explicitTotal, complete: done === explicitTotal };
+    }
+
     if (!card?.checklists?.length) return null;
     let total = 0;
     let done = 0;

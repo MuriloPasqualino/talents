@@ -771,13 +771,14 @@ class TaskModuleTest extends TestCase
         $cardPayload = collect($payload['lists'])->flatMap(fn ($l) => $l['cards'])->firstWhere('id', $card->id);
 
         $this->assertNotNull($cardPayload);
+        $this->assertSame(1, $cardPayload['checklist_total']);
         $this->assertCount(1, $cardPayload['checklists']);
         $this->assertSame('Jobs', $cardPayload['checklists'][0]['name']);
         $this->assertCount(1, $cardPayload['checklists'][0]['items']);
         $this->assertSame('Publicar vaga', $cardPayload['checklists'][0]['items'][0]['text']);
     }
 
-    public function test_admin_board_index_includes_checklist_items_on_internal_board_cards(): void
+    public function test_admin_board_index_includes_checklist_meta_on_internal_board_cards(): void
     {
         $board = TaskBoard::query()->create([
             'company_id' => null,
@@ -820,7 +821,67 @@ class TaskModuleTest extends TestCase
         $cardPayload = collect($payload['lists'])->flatMap(fn ($l) => $l['cards'])->firstWhere('id', $card->id);
 
         $this->assertNotNull($cardPayload);
+        $this->assertSame(1, $cardPayload['checklist_total']);
         $this->assertCount(1, $cardPayload['checklists']);
         $this->assertCount(1, $cardPayload['checklists'][0]['items']);
+    }
+
+    public function test_admin_board_show_page_exposes_checklist_meta_on_cards(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'GESTÃO TALENTS',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'PLATAFORMAS',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'SOLIDES',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Jobs',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'Etapa 1',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'Etapa 2',
+            'position' => 2000,
+            'is_completed' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/tarefas/quadros/'.$board->id)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Tarefas/Quadros/Show')
+                ->where('boardPayload.lists.0.cards.0.id', $card->id)
+                ->where('boardPayload.lists.0.cards.0.checklist_total', 2)
+                ->where('boardPayload.lists.0.cards.0.checklist_done', 1)
+            );
     }
 }
