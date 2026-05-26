@@ -16,8 +16,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
-
 class TaskBoardCardController extends Controller
 {
     public function store(Request $request, TaskList $list, LogTaskActivity $log): RedirectResponse
@@ -40,12 +38,6 @@ class TaskBoardCardController extends Controller
         $board = $list->board;
         if ($board && $board->company_id !== null && empty($data['company_id'])) {
             $data['company_id'] = $board->company_id;
-        }
-
-        if ($list->visibility === TaskListVisibility::Company->value && empty($data['company_id'])) {
-            throw ValidationException::withMessages([
-                'company_id' => 'Selecione a empresa do cliente para esta tarefa aparecer no portal.',
-            ]);
         }
 
         $card = $list->cards()->create([

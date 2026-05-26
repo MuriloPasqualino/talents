@@ -56,7 +56,6 @@ const needsClientCompanyOnQuickAdd = computed(
 );
 
 const quickAddCompanyId = ref('');
-const quickAddCompanyError = ref('');
 
 function cloneLists(lists) {
     if (!lists) return [];
@@ -354,7 +353,6 @@ const newCardTitles = ref({});
 
 function startComposing(listId) {
     composing.value[listId] = true;
-    quickAddCompanyError.value = '';
     if (newCardTitles.value[listId] === undefined) {
         newCardTitles.value[listId] = '';
     }
@@ -363,23 +361,12 @@ function startComposing(listId) {
 function cancelComposing(listId) {
     composing.value[listId] = false;
     newCardTitles.value[listId] = '';
-    quickAddCompanyError.value = '';
 }
 
 function submitNewCard(list) {
     const key = list.id;
     const title = (newCardTitles.value[key] || '').trim();
     if (!title) return;
-
-    quickAddCompanyError.value = '';
-    if (
-        list.visibility === 'company' &&
-        needsClientCompanyOnQuickAdd.value &&
-        !String(quickAddCompanyId.value || '').trim()
-    ) {
-        quickAddCompanyError.value = 'Selecione a empresa do cliente.';
-        return;
-    }
 
     const payload = {
         title,
@@ -553,32 +540,19 @@ function expandList(list) {
                             "
                         >
                             <label class="block text-[11px] font-medium text-slate-600">
-                                Empresa (portal cliente)
+                                Empresa (opcional)
+                                <span class="font-normal text-slate-500">— para exibir no portal do cliente</span>
                                 <select
                                     v-model="quickAddCompanyId"
                                     class="mt-1 block w-full rounded-lg border-slate-300 bg-white text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                                 >
-                                    <option value="">Selecione…</option>
+                                    <option value="">Nenhuma / depois</option>
                                     <option v-for="c in companies" :key="c.id" :value="String(c.id)">
                                         {{ c.name }}
                                     </option>
                                 </select>
                             </label>
-                            <p v-if="quickAddCompanyError" class="mt-1 text-[11px] text-rose-600">
-                                {{ quickAddCompanyError }}
-                            </p>
                         </div>
-                        <p
-                            v-else-if="
-                                list.visibility === 'company' &&
-                                needsClientCompanyOnQuickAdd &&
-                                !companies.length
-                            "
-                            class="text-[11px] text-amber-800"
-                        >
-                            Não há empresas ativas para vincular. Esta tarefa não aparecerá no portal até ter
-                            empresa.
-                        </p>
                         <textarea
                             v-model="newCardTitles[list.id]"
                             rows="2"

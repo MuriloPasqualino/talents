@@ -503,7 +503,7 @@ class TaskModuleTest extends TestCase
         $this->assertContains($card->id, $cardIds);
     }
 
-    public function test_admin_cannot_create_company_list_card_on_global_board_without_company(): void
+    public function test_admin_can_create_company_list_card_on_global_board_without_company(): void
     {
         $company = $this->baseCompany();
         $admin = User::factory()->superAdmin()->create();
@@ -528,9 +528,16 @@ class TaskModuleTest extends TestCase
                 'title' => 'Sem empresa',
                 'visibility' => 'inherit',
             ])
-            ->assertSessionHasErrors('company_id');
+            ->assertRedirect();
 
-        $this->assertSame(0, TaskCard::query()->count());
+        $card = TaskCard::query()->first();
+        $this->assertNotNull($card);
+        $this->assertNull($card->company_id);
+
+        $clientUser = User::factory()->companyAdmin($company->id)->create();
+        $payload = BoardPresenter::forClient($board->fresh(), $company->id);
+        $cardIds = collect($payload['lists'])->flatMap(fn ($l) => collect($l['cards'])->pluck('id'))->all();
+        $this->assertNotContains($card->id, $cardIds);
     }
 
     public function test_admin_creates_company_list_card_on_global_board_with_company_visible_to_client(): void
