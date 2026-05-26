@@ -4,6 +4,7 @@ import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import {
+    Bars3Icon,
     CalendarDaysIcon,
     ChatBubbleOvalLeftEllipsisIcon,
     ClipboardDocumentListIcon,
@@ -11,6 +12,7 @@ import {
     TrashIcon,
 } from '@heroicons/vue/24/outline';
 import { router, useForm } from '@inertiajs/vue3';
+import { VueDraggable } from 'vue-draggable-plus';
 import { computed, nextTick, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -68,6 +70,8 @@ const editingChecklistName = ref('');
 const editingChecklistItemId = ref(null);
 const editingChecklistItemText = ref('');
 const newChecklistItems = ref({});
+/** Itens por checklist (ordem local para arrastar). */
+const localChecklistItemsById = ref({});
 
 const showNewLabelForm = ref(false);
 const newLabelDraft = ref({ name: '', color: '#3b82f6' });
@@ -99,6 +103,7 @@ watch(
         cardUpdate.company_id = c.company_id || '';
         cardUpdate.member_ids = (c.members || []).map((m) => m.id);
         cardUpdate.label_ids = (c.labels || []).map((l) => l.id);
+        syncLocalChecklistItems(c);
     },
     { immediate: true },
 );
@@ -117,8 +122,30 @@ const assignableTeamUsers = computed(() => {
     return props.teamUsers || [];
 });
 
+function sortChecklistItems(items) {
+    return [...(items || [])].sort((a, b) => {
+        const posA = Number(a.position ?? 0);
+        const posB = Number(b.position ?? 0);
+        if (posA !== posB) return posA - posB;
+        return Number(a.id) - Number(b.id);
+    });
+}
+
+function syncLocalChecklistItems(card) {
+    const map = {};
+    for (const cl of card?.checklists || []) {
+        map[cl.id] = sortChecklistItems(cl.items);
+    }
+    localChecklistItemsById.value = map;
+}
+
+function checklistItemsFor(checklist) {
+    if (!checklist?.id) return [];
+    return localChecklistItemsById.value[checklist.id] ?? sortChecklistItems(checklist.items);
+}
+
 function checklistStats(checklist) {
-    const items = checklist?.items || [];
+    const items = checklistItemsFor(checklist);
     const total = items.length;
     const completed = items.filter((item) => item.is_completed).length;
     const doneByItems = total > 0 && completed === total;
@@ -427,6 +454,25 @@ function deleteChecklistItem(item) {
     });
 }
 
+function onChecklistItemsReorder(checklist, evt) {
+    if (!props.isAdmin || !checklist?.id || evt?.oldIndex === evt?.newIndex) {
+        return;
+    }
+
+    const items = localChecklistItemsById.value[checklist.id] || [];
+
+    router.post(
+        route('admin.tarefas.checklists.itens.reorder', checklist.id),
+        { item_ids: items.map((it) => it.id) },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => reloadBoardPayloadAndSyncCard(),
+            onError: () => syncLocalChecklistItems(props.card),
+        },
+    );
+}
+
 function toggleChecklistCompletion(checklist) {
     if (isReadOnly.value || !checklist || !checklist.id) return;
     const stats = checklistStats(checklist);
@@ -446,7 +492,7 @@ function toggleChecklistCompletion(checklist) {
     }
 
     const targetValue = !stats.done;
-    const items = checklist.items || [];
+    const items = checklistItemsFor(checklist);
     checklistBulkProcessing.value[checklist.id] = true;
 
     let pending = items.length;
@@ -883,12 +929,31 @@ function itemDueClass(item) {
                                     />
                                 </div>
                             </div>
-                            <ul class="mt-2 space-y-1.5 text-sm">
+                            <VueDraggable
+                                v-if="localChecklistItemsById[cl.id]"
+                                v-model="localChecklistItemsById[cl.id]"
+                                item-key="id"
+                                tag="ul"
+                                class="mt-2 space-y-1.5 text-sm"
+                                handle=".checklist-drag-handle"
+                                :disabled="!isAdmin"
+                                :animation="150"
+                                ghost-class="opacity-40"
+                                @end="(e) => onChecklistItemsReorder(cl, e)"
+                            >
                                 <li
-                                    v-for="it in cl.items || []"
+                                    v-for="it in localChecklistItemsById[cl.id]"
                                     :key="it.id"
-                                    class="flex flex-wrap items-center gap-2"
+                                    class="flex flex-wrap items-center gap-2 rounded-md bg-white"
                                 >
+                                    <button
+                                        v-if="isAdmin"
+                                        type="button"
+                                        class="checklist-drag-handle shrink-0 cursor-grab rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                                        title="Arrastar para reordenar"
+                                    >
+                                        <Bars3Icon class="h-4 w-4" aria-hidden="true" />
+                                    </button>
                                     <input
                                         type="checkbox"
                                         :checked="it.is_completed"
@@ -951,7 +1016,7 @@ function itemDueClass(item) {
                                         <TrashIcon class="h-4 w-4" aria-hidden="true" />
                                     </button>
                                 </li>
-                            </ul>
+                            </VueDraggable>
                             <div v-if="isAdmin" class="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
                                 <TextInput
                                     v-model="newItemDraft(cl.id).text"

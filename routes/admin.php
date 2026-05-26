@@ -203,6 +203,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('checklists/{checklist}', [TaskBoardChecklistController::class, 'destroy'])->name('checklists.destroy');
 
         Route::post('checklists/{checklist}/itens', [TaskBoardChecklistItemController::class, 'store'])->name('checklists.itens.store');
+        Route::post('checklists/{checklist}/itens/reordenar', [TaskBoardChecklistItemController::class, 'reorder'])->name('checklists.itens.reorder');
         Route::patch('checklist-itens/{item}', [TaskBoardChecklistItemController::class, 'update'])->name('checklist-itens.update');
         Route::delete('checklist-itens/{item}', [TaskBoardChecklistItemController::class, 'destroy'])->name('checklist-itens.destroy');
 

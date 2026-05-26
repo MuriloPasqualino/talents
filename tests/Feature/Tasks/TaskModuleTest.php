@@ -273,6 +273,64 @@ class TaskModuleTest extends TestCase
         $this->assertDatabaseMissing('task_checklist_items', ['id' => $item->id]);
     }
 
+    public function test_admin_can_reorder_checklist_items(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Lista',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $checklist = TaskChecklist::query()->create([
+            'task_card_id' => $card->id,
+            'name' => 'Etapas',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $first = TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'Primeira',
+            'position' => 1000,
+            'is_completed' => false,
+        ]);
+
+        $second = TaskChecklistItem::query()->create([
+            'task_checklist_id' => $checklist->id,
+            'text' => 'Segunda',
+            'position' => 2000,
+            'is_completed' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/checklists/'.$checklist->id.'/itens/reordenar', [
+                'item_ids' => [$second->id, $first->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(1000.0, (float) $second->fresh()->position);
+        $this->assertSame(2000.0, (float) $first->fresh()->position);
+    }
+
     public function test_client_only_sees_lists_with_own_visible_cards(): void
     {
         $companyA = $this->baseCompany();
