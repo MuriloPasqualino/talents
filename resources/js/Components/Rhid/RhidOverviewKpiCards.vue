@@ -19,6 +19,7 @@ const props = defineProps({
     overviewJustTotalMomDelta: { type: [Number, null], default: null },
     overviewJustAtestadosMomDelta: { type: [Number, null], default: null },
     formatRhidBankBalanceMinutes: { type: Function, required: true },
+    bankHoursLabel: { type: String, default: 'Banco de horas (hoje)' },
 });
 
 const emit = defineEmits(['go-punches-adherence', 'go-bank', 'go-justifications']);
@@ -109,7 +110,7 @@ const trendBank = computed(() => {
         >
             <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-xl" />
             <div class="relative z-10">
-                <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">Banco de horas (hoje)</p>
+                <p class="text-[11px] font-medium uppercase tracking-wider text-white/75">{{ bankHoursLabel }}</p>
                 <p
                     class="mt-2 text-3xl font-bold tabular-nums"
                     :class="overviewBankAvgIsNegative ? 'text-rose-200' : 'text-white'"

@@ -173,12 +173,12 @@ class RhidAdminPortfolioMetricsService
         $bankToday = $this->compliance->allPersonBankHoursAggregated(
             $company,
             $user,
-            $period['bank_date_today'],
+            $period['bank_date_reference'],
         );
         $bankPrev = $this->compliance->allPersonBankHoursAggregated(
             $company,
             $user,
-            $period['bank_date_prev_month_end'],
+            $period['bank_date_mom'],
         );
 
         $bankStats = $this->bankStats($bankToday['rows'] ?? []);
@@ -204,6 +204,8 @@ class RhidAdminPortfolioMetricsService
 
         $justCurrent = $this->justificationStats($company, $user, $period['just_ini'], $period['just_fim'], $typeMap);
         $justPrevious = $this->justificationStats($company, $user, $period['prev_just_ini'], $period['prev_just_fim'], $typeMap);
+
+        $bankRows = $this->formatBankRowsList($bankToday['rows'] ?? []);
 
         $atestadosMomPct = null;
         if ($justPrevious['atestados'] > 0) {
@@ -248,6 +250,13 @@ class RhidAdminPortfolioMetricsService
             'status' => 'ok',
             'rhid_configured' => true,
             'fetched_at' => now()->toIso8601String(),
+            'period' => [
+                'bank_reference_date' => $period['bank_date_reference'],
+                'bank_reference_label' => $period['bank_date_reference_label'],
+                'bank_mom_date' => $period['bank_date_mom'],
+                'bank_mom_label' => $period['bank_date_mom_label'],
+                'month_label' => $period['label_current'],
+            ],
             'nr1' => $nr1,
             'bank' => [
                 'avg_minutes' => $bankStats['avg_minutes'],
@@ -256,7 +265,10 @@ class RhidAdminPortfolioMetricsService
                 'negative_pct' => $bankStats['negative_pct'],
                 'mom_delta_minutes' => $momDelta,
                 'worst_three' => $bankStats['worst_three'],
-                'date' => $period['bank_date_today'],
+                'reference_date' => $period['bank_date_reference'],
+                'reference_date_label' => $period['bank_date_reference_label'],
+                'mom_date_label' => $period['bank_date_mom_label'],
+                'rows' => $bankRows,
             ],
             'adherence' => [
                 'dias' => $dias,
@@ -264,6 +276,9 @@ class RhidAdminPortfolioMetricsService
                 'tolerancia_minutos' => (int) ($resumo['tolerancia_minutos'] ?? 0),
                 'dias_mom_delta' => $dias - (int) ($adherencePrevious['resumo']['dias_calendario_distintos'] ?? 0),
                 'colabs_mom_delta' => $colabs - (int) ($adherencePrevious['resumo']['colaboradores_com_dados'] ?? 0),
+                'ranking_atrasos_entrada' => $adherenceCurrent['ranking_atrasos_entrada'] ?? [],
+                'ranking_infracoes_almoco' => $adherenceCurrent['ranking_infracoes_almoco'] ?? [],
+                'ranking_pior_aderencia' => $adherenceCurrent['ranking_pior_aderencia_marcacoes'] ?? [],
                 'worst_entrada' => array_slice($adherenceCurrent['ranking_atrasos_entrada'] ?? [], 0, 5),
                 'worst_adherence' => array_slice($adherenceCurrent['ranking_pior_aderencia_marcacoes'] ?? [], 0, 3),
                 'diagnostics_hint' => $this->adherenceDiagnosticsHint($adherenceCurrent['diagnostics'] ?? []),
@@ -275,10 +290,12 @@ class RhidAdminPortfolioMetricsService
                 'atestados_mom_delta' => $justCurrent['atestados'] - $justPrevious['atestados'],
                 'atestados_mom_pct' => $atestadosMomPct,
                 'note' => $justCurrent['note'],
+                'items' => $justCurrent['items'],
             ],
             'punches' => [
                 'count' => $punchCount,
                 'distinct_collaborators' => $punchDistinct,
+                'items' => $this->formatPunchRowsList(is_array($punches) ? $punches : []),
             ],
             'operational_alert' => $operationalAlert,
             'dual_risk' => $dualRisk,
@@ -292,13 +309,15 @@ class RhidAdminPortfolioMetricsService
     protected function currentPeriod(): array
     {
         $now = Carbon::now();
+        $referenceDay = $now->copy()->subDay()->startOfDay();
+        $bankMomDay = $referenceDay->copy()->subMonth();
         $monthStart = $now->copy()->startOfMonth();
         $monthEnd = $now->copy()->endOfMonth();
         $prevStart = $monthStart->copy()->subMonth()->startOfMonth();
         $prevEnd = $monthStart->copy()->subMonth()->endOfMonth();
 
         return [
-            'cache_key' => $monthStart->format('Y-m'),
+            'cache_key' => $monthStart->format('Y-m').'_ref_'.$referenceDay->format('Ymd'),
             'month_ini' => $monthStart->toDateString(),
             'month_fim' => $monthEnd->toDateString(),
             'prev_month_ini' => $prevStart->toDateString(),
@@ -307,8 +326,10 @@ class RhidAdminPortfolioMetricsService
             'just_fim' => $monthEnd->format('Ymd'),
             'prev_just_ini' => $prevStart->format('Ymd'),
             'prev_just_fim' => $prevEnd->format('Ymd'),
-            'bank_date_today' => $now->format('Ymd'),
-            'bank_date_prev_month_end' => $prevEnd->format('Ymd'),
+            'bank_date_reference' => $referenceDay->format('Ymd'),
+            'bank_date_reference_label' => $referenceDay->locale('pt_BR')->translatedFormat('d/m/Y'),
+            'bank_date_mom' => $bankMomDay->format('Ymd'),
+            'bank_date_mom_label' => $bankMomDay->locale('pt_BR')->translatedFormat('d/m/Y'),
             'label_current' => $monthStart->locale('pt_BR')->translatedFormat('F Y'),
             'label_previous' => $prevStart->locale('pt_BR')->translatedFormat('F Y'),
         ];
@@ -428,11 +449,124 @@ class RhidAdminPortfolioMetricsService
             $note = 'Atestados: contagem na primeira página da amostra (máx. 500).';
         }
 
+        $items = [];
+        foreach ($chunk as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $items[] = [
+                'person_name' => $this->justificationPersonName($row),
+                'type' => RhidJustificationAnalytics::justificationTypeLabel($row['idJustificationType'] ?? null, $typeMap),
+                'start' => $row['inicio'] ?? $row['ínicio'] ?? $row['start'] ?? null,
+                'end' => $row['fim'] ?? $row['end'] ?? null,
+                'description' => trim((string) ($row['justificativa'] ?? $row['description'] ?? '')),
+                'is_atestado' => RhidJustificationAnalytics::isAtestadoByKeyword($row, $typeMap),
+            ];
+        }
+
         return [
             'total' => $recordsTotal,
             'atestados' => $atestados,
             'note' => $note,
+            'items' => $items,
         ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array<string, mixed>>
+     */
+    protected function formatBankRowsList(array $rows): array
+    {
+        $parsed = [];
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $minutes = RhidBankBalanceParser::parseMinutesFromRow($row);
+            if ($minutes === null) {
+                continue;
+            }
+            $parsed[] = [
+                'name' => RhidBankBalanceParser::displayName($row),
+                'department' => isset($row['departmentName']) ? trim((string) $row['departmentName']) : null,
+                'role' => isset($row['roleName']) ? trim((string) $row['roleName']) : null,
+                'registration' => isset($row['registration']) ? trim((string) $row['registration'])
+                    : (isset($row['matricula']) ? trim((string) $row['matricula']) : null),
+                'minutes' => $minutes,
+                'balance_display' => RhidBankBalanceFormat::minutesToHhMm($minutes),
+                'excluded' => (bool) ($row['excluded'] ?? false),
+            ];
+        }
+
+        usort($parsed, fn (array $a, array $b) => $a['minutes'] <=> $b['minutes']);
+
+        return $parsed;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $punches
+     * @return list<array<string, mixed>>
+     */
+    protected function formatPunchRowsList(array $punches): array
+    {
+        $out = [];
+        foreach (array_slice($punches, 0, 100) as $punch) {
+            if (! is_array($punch)) {
+                continue;
+            }
+            $out[] = [
+                'name' => $this->punchDisplayName($punch),
+                'datetime' => $punch['data'] ?? $punch['dateTime'] ?? $punch['Data'] ?? $punch['date'] ?? null,
+                'person_id' => $punch['idPerson'] ?? $punch['id'] ?? $punch['id_funcionario'] ?? null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function justificationPersonName(array $row): string
+    {
+        foreach (['personName', 'strPersonName', 'name', 'nome', 'strNome'] as $key) {
+            if (isset($row[$key]) && trim((string) $row[$key]) !== '') {
+                return trim((string) $row[$key]);
+            }
+        }
+        foreach (['person', 'Person'] as $nestKey) {
+            $nest = isset($row[$nestKey]) && is_array($row[$nestKey]) ? $row[$nestKey] : null;
+            if ($nest === null) {
+                continue;
+            }
+            foreach (['personName', 'name', 'nome'] as $key) {
+                if (isset($nest[$key]) && trim((string) $nest[$key]) !== '') {
+                    return trim((string) $nest[$key]);
+                }
+            }
+        }
+
+        return '—';
+    }
+
+    /**
+     * @param  array<string, mixed>  $punch
+     */
+    protected function punchDisplayName(array $punch): string
+    {
+        foreach (['nome', 'name', 'strNome', 'personName', 'strPersonName'] as $key) {
+            if (isset($punch[$key]) && trim((string) $punch[$key]) !== '') {
+                return trim((string) $punch[$key]);
+            }
+        }
+
+        $pid = $punch['idPerson'] ?? $punch['id'] ?? null;
+        if ($pid !== null && $pid !== '') {
+            return 'ID '.$pid;
+        }
+
+        return '—';
     }
 
     protected function computeOperationalAlert(

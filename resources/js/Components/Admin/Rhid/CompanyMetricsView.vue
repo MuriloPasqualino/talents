@@ -10,7 +10,7 @@ const props = defineProps({
     title: { type: String, default: 'Indicadores RHID (mês atual)' },
     description: {
         type: String,
-        default: 'Banco de horas na data de hoje, aderência e justificativas no mês civil corrente.',
+        default: 'Banco de horas do dia anterior (referencia consolidada), aderencia e justificativas no mes civil corrente.',
     },
     rhidConfigured: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
@@ -24,6 +24,19 @@ const props = defineProps({
 const emit = defineEmits(['refresh']);
 
 const kpiProps = computed(() => metricsToKpiProps(props.metrics));
+
+const bankHoursLabel = computed(() => {
+    const label = props.metrics?.bank?.reference_date_label;
+    return label ? `Banco de horas (${label})` : 'Banco de horas (dia anterior)';
+});
+
+const periodHint = computed(() => {
+    const ref = props.metrics?.bank?.reference_date_label;
+    if (!ref) {
+        return props.description;
+    }
+    return `Referencia de banco de horas: ${ref} (dia anterior ao consultado). Aderencia e justificativas: mes civil corrente.`;
+});
 
 const apiErrorMessage = computed(() => {
     if (props.metrics?.status === 'error') {
@@ -46,7 +59,7 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
             <div>
                 <h3 class="font-semibold text-talents-700">{{ title }}</h3>
                 <p class="mt-1 text-xs text-slate-500">
-                    {{ description }}
+                    {{ periodHint }}
                 </p>
             </div>
             <PrimaryButton
@@ -132,21 +145,9 @@ const showLoadingSkeleton = computed(() => props.loading && !props.metrics);
                     :loading="false"
                     :interactive="false"
                     v-bind="kpiProps"
+                    :bank-hours-label="bankHoursLabel"
                     :format-rhid-bank-balance-minutes="formatRhidBankBalanceMinutes"
                 />
-            </div>
-
-            <div
-                v-if="metrics?.bank?.worst_three?.length"
-                class="mt-6 border-t border-slate-100 pt-4"
-            >
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Piores saldos de banco</p>
-                <ul class="mt-2 space-y-1 text-sm">
-                    <li v-for="(w, i) in metrics.bank.worst_three" :key="i" class="flex justify-between gap-2">
-                        <span class="truncate text-slate-800">{{ w.name }}</span>
-                        <span class="shrink-0 font-mono text-rose-700">{{ w.display }}</span>
-                    </li>
-                </ul>
             </div>
 
             <p v-if="loadedAt" class="mt-4 text-[11px] text-slate-400">

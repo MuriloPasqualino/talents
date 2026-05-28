@@ -1,5 +1,6 @@
 <script setup>
 import CompanyMetricsView from '@/Components/Admin/Rhid/CompanyMetricsView.vue';
+import CompanyMetricsDetailTables from '@/Components/Admin/Rhid/CompanyMetricsDetailTables.vue';
 import EmptyState from '@/Components/Dashboard/EmptyState.vue';
 import SectionHeader from '@/Components/Dashboard/SectionHeader.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
@@ -165,8 +166,8 @@ onMounted(async () => {
             </div>
         </section>
 
-        <section class="mt-8 grid gap-6 lg:grid-cols-12">
-            <aside class="surface-card p-5 lg:col-span-4">
+        <section class="mt-8 grid gap-6 xl:grid-cols-12">
+            <aside class="surface-card p-5 xl:col-span-3">
                 <div class="space-y-3">
                     <h3 class="text-base font-semibold text-talents-800">Empresas com RHID</h3>
 
@@ -213,7 +214,7 @@ onMounted(async () => {
                 />
             </aside>
 
-            <div class="lg:col-span-8">
+            <div class="xl:col-span-9">
                 <CompanyMetricsView
                     :title="selectedCompany ? `Indicadores RHID - ${selectedCompany.name}` : 'Indicadores RHID'"
                     :rhid-configured="Boolean(selectedCompany)"
@@ -227,5 +228,10 @@ onMounted(async () => {
                 />
             </div>
         </section>
+
+        <CompanyMetricsDetailTables
+            v-if="companyMetrics?.status === 'ok' && !companyLoading"
+            :metrics="companyMetrics"
+        />
     </AdminLayout>
 </template>
