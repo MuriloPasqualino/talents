@@ -67,6 +67,8 @@ class RhidComplianceService
      */
     public function listJustifications(Company $company, ?User $user, array $payload): array
     {
+        $payload = $this->prepareJustificationListPayload($payload);
+
         $r = $this->client->request(
             $company,
             $user,
@@ -79,6 +81,67 @@ class RhidComplianceService
         );
 
         return $this->decodeJson($r, 'justifications.list');
+    }
+
+    /**
+     * Normaliza ini/fim e campos DataTables antes do POST justification.svc/list.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function prepareJustificationListPayload(array $payload): array
+    {
+        foreach (['ini', 'fim'] as $key) {
+            if (array_key_exists($key, $payload) && $payload[$key] !== null && $payload[$key] !== '') {
+                $payload[$key] = $this->formatJustificationListDateForRhidApi((string) $payload[$key]);
+            }
+        }
+
+        $payload['draw'] = (int) config('rhid.justification_list_draw', 0);
+        $payload['page'] = (int) ($payload['page'] ?? 0);
+        $payload['maxSize'] = (int) ($payload['maxSize'] ?? 100);
+
+        $listKeys = ['companies', 'costcenters', 'departments', 'personroles', 'people', 'shifts', 'justificationTypes'];
+        foreach ($listKeys as $key) {
+            if (! isset($payload[$key]) || ! is_array($payload[$key])) {
+                $payload[$key] = [];
+            }
+        }
+
+        $defaultCompanyId = config('rhid.justification_list_default_company_id');
+        if ($defaultCompanyId !== null && $payload['companies'] === []) {
+            $payload['companies'] = [(int) $defaultCompanyId];
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Converte yyyyMMdd (ou valor com 8 digitos) para o formato do tenant (iso, compact, br).
+     *
+     * @see config('rhid.justification_list_ini_fim_format')
+     */
+    protected function formatJustificationListDateForRhidApi(string $value): string
+    {
+        $compact = preg_replace('/\D/', '', $value);
+        if (strlen($compact) !== 8) {
+            return $value;
+        }
+
+        $y = (int) substr($compact, 0, 4);
+        $m = (int) substr($compact, 4, 2);
+        $d = (int) substr($compact, 6, 2);
+        if (! checkdate($m, $d, $y)) {
+            return $value;
+        }
+
+        $format = strtolower((string) config('rhid.justification_list_ini_fim_format', 'iso'));
+
+        return match ($format) {
+            'br', 'pt-br', 'pt_br' => sprintf('%02d/%02d/%04d', $d, $m, $y),
+            'compact', 'yyyymmdd', 'ymd' => $compact,
+            default => sprintf('%04d-%02d-%02d', $y, $m, $d),
+        };
     }
 
     /**

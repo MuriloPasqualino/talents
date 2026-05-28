@@ -119,62 +119,7 @@ class RhidApiController extends Controller
             'justificationTypes.*' => ['integer'],
         ]);
 
-        $payload['ini'] = $this->formatJustificationListDateForRhidApi((string) $payload['ini']);
-        $payload['fim'] = $this->formatJustificationListDateForRhidApi((string) $payload['fim']);
-
-        $payload = $this->normalizeJustificationListPayloadForRhid($payload);
-
         return $this->jsonOrError(fn () => $compliance->listJustifications($company, $request->user(), $payload));
-    }
-
-    /**
-     * Alinha o corpo ao que o servico .NET do RHID costuma esperar (DataTables + listas nao-nulas).
-     *
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    protected function normalizeJustificationListPayloadForRhid(array $payload): array
-    {
-        $payload['draw'] = (int) config('rhid.justification_list_draw', 0);
-        $payload['page'] = (int) ($payload['page'] ?? 0);
-        $payload['maxSize'] = (int) ($payload['maxSize'] ?? 100);
-
-        $listKeys = ['companies', 'costcenters', 'departments', 'personroles', 'people', 'shifts', 'justificationTypes'];
-        foreach ($listKeys as $key) {
-            if (! isset($payload[$key]) || ! is_array($payload[$key])) {
-                $payload[$key] = [];
-            }
-        }
-
-        $defaultCompanyId = config('rhid.justification_list_default_company_id');
-        if ($defaultCompanyId !== null && $payload['companies'] === []) {
-            $payload['companies'] = [(int) $defaultCompanyId];
-        }
-
-        return $payload;
-    }
-
-    /**
-     * Converte yyyyMMdd validado para o formato esperado pelo POST justification.svc/list.
-     *
-     * @see config('rhid.justification_list_ini_fim_format') iso|compact|br
-     */
-    protected function formatJustificationListDateForRhidApi(string $yyyymmdd): string
-    {
-        $y = (int) substr($yyyymmdd, 0, 4);
-        $m = (int) substr($yyyymmdd, 4, 2);
-        $d = (int) substr($yyyymmdd, 6, 2);
-        if (! checkdate($m, $d, $y)) {
-            return $yyyymmdd;
-        }
-
-        $format = strtolower((string) config('rhid.justification_list_ini_fim_format', 'iso'));
-
-        return match ($format) {
-            'br', 'pt-br', 'pt_br' => sprintf('%02d/%02d/%04d', $d, $m, $y),
-            'compact', 'yyyymmdd', 'ymd' => $yyyymmdd,
-            default => sprintf('%04d-%02d-%02d', $y, $m, $d),
-        };
     }
 
     public function storeJustification(Request $request, RhidComplianceService $compliance): JsonResponse|Response
