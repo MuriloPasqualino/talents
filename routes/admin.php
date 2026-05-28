@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\MethodologyFormTemplateController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\PlatformCompanyController;
 use App\Http\Controllers\Admin\RhidPortfolioController;
+use App\Http\Controllers\Admin\RhidPanelController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SolidesCurriculumController;
 use App\Http\Controllers\Admin\SolidesSettingsController;
@@ -100,6 +101,12 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('companies/{company}/templates/{template}', [CompanyController::class, 'detachTemplate'])->name('companies.templates.detach');
         Route::post('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'attachTemplate'])->name('companies.methodology-templates.attach');
         Route::delete('companies/{company}/methodology-templates/{template}', [MethodologyCompanyController::class, 'detachTemplate'])->name('companies.methodology-templates.detach');
+    });
+
+    Route::middleware('admin.can:rhid')->prefix('rhid')->name('rhid.')->group(function () {
+        Route::get('/', [RhidPanelController::class, 'index'])->name('index');
+        Route::get('summary', [RhidPanelController::class, 'summary'])->name('summary');
+        Route::get('companies/{company}/metrics', [RhidPanelController::class, 'companyMetrics'])->name('companies.metrics');
     });
 
     Route::middleware('admin.can:plans')->group(function () {

@@ -7,6 +7,7 @@ enum AdminPermissionModule: string
     case Dashboard = 'dashboard';
     case LandingInterest = 'landing_interest';
     case Companies = 'companies';
+    case Rhid = 'rhid';
     case Plans = 'plans';
     case SurveyTemplates = 'survey_templates';
     case Methodology = 'methodology';
@@ -26,6 +27,7 @@ enum AdminPermissionModule: string
             self::Dashboard => 'Painel',
             self::LandingInterest => 'Interessados',
             self::Companies => 'Empresas',
+            self::Rhid => 'RHID - Empresas',
             self::Plans => 'Planos',
             self::SurveyTemplates => 'Mapeamentos',
             self::Methodology => 'Direcionamento Estratégico',
@@ -50,6 +52,7 @@ enum AdminPermissionModule: string
             self::Dashboard,
             self::LandingInterest,
             self::Companies,
+            self::Rhid,
             self::Plans,
             self::SurveyTemplates,
             self::Methodology,

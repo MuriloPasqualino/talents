@@ -18,6 +18,7 @@ class AdminHomeResolver
         'dashboard' => 'admin.dashboard',
         'landing_interest' => 'admin.landing-interest.index',
         'companies' => 'admin.companies.index',
+        'rhid' => 'admin.rhid.index',
         'plans' => 'admin.plans.index',
         'survey_templates' => 'admin.survey-templates.index',
         'methodology' => 'admin.metodologia.index',

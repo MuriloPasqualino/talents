@@ -21,6 +21,7 @@ import {
     CreditCardIcon,
     EnvelopeOpenIcon,
     HomeIcon,
+    ClockIcon,
     UserCircleIcon,
     UsersIcon,
     MicrophoneIcon,
@@ -77,6 +78,14 @@ const adminHomeUrl = computed(
                 :active="route().current('admin.companies.*')"
                 :icon="BuildingOffice2Icon"
                 label="Empresas"
+                :collapsed="collapsed"
+            />
+            <SidebarNavItem
+                v-if="canAdmin('rhid')"
+                :href="route('admin.rhid.index')"
+                :active="route().current('admin.rhid.*')"
+                :icon="ClockIcon"
+                label="RHID"
                 :collapsed="collapsed"
             />
             <SidebarNavItem
