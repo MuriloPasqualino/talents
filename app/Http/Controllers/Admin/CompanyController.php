@@ -222,6 +222,7 @@ class CompanyController extends Controller
             'strategic_calendar_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'tasks_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'rhid_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
+            'denuncias_access_mode' => ['required', Rule::in(['inherit', 'enabled', 'disabled'])],
             'plan_id' => ['nullable', 'exists:plans,id'],
         ]);
 
@@ -251,6 +252,14 @@ class CompanyController extends Controller
         $rhidMode = $data['rhid_access_mode'];
         unset($data['rhid_access_mode']);
         $data['rhid_access'] = match ($rhidMode) {
+            'enabled' => true,
+            'disabled' => false,
+            default => null,
+        };
+
+        $denunciasMode = $data['denuncias_access_mode'];
+        unset($data['denuncias_access_mode']);
+        $data['denuncias_access'] = match ($denunciasMode) {
             'enabled' => true,
             'disabled' => false,
             default => null,

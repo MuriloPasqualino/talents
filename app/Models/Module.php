@@ -22,6 +22,9 @@ class Module extends Model
     /** @var string Integração RHID / ponto eletrônico Control iD */
     public const KEY_RHID = 'rhid';
 
+    /** @var string Canal de denúncias (Lei 14.457/2022) */
+    public const KEY_DENUNCIAS = 'denuncias';
+
     protected $fillable = ['key', 'name', 'description'];
 
     public function plans(): BelongsToMany

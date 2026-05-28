@@ -49,13 +49,20 @@ abstract class TestCase extends BaseTestCase
         $this->withoutMiddleware(ValidateCsrfToken::class);
     }
 
-    protected function subscribeCompanyToNr1(Company $company, bool $withRhid = true): void
+    protected function subscribeCompanyToNr1(Company $company, bool $withRhid = true, bool $withDenuncias = true): void
     {
         $nr1 = Module::query()->firstOrCreate(
             ['key' => Module::KEY_NR1],
             ['name' => 'NR1', 'description' => 'Teste']
         );
         $moduleIds = [$nr1->id];
+        if ($withDenuncias) {
+            $denuncias = Module::query()->firstOrCreate(
+                ['key' => Module::KEY_DENUNCIAS],
+                ['name' => 'Canal de denúncias', 'description' => 'Teste']
+            );
+            $moduleIds[] = $denuncias->id;
+        }
         if ($withRhid) {
             $rhid = Module::query()->firstOrCreate(
                 ['key' => Module::KEY_RHID],

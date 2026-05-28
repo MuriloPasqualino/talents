@@ -32,6 +32,13 @@ const rhidAccessMode = () => {
     return 'inherit';
 };
 
+const denunciasAccessMode = () => {
+    const v = props.company.denuncias_access;
+    if (v === true) return 'enabled';
+    if (v === false) return 'disabled';
+    return 'inherit';
+};
+
 const form = useForm({
     name: props.company.name,
     contact_email: props.company.contact_email ?? '',
@@ -49,6 +56,7 @@ const form = useForm({
     strategic_calendar_access_mode: accessMode(),
     tasks_access_mode: tasksAccessMode(),
     rhid_access_mode: rhidAccessMode(),
+    denuncias_access_mode: denunciasAccessMode(),
     plan_id: props.activePlanId ?? null,
 });
 
@@ -188,6 +196,21 @@ const submit = () => {
                 <select
                     id="rhid_access_mode"
                     v-model="form.rhid_access_mode"
+                    class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                >
+                    <option value="inherit">Seguir o plano</option>
+                    <option value="enabled">Forçar habilitado</option>
+                    <option value="disabled">Forçar desabilitado</option>
+                </select>
+            </div>
+            <div>
+                <InputLabel for="denuncias_access_mode" value="Canal de denúncias" />
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Por padrão segue o plano (módulo «denuncias»). Pode forçar por empresa.
+                </p>
+                <select
+                    id="denuncias_access_mode"
+                    v-model="form.denuncias_access_mode"
                     class="mt-1 block w-full max-w-md rounded-md border border-gray-300 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
                 >
                     <option value="inherit">Seguir o plano</option>

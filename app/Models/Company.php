@@ -32,6 +32,7 @@ class Company extends Model
         'strategic_calendar_access',
         'tasks_access',
         'rhid_access',
+        'denuncias_access',
     ];
 
     protected function casts(): array
@@ -42,6 +43,7 @@ class Company extends Model
             'strategic_calendar_access' => 'boolean',
             'tasks_access' => 'boolean',
             'rhid_access' => 'boolean',
+            'denuncias_access' => 'boolean',
         ];
     }
 
@@ -208,6 +210,22 @@ class Company extends Model
         return $this->subscriptionHasModuleKey(Module::KEY_RHID);
     }
 
+    /**
+     * Canal de denúncias: override na empresa ou chave no plano da assinatura ativa.
+     */
+    public function hasComplaintsEnabled(): bool
+    {
+        if ($this->denuncias_access === false) {
+            return false;
+        }
+
+        if ($this->denuncias_access === true) {
+            return true;
+        }
+
+        return $this->subscriptionHasModuleKey(Module::KEY_DENUNCIAS);
+    }
+
     public function activeSubscription(): ?Subscription
     {
         return $this->subscriptions()->where('status', 'active')->latest()->first();
@@ -235,7 +253,6 @@ class Company extends Model
         return match ($module) {
             PermissionModule::Pesquisas,
             PermissionModule::PlanosAcao,
-            PermissionModule::Denuncias,
             PermissionModule::DepartamentosCargos,
             PermissionModule::Relatorios,
             PermissionModule::ConfiguracoesEmpresa,
@@ -245,6 +262,7 @@ class Company extends Model
             PermissionModule::CalendarioEstrategico => $this->hasStrategicCalendarEnabled(),
             PermissionModule::Rhid => $this->hasRhidEnabled(),
             PermissionModule::Tarefas => $this->hasTasksEnabled(),
+            PermissionModule::Denuncias => $this->hasComplaintsEnabled(),
         };
     }
 

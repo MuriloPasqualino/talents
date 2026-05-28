@@ -64,6 +64,7 @@ class HandleInertiaRequests extends Middleware
                     'has_methodology' => $company->hasMethodologyEnabled(),
                     'has_strategic_calendar' => $company->hasStrategicCalendarEnabled(),
                     'has_tasks' => $company->hasTasksEnabled(),
+                    'has_complaints' => $company->hasComplaintsEnabled(),
                     'active_permission_modules' => $company->activePermissionModuleValues(),
                 ]);
             }

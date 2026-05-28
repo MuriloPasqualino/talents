@@ -59,6 +59,14 @@ class TalentsSeeder extends Seeder
             ]
         );
 
+        $denuncias = Module::query()->firstOrCreate(
+            ['key' => Module::KEY_DENUNCIAS],
+            [
+                'name' => 'Canal de denúncias',
+                'description' => 'Canal de denúncias anônimas e gestão de protocolos (Lei nº 14.457/2022).',
+            ]
+        );
+
         $plan = Plan::query()->firstOrCreate(
             ['slug' => 'nr1-pro'],
             [
@@ -70,7 +78,7 @@ class TalentsSeeder extends Seeder
             ]
         );
 
-        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id]);
+        $plan->modules()->syncWithoutDetaching([$nr1->id, $metodologia->id, $calendario->id, $tarefas->id, $rhid->id, $denuncias->id]);
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@talents.local'],
