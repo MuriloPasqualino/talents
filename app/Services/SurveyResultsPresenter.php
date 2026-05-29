@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Survey;
+use App\Models\SurveyAnswer;
 use App\Models\SurveyResult;
 
 class SurveyResultsPresenter
@@ -14,7 +15,7 @@ class SurveyResultsPresenter
      */
     public static function forSurvey(Survey $survey): array
     {
-        $survey->loadMissing(['template.sections', 'company', 'insights']);
+        $survey->loadMissing(['template.sections.questions', 'company', 'insights']);
 
         $results = SurveyResult::query()
             ->where('survey_id', $survey->id)
@@ -72,6 +73,61 @@ class SurveyResultsPresenter
             }),
             'deptSectionsByDepartment' => $deptSectionsByDepartment,
             'insights' => $survey->insights,
+            'questionDistributions' => self::buildQuestionDistributions($survey),
         ];
+    }
+
+    /**
+     * @return list<array{section_id: int, section_title: string, questions: list<array{id: int, body: string, response_scale: string, total: int, counts: array<int, int>}>}>
+     */
+    private static function buildQuestionDistributions(Survey $survey): array
+    {
+        $countsByQuestion = SurveyAnswer::query()
+            ->selectRaw('survey_answers.survey_template_question_id, survey_answers.value, COUNT(*) as total')
+            ->join('survey_responses', 'survey_responses.id', '=', 'survey_answers.survey_response_id')
+            ->where('survey_responses.survey_id', $survey->id)
+            ->whereNotNull('survey_responses.completed_at')
+            ->groupBy('survey_answers.survey_template_question_id', 'survey_answers.value')
+            ->get()
+            ->groupBy('survey_template_question_id')
+            ->map(function ($rows) {
+                return $rows->mapWithKeys(fn ($row) => [(int) $row->value => (int) $row->total])->all();
+            })
+            ->all();
+
+        $sections = [];
+
+        foreach ($survey->template?->sections ?? [] as $section) {
+            $questions = [];
+
+            foreach ($section->questions as $question) {
+                $rawCounts = $countsByQuestion[$question->id] ?? [];
+                $counts = [];
+
+                for ($value = 1; $value <= 5; $value++) {
+                    $counts[$value] = (int) ($rawCounts[$value] ?? 0);
+                }
+
+                $questions[] = [
+                    'id' => $question->id,
+                    'body' => $question->body,
+                    'response_scale' => $question->response_scale ?? 'frequency',
+                    'total' => array_sum($counts),
+                    'counts' => $counts,
+                ];
+            }
+
+            if ($questions === []) {
+                continue;
+            }
+
+            $sections[] = [
+                'section_id' => $section->id,
+                'section_title' => $section->title,
+                'questions' => $questions,
+            ];
+        }
+
+        return $sections;
     }
 }

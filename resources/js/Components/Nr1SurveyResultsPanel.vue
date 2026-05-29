@@ -8,7 +8,43 @@ const props = defineProps({
     deptOveralls: Array,
     deptSectionsByDepartment: Array,
     insights: Array,
+    questionDistributions: { type: Array, default: () => [] },
 });
+
+const frequencyLabels = {
+    1: 'Nunca',
+    2: 'Raramente',
+    3: 'Às vezes',
+    4: 'Frequentemente',
+    5: 'Sempre',
+};
+
+const agreementLabels = {
+    1: 'Discordo totalmente',
+    2: 'Discordo',
+    3: 'Neutro',
+    4: 'Concordo',
+    5: 'Concordo totalmente',
+};
+
+const labelForOption = (responseScale, value) => {
+    const labels = responseScale === 'agreement' ? agreementLabels : frequencyLabels;
+    return labels[value] ?? String(value);
+};
+
+const percentForOption = (question, value) => {
+    if (!question.total) {
+        return 0;
+    }
+    return Math.round((question.counts[value] / question.total) * 100);
+};
+
+const barWidth = (question, value) => {
+    if (!question.total) {
+        return 0;
+    }
+    return Math.max((question.counts[value] / question.total) * 100, question.counts[value] > 0 ? 2 : 0);
+};
 
 const radar = computed(() => ({
     chart: { type: 'radar', toolbar: { show: false }, foreColor: '#334155' },
@@ -213,6 +249,48 @@ const healthLevelLabel = (level) => {
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <div v-if="questionDistributions?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-talents-900">Detalhamento por pergunta</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                Quantidade de votos por opção da escala, no total da campanha.
+            </p>
+
+            <div v-for="section in questionDistributions" :key="section.section_id" class="mt-8 first:mt-6">
+                <h4 class="text-base font-semibold text-talents-800">{{ section.section_title }}</h4>
+
+                <div
+                    v-for="question in section.questions"
+                    :key="question.id"
+                    class="mt-5 border-t border-gray-100 pt-5 first:border-t-0 first:pt-0"
+                >
+                    <p class="text-sm font-medium text-gray-900">{{ question.body }}</p>
+                    <p class="mt-1 text-xs text-gray-500">
+                        {{ question.total }} resposta{{ question.total === 1 ? '' : 's' }}
+                        <span v-if="question.response_scale === 'agreement'"> · Escala de concordância</span>
+                        <span v-else> · Escala de frequência</span>
+                    </p>
+
+                    <div v-if="question.total" class="mt-3 space-y-2">
+                        <div v-for="value in [1, 2, 3, 4, 5]" :key="value" class="flex items-center gap-3">
+                            <span class="w-36 shrink-0 text-xs text-gray-600 sm:w-44">
+                                {{ labelForOption(question.response_scale, value) }}
+                            </span>
+                            <div class="h-5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                                <div
+                                    class="h-full rounded-full bg-talents-600 transition-all"
+                                    :style="{ width: barWidth(question, value) + '%' }"
+                                />
+                            </div>
+                            <span class="w-20 shrink-0 text-right text-xs font-medium text-gray-700">
+                                {{ question.counts[value] }} ({{ percentForOption(question, value) }}%)
+                            </span>
+                        </div>
+                    </div>
+                    <p v-else class="mt-2 text-xs text-gray-400">Nenhuma resposta ainda.</p>
+                </div>
+            </div>
         </div>
 
         <div class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
