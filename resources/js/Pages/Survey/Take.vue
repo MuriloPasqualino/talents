@@ -73,13 +73,16 @@ const progress = () => {
                     <h3 class="text-sm font-semibold text-talents-700">Dados opcionais (agregados)</h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <div v-if="survey.company?.departments?.length">
-                            <label class="text-xs text-slate-600">Setor</label>
+                            <label class="text-xs text-slate-600">Setor <span class="text-red-600">*</span></label>
                             <select
                                 v-model="form.department_id"
                                 class="mt-1 w-full rounded-lg border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                required
                             >
+                                <option :value="null" disabled>Selecione</option>
                                 <option v-for="d in survey.company.departments" :key="d.id" :value="d.id">{{ d.name }}</option>
                             </select>
+                            <p v-if="form.errors.department_id" class="mt-1 text-xs text-red-600">{{ form.errors.department_id }}</p>
                         </div>
                         <div>
                             <label class="text-xs text-slate-600">Faixa etária</label>

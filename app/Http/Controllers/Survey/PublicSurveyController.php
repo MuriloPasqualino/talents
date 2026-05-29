@@ -11,6 +11,7 @@ use App\Services\SurveyResultCalculator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -88,10 +89,15 @@ class PublicSurveyController extends Controller
         }
 
         $questionIds = $survey->template->sections->flatMap->questions->pluck('id')->all();
+        $hasDepartments = Department::query()->where('company_id', $survey->company_id)->exists();
 
         $rules = [
             'answers' => ['required', 'array'],
-            'department_id' => ['nullable', 'exists:departments,id'],
+            'department_id' => [
+                Rule::requiredIf($hasDepartments),
+                'nullable',
+                'exists:departments,id',
+            ],
             'age_range' => ['nullable', 'string', 'max:32'],
             'tenure_range' => ['nullable', 'string', 'max:32'],
         ];

@@ -66,6 +66,20 @@ class PublicSurveyTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_submit_requires_department_when_company_has_departments(): void
+    {
+        $fx = $this->createSurveyFixture();
+
+        Department::query()->create([
+            'company_id' => $fx->company->id,
+            'name' => 'Operações',
+        ]);
+
+        $this->post(route('survey.public.submit', $fx->survey->public_token), [
+            'answers' => [$fx->question->id => 3],
+        ])->assertSessionHasErrors('department_id');
+    }
+
     public function test_survey_submit_throttle_returns_429_after_limit(): void
     {
         Config::set('public_rate_limits.survey_submit_per_minute', 5);
