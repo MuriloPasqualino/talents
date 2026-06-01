@@ -30,14 +30,23 @@ class ActionPlanController extends Controller
 
         $plan = $survey->actionPlans()->with('items')->latest()->first();
 
-        $visible =
-            $plan !== null
+        $hasOpinion = $plan !== null
+            && filled($plan->technical_opinion)
+            && trim(strip_tags((string) $plan->technical_opinion)) !== '';
+
+        $hasItems = $plan !== null && $plan->items->isNotEmpty();
+
+        $visible = $plan !== null
             && $plan->admin_published_at !== null
-            && $plan->items->isNotEmpty();
+            && ($hasOpinion || $hasItems);
 
         return Inertia::render('Client/Surveys/ActionPlan', [
             'survey' => $survey,
-            'plan' => $visible ? $plan : null,
+            'plan' => $visible ? [
+                'id' => $plan->id,
+                'technical_opinion' => $plan->technical_opinion,
+                'items' => $plan->items,
+            ] : null,
             'actionPlanLocked' => ! $visible,
         ]);
     }

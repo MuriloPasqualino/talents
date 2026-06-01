@@ -167,7 +167,7 @@ const deleteCompany = () => {
                         :href="route('admin.companies.surveys.action-plan.edit', [company.id, s.id])"
                         class="font-medium text-talents-700 hover:underline"
                     >
-                        Plano de ação
+                        Parecer e plano
                     </Link>
                 </li>
                 <li v-if="!(company.surveys || []).length" class="text-gray-500">Nenhuma pesquisa cadastrada.</li>

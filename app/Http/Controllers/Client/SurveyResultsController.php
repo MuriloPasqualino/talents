@@ -48,7 +48,7 @@ class SurveyResultsController extends Controller
             ->latest()
             ->first();
 
-        $aiAnalysisPending = Cache::has('ai_job_pending_'.$survey->id);
+        $aiAnalysisPending = Cache::has(Nr1AiAnalyzer::pendingCacheKey($survey->id, Nr1AiAnalyzer::TYPE_NR1_GUIDANCE));
 
         return Inertia::render('Client/Surveys/Results', array_merge($presented, [
             'aiEnabled' => $aiEnabled,
@@ -77,7 +77,7 @@ class SurveyResultsController extends Controller
             return back()->with('error', 'Limite de gerações por hora atingido. Tente mais tarde.');
         }
 
-        $pendingKey = 'ai_job_pending_'.$survey->id;
+        $pendingKey = Nr1AiAnalyzer::pendingCacheKey($survey->id, Nr1AiAnalyzer::TYPE_NR1_GUIDANCE);
         if (Cache::has($pendingKey)) {
             return back()->with('info', 'Já existe uma análise em processamento. Atualize a página em instantes.');
         }
@@ -85,7 +85,7 @@ class SurveyResultsController extends Controller
         Cache::put($pendingKey, true, now()->addMinutes(15));
         RateLimiter::hit($rateKey, 3600);
 
-        GenerateAiAnalysisJob::dispatch($survey->id, (int) $request->user()->id);
+        GenerateAiAnalysisJob::dispatch($survey->id, (int) $request->user()->id, Nr1AiAnalyzer::TYPE_NR1_GUIDANCE);
 
         return back()->with('success', 'Análise solicitada. Em alguns segundos atualize a página para ver o texto.');
     }

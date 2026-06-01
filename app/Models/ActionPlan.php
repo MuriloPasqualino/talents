@@ -13,6 +13,7 @@ class ActionPlan extends Model
         'survey_id',
         'status',
         'admin_published_at',
+        'technical_opinion',
     ];
 
     protected function casts(): array

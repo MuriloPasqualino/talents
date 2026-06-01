@@ -75,7 +75,19 @@ const patchItem = (item) => {
             </div>
         </div>
 
-        <div v-else class="space-y-4">
+        <div v-else class="space-y-6">
+            <div
+                v-if="plan.technical_opinion"
+                class="surface-card overflow-hidden p-6"
+            >
+                <h3 class="text-lg font-semibold text-talents-900">Parecer técnico</h3>
+                <p class="mt-1 text-xs text-gray-500">Elaborado pela equipe Talents com base nos resultados desta pesquisa.</p>
+                <div
+                    class="parecer-prose prose prose-sm mt-4 max-w-none text-gray-800 prose-headings:text-talents-900 prose-strong:text-talents-900"
+                    v-html="plan.technical_opinion"
+                />
+            </div>
+
             <div
                 v-for="item in plan.items"
                 :key="item.id"
@@ -118,3 +130,27 @@ const patchItem = (item) => {
         </div>
     </ClientLayout>
 </template>
+
+<style scoped>
+.parecer-prose :deep(h2) {
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    font-weight: 700;
+}
+.parecer-prose :deep(h2:first-child) {
+    margin-top: 0;
+}
+.parecer-prose :deep(h3) {
+    margin-top: 1em;
+    margin-bottom: 0.4em;
+    font-weight: 700;
+}
+.parecer-prose :deep(p + p) {
+    margin-top: 0.75em;
+}
+.parecer-prose :deep(ul),
+.parecer-prose :deep(ol) {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+</style>

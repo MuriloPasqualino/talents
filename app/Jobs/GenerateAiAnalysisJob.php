@@ -27,12 +27,13 @@ class GenerateAiAnalysisJob implements ShouldQueue
 
     public function __construct(
         public int $surveyId,
-        public int $userId
+        public int $userId,
+        public string $type = Nr1AiAnalyzer::TYPE_NR1_GUIDANCE
     ) {}
 
     public function handle(Nr1AiAnalyzer $analyzer): void
     {
-        $cacheKey = 'ai_job_pending_'.$this->surveyId;
+        $cacheKey = Nr1AiAnalyzer::pendingCacheKey($this->surveyId, $this->type);
 
         try {
             $survey = Survey::query()->find($this->surveyId);
@@ -47,11 +48,11 @@ class GenerateAiAnalysisJob implements ShouldQueue
                 return;
             }
 
-            $result = $analyzer->generateNarrative($survey, $setting);
+            $result = $analyzer->generateNarrative($survey, $setting, $this->type);
 
             AiAnalysis::query()->create([
                 'survey_id' => $survey->id,
-                'type' => Nr1AiAnalyzer::TYPE_NR1_GUIDANCE,
+                'type' => $this->type,
                 'content' => $result['content'],
                 'prompt_tokens' => $result['prompt_tokens'],
                 'completion_tokens' => $result['completion_tokens'],

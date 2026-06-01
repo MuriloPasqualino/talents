@@ -14,6 +14,24 @@ class Nr1AiAnalyzer
 {
     public const TYPE_NR1_GUIDANCE = 'nr1_guidance';
 
+    public const TYPE_NR1_TECHNICAL_OPINION = 'nr1_technical_opinion';
+
+    public static function pendingCacheKey(int $surveyId, string $type = self::TYPE_NR1_GUIDANCE): string
+    {
+        if ($type === self::TYPE_NR1_GUIDANCE) {
+            return 'ai_job_pending_'.$surveyId;
+        }
+
+        return 'ai_job_pending_'.$type.'_'.$surveyId;
+    }
+
+    public function systemPromptForType(string $type): string
+    {
+        return $type === self::TYPE_NR1_TECHNICAL_OPINION
+            ? $this->technicalOpinionSystemPrompt()
+            : $this->systemPrompt();
+    }
+
     public function systemPrompt(): string
     {
         return <<<'PROMPT'
@@ -34,17 +52,40 @@ Se os dados forem insuficientes, diga isso objetivamente e indique o que falta e
 PROMPT;
     }
 
+    public function technicalOpinionSystemPrompt(): string
+    {
+        return <<<'PROMPT'
+Você é a Mia, assistente da plataforma Talents, elaborando um **parecer técnico** para a equipe Talents entregar à empresa cliente, sobre riscos psicossociais no trabalho conforme a NR-1 (Portaria MTE nº 1.419/2024) e integração ao PGR.
+
+Regras obrigatórias:
+- Use apenas os dados agregados fornecidos (médias, níveis de risco, contagens por dimensão/setor). Não invente números nem respondentes individuais.
+- Não identifique pessoas. Não solicite nem suponha dados pessoais.
+- Escreva em linguagem técnica e profissional, em tom de parecer da Talents para gestores e SST. No texto final, não diga que você é uma IA ou modelo de linguagem.
+- Formate em Markdown: use ## para títulos de seção (sem numerar com 1., 2., 3.), **negrito** para destaques, e listas quando fizer sentido.
+- Estruture o parecer com: **Panorama geral**; **Dimensões e setores críticos ou em atenção**; **Interpretação técnica e riscos**; **Recomendações e medidas preventivas/corretivas** alinhadas à NR-1 e ao ciclo do PGR; **Priorização sugerida** (curto/médio prazo quando aplicável).
+- Inclua recomendações operacionais concretas que a empresa possa considerar, sem substituir avaliação presencial por profissionais habilitados.
+- Ao final, inclua um **Disclaimer** breve: o parecer é apoio à gestão de riscos psicossociais e não dispensa obrigações legais nem avaliação por equipe técnica competente quando exigida.
+- Separe parágrafos e seções com linha em branco após cada título ##.
+
+Se os dados forem insuficientes, indique objetivamente o que falta (ex.: mais respondentes por setor) e limite as recomendações ao que os dados permitem sustentar.
+PROMPT;
+    }
+
     /**
      * @return array{content: string, prompt_tokens: int|null, completion_tokens: int|null, model_used: string}
      */
-    public function generateNarrative(Survey $survey, AiSetting $setting): array
-    {
+    public function generateNarrative(
+        Survey $survey,
+        AiSetting $setting,
+        string $type = self::TYPE_NR1_GUIDANCE
+    ): array {
         $payload = $this->buildAggregatedPayload($survey);
         $userContent = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $systemPrompt = $this->systemPromptForType($type);
 
         return match ($setting->provider) {
-            'anthropic' => $this->callAnthropic($setting, $userContent),
-            default => $this->callOpenAi($setting, $userContent),
+            'anthropic' => $this->callAnthropic($setting, $userContent, $systemPrompt),
+            default => $this->callOpenAi($setting, $userContent, $systemPrompt),
         };
     }
 
@@ -116,7 +157,7 @@ PROMPT;
     /**
      * @return array{content: string, prompt_tokens: int|null, completion_tokens: int|null, model_used: string}
      */
-    private function callOpenAi(AiSetting $setting, string $userContent): array
+    private function callOpenAi(AiSetting $setting, string $userContent, string $systemPrompt): array
     {
         $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
@@ -129,7 +170,7 @@ PROMPT;
             ->post('https://api.openai.com/v1/chat/completions', [
                 'model' => $setting->model,
                 'messages' => [
-                    ['role' => 'system', 'content' => $this->systemPrompt()],
+                    ['role' => 'system', 'content' => $systemPrompt],
                     ['role' => 'user', 'content' => $userContent],
                 ],
                 'max_tokens' => $setting->max_tokens,
@@ -156,7 +197,7 @@ PROMPT;
     /**
      * @return array{content: string, prompt_tokens: int|null, completion_tokens: int|null, model_used: string}
      */
-    private function callAnthropic(AiSetting $setting, string $userContent): array
+    private function callAnthropic(AiSetting $setting, string $userContent, string $systemPrompt): array
     {
         $key = $setting->safeApiKey();
         if ($key === null || $key === '') {
@@ -173,7 +214,7 @@ PROMPT;
                 'model' => $setting->model,
                 'max_tokens' => $setting->max_tokens,
                 'temperature' => $setting->temperature,
-                'system' => $this->systemPrompt(),
+                'system' => $systemPrompt,
                 'messages' => [
                     ['role' => 'user', 'content' => $userContent],
                 ],
