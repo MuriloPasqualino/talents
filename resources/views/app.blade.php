@@ -13,6 +13,12 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        <meta name="description" content="Talents — Consultoria estratégica em gestão de pessoas. Comportamento, liderança, cultura organizacional e desenvolvimento humano.">
+        <meta property="og:site_name" content="Talents Gestão de Pessoas">
+        <meta property="og:type" content="website">
+        <meta property="og:image" content="{{ rtrim(config('app.url'), '/') }}/images/logo.png">
+        <meta name="twitter:card" content="summary_large_image">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

@@ -12,7 +12,68 @@ Route::get('/', function () {
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
     ]);
-});
+})->name('landing.home');
+
+Route::get('/para-empresas', function () {
+    return Inertia::render('ParaEmpresas', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.empresas');
+
+Route::get('/para-pessoas', function () {
+    return Inertia::render('ParaPessoas', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.pessoas');
+
+Route::get('/nossos-clientes', function () {
+    return Inertia::render('NossosClientes', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.clientes');
+
+Route::get('/sobre', function () {
+    return Inertia::render('Sobre', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.sobre');
+
+Route::get('/contato', function () {
+    return Inertia::render('Contato', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+    ]);
+})->name('landing.contato');
+
+Route::get('/sitemap.xml', function () {
+    $base = rtrim(config('app.url'), '/');
+
+    $paths = [
+        '/',
+        '/para-empresas',
+        '/para-pessoas',
+        '/nossos-clientes',
+        '/sobre',
+        '/contato',
+        '/nr-1',
+        '/diagnostico-comportamental',
+        '/contratacao-de-talentos',
+        '/direcionamento-estrategico',
+    ];
+
+    $urls = collect($paths)->map(fn (string $path) => [
+        'loc' => $base.$path,
+        'lastmod' => now()->toAtomString(),
+    ]);
+
+    return response()
+        ->view('sitemap', ['urls' => $urls])
+        ->header('Content-Type', 'application/xml');
+})->name('landing.sitemap');
 
 Route::get('/nr-1', function () {
     return Inertia::render('Nr1', [
