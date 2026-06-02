@@ -75,18 +75,110 @@ const activeQuestionDistributions = computed(() => {
     return row?.sections ?? [];
 });
 
-const filteredDeptRadar = computed(() => ({
-    chart: { type: 'radar', toolbar: { show: false }, foreColor: '#334155' },
-    colors: ['#632a7e'],
-    stroke: { width: 2 },
-    fill: { opacity: 0.15 },
-    xaxis: {
-        categories: activeDeptSections.value.map((r) => r.meta?.section_title || 'Dimensão'),
-    },
-    yaxis: { show: false, min: likertScaleMin, max: likertScaleMax },
-    markers: { size: 4 },
-    dataLabels: { enabled: true },
-}));
+const riskToBarColor = (level) => {
+    if (level === 'green') return '#10b981';
+    if (level === 'yellow') return '#f59e0b';
+    return '#ef4444';
+};
+
+const riskLevelFromScore = (score) => {
+    const value = Number(score);
+    if (value <= 2.33) return 'green';
+    if (value <= 3.66) return 'yellow';
+    return 'red';
+};
+
+const resolveRiskLevel = (row) => row?.risk_level || riskLevelFromScore(row?.average_score);
+
+const healthLevelLabel = (level) => {
+    if (level === 'green') return 'Situação favorável';
+    if (level === 'yellow') return 'Risco intermediário';
+    return 'Risco elevado';
+};
+
+const buildDimensionRadarOptions = (sections) => {
+    const rows = sections ?? [];
+    const discreteMarkers = rows.map((row, dataPointIndex) => {
+        const color = riskToBarColor(resolveRiskLevel(row));
+        return {
+            seriesIndex: 0,
+            dataPointIndex,
+            fillColor: color,
+            strokeColor: color,
+            size: 10,
+        };
+    });
+
+    return {
+        chart: { type: 'radar', toolbar: { show: false }, foreColor: '#334155' },
+        colors: ['#64748b'],
+        stroke: { width: 2.5, colors: ['#94a3b8'] },
+        fill: { opacity: 0.12, colors: ['#cbd5e1'] },
+        plotOptions: {
+            radar: {
+                size: 210,
+                polygons: {
+                    strokeColors: '#e2e8f0',
+                    connectorColors: '#e2e8f0',
+                    fill: { colors: ['#f8fafc', '#ffffff'] },
+                },
+            },
+        },
+        xaxis: {
+            categories: rows.map((r) => r.meta?.section_title || 'Dimensão'),
+            labels: {
+                style: { fontSize: '12px', fontWeight: 600, colors: ['#334155'] },
+            },
+        },
+        yaxis: {
+            show: true,
+            min: likertScaleMin,
+            max: likertScaleMax,
+            tickAmount: 4,
+            labels: {
+                formatter: (value) => Number(value).toFixed(1),
+                style: { fontSize: '11px', colors: ['#64748b'] },
+            },
+        },
+        markers: {
+            size: 6,
+            strokeWidth: 2,
+            strokeColors: '#fff',
+            hover: { size: 12 },
+            discrete: discreteMarkers,
+        },
+        dataLabels: {
+            enabled: true,
+            formatter: (value) => Number(value).toFixed(2),
+            style: {
+                fontSize: '12px',
+                fontWeight: 700,
+                colors: rows.map(() => '#ffffff'),
+            },
+            background: {
+                enabled: true,
+                borderRadius: 6,
+                padding: 8,
+                opacity: 1,
+                borderWidth: 0,
+                dropShadow: { enabled: false },
+                backgroundColor: rows.map((row) => riskToBarColor(resolveRiskLevel(row))),
+            },
+        },
+        tooltip: {
+            y: {
+                formatter: (value, { dataPointIndex }) => {
+                    const row = rows[dataPointIndex];
+                    const level = resolveRiskLevel(row);
+                    return `${Number(value).toFixed(2)} · ${healthLevelLabel(level)}`;
+                },
+            },
+        },
+        legend: { show: false },
+    };
+};
+
+const filteredDeptRadar = computed(() => buildDimensionRadarOptions(activeDeptSections.value));
 
 const filteredDeptRadarSeries = computed(() => [
     {
@@ -130,27 +222,22 @@ const barWidth = (question, value) => {
     return Math.max((question.counts[value] / question.total) * 100, question.counts[value] > 0 ? 2 : 0);
 };
 
-const radar = computed(() => ({
-    chart: { type: 'radar', toolbar: { show: false }, foreColor: '#334155' },
-    colors: ['#632a7e'],
-    stroke: { width: 2 },
-    fill: { opacity: 0.15 },
-    xaxis: {
-        categories: props.bySection?.map((r) => r.meta?.section_title || 'Dimensão') ?? [],
-    },
-    yaxis: { show: false, min: likertScaleMin, max: likertScaleMax },
-    markers: { size: 4 },
-    dataLabels: { enabled: true },
-}));
+const radar = computed(() => buildDimensionRadarOptions(props.bySection ?? []));
 
 const radarSeries = computed(() => [
     { name: 'Risco médio', data: props.bySection?.map((r) => Number(r.average_score)) ?? [] },
 ]);
 
-const riskToBarColor = (level) => {
-    if (level === 'green') return '#10b981';
-    if (level === 'yellow') return '#f59e0b';
-    return '#ef4444';
+const dimensionRowClass = (level) => {
+    if (level === 'green') return 'border-emerald-200 bg-emerald-50/80';
+    if (level === 'yellow') return 'border-amber-200 bg-amber-50/80';
+    return 'border-red-200 bg-red-50/80';
+};
+
+const dimensionScoreClass = (level) => {
+    if (level === 'green') return 'bg-emerald-600 text-white';
+    if (level === 'yellow') return 'bg-amber-500 text-white';
+    return 'bg-red-500 text-white';
 };
 
 const deptBarChart = computed(() => {
@@ -242,12 +329,6 @@ const healthBadge = (level) => {
     if (level === 'yellow') return 'bg-amber-100 text-amber-800';
     return 'bg-red-100 text-red-800';
 };
-
-const healthLevelLabel = (level) => {
-    if (level === 'green') return 'Situação favorável';
-    if (level === 'yellow') return 'Risco intermediário';
-    return 'Risco elevado';
-};
 </script>
 
 <template>
@@ -291,9 +372,34 @@ const healthLevelLabel = (level) => {
             v-if="isDepartmentFiltered && activeDeptSections.length"
             class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
-            <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
-            <div class="mt-4 h-96">
-                <apexchart height="380" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg font-semibold text-talents-900">Dimensões — {{ selectedDepartmentName }}</h3>
+                <div class="flex flex-wrap gap-3 text-xs text-gray-600">
+                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Favorável</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500" /> Intermediário</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-red-500" /> Elevado</span>
+                </div>
+            </div>
+            <div class="mt-6 grid gap-8 xl:grid-cols-5">
+                <div class="xl:col-span-3 min-h-[34rem]">
+                    <apexchart height="540" :options="filteredDeptRadar" :series="filteredDeptRadarSeries" />
+                </div>
+                <ul class="space-y-2 xl:col-span-2">
+                    <li
+                        v-for="row in activeDeptSections"
+                        :key="row.survey_template_section_id"
+                        class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+                        :class="dimensionRowClass(resolveRiskLevel(row))"
+                    >
+                        <span class="text-sm font-medium text-gray-900">{{ row.meta?.section_title || 'Dimensão' }}</span>
+                        <span
+                            class="shrink-0 rounded-md px-2.5 py-1 text-sm font-bold tabular-nums"
+                            :class="dimensionScoreClass(resolveRiskLevel(row))"
+                        >
+                            {{ Number(row.average_score).toFixed(2) }}
+                        </span>
+                    </li>
+                </ul>
             </div>
         </div>
 
@@ -310,9 +416,34 @@ const healthLevelLabel = (level) => {
         </div>
 
         <div v-if="!isDepartmentFiltered && bySection?.length" class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
-            <div class="mt-4 h-96">
-                <apexchart height="380" :options="radar" :series="radarSeries" />
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg font-semibold text-talents-900">Dimensões</h3>
+                <div class="flex flex-wrap gap-3 text-xs text-gray-600">
+                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Favorável (1,00–2,33)</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-amber-500" /> Intermediário (2,34–3,66)</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-red-500" /> Elevado (3,67–5,00)</span>
+                </div>
+            </div>
+            <div class="mt-6 grid gap-8 xl:grid-cols-5">
+                <div class="xl:col-span-3 min-h-[34rem]">
+                    <apexchart height="540" :options="radar" :series="radarSeries" />
+                </div>
+                <ul class="space-y-2 xl:col-span-2">
+                    <li
+                        v-for="row in bySection"
+                        :key="row.survey_template_section_id"
+                        class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+                        :class="dimensionRowClass(resolveRiskLevel(row))"
+                    >
+                        <span class="text-sm font-medium text-gray-900">{{ row.meta?.section_title || 'Dimensão' }}</span>
+                        <span
+                            class="shrink-0 rounded-md px-2.5 py-1 text-sm font-bold tabular-nums"
+                            :class="dimensionScoreClass(resolveRiskLevel(row))"
+                        >
+                            {{ Number(row.average_score).toFixed(2) }}
+                        </span>
+                    </li>
+                </ul>
             </div>
         </div>
 
