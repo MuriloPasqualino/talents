@@ -209,18 +209,6 @@ onUnmounted(() => {
             {{ $page.props.flash.error }}
         </div>
         <div
-            v-if="survey.answers_reconstructed_at"
-            class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-            role="alert"
-        >
-            <p class="font-semibold">Base de respostas reconstruída (estimativa)</p>
-            <p class="mt-1">
-                As notas por pergunta foram regeneradas a partir dos cadastros de participação (setor e data).
-                Os gráficos refletem um <strong>modelo estatístico</strong>, não as respostas originais dos 47
-                participantes. Para dados oficiais da NR-1, é necessário recoletar a pesquisa.
-            </p>
-        </div>
-        <div
             v-if="$page.props.flash?.info"
             class="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
         >
