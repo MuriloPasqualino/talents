@@ -6,13 +6,18 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 
-const props = defineProps({ template: Object });
+const props = defineProps({
+    template: Object,
+    surveysWithCompletedResponses: { type: Number, default: 0 },
+});
 
 const state = reactive({
     sections: JSON.parse(JSON.stringify(props.template.sections || [])).map((s) => ({
+        id: s.id ?? null,
         title: s.title,
         description: s.description || '',
         questions: (s.questions || []).map((q) => ({
+            id: q.id ?? null,
             body: q.body,
             reverse_score: !!q.reverse_score,
             weight: q.weight != null ? Number(q.weight) : 1,
@@ -81,6 +86,19 @@ const submit = () => {
         </template>
 
         <form class="space-y-6 text-gray-900" @submit.prevent="submit">
+            <div
+                v-if="surveysWithCompletedResponses > 0"
+                class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
+                role="alert"
+            >
+                <p class="font-semibold">Este mapeamento já tem pesquisas com respostas.</p>
+                <p class="mt-1">
+                    Alterações em texto, peso e inversão de pontuação são preservadas. Ao
+                    <strong>excluir</strong> uma pergunta ou dimensão, as respostas vinculadas a ela serão
+                    apagadas permanentemente.
+                </p>
+            </div>
+
             <div class="surface-card p-6">
                 <div>
                     <InputLabel for="title" value="Título" />
