@@ -18,6 +18,7 @@ class Survey extends Model
         'ends_at',
         'status',
         'min_responses_for_breakdown',
+        'answers_reconstructed_at',
     ];
 
     protected function casts(): array
@@ -25,7 +26,13 @@ class Survey extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'answers_reconstructed_at' => 'datetime',
         ];
+    }
+
+    public function hasReconstructedAnswers(): bool
+    {
+        return $this->answers_reconstructed_at !== null;
     }
 
     public function company(): BelongsTo

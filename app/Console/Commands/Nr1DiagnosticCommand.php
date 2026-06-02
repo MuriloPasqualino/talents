@@ -30,7 +30,9 @@ class Nr1DiagnosticCommand extends Command
             ->join('companies', 'companies.id', '=', 'surveys.company_id')
             ->get(['surveys.id', 'surveys.title', 'companies.name as empresa', 'surveys.survey_template_id', 'surveys.status']);
         foreach ($surveys as $s) {
-            $this->line("  [{$s->id}] {$s->title} | Empresa: {$s->empresa} | template_id={$s->survey_template_id} | status={$s->status}");
+            $reconstructed = DB::table('surveys')->where('id', $s->id)->value('answers_reconstructed_at');
+            $flag = $reconstructed ? ' | RESPOSTAS RECONSTRUÍDAS' : '';
+            $this->line("  [{$s->id}] {$s->title} | Empresa: {$s->empresa} | template_id={$s->survey_template_id} | status={$s->status}{$flag}");
         }
 
         $this->newLine();
