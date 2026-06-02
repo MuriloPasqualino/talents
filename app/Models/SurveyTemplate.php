@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SurveyTemplate extends Model
 {
-    protected $fillable = ['title', 'description', 'is_active', 'created_by'];
+    protected $fillable = ['title', 'description', 'is_active', 'created_by', 'forked_from_id'];
 
     protected function casts(): array
     {
@@ -37,5 +37,15 @@ class SurveyTemplate extends Model
     public function surveys(): HasMany
     {
         return $this->hasMany(Survey::class);
+    }
+
+    public function forkedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'forked_from_id');
+    }
+
+    public function forks(): HasMany
+    {
+        return $this->hasMany(self::class, 'forked_from_id');
     }
 }

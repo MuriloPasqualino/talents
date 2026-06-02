@@ -33,7 +33,15 @@ defineProps({ templates: Object });
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     <tr v-for="t in templates.data" :key="t.id">
-                        <td class="px-4 py-3">{{ t.title }}</td>
+                        <td class="px-4 py-3">
+                            <span>{{ t.title }}</span>
+                            <span
+                                v-if="t.forked_from_id"
+                                class="ml-2 inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                            >
+                                Versão de #{{ t.forked_from_id }}
+                            </span>
+                        </td>
                         <td class="px-4 py-3">{{ t.sections_count }}</td>
                         <td class="px-4 py-3">{{ t.is_active ? 'Sim' : 'Não' }}</td>
                         <td class="px-4 py-3 text-right space-x-3">

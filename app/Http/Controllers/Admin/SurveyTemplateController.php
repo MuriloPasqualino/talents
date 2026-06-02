@@ -7,6 +7,7 @@ use App\Models\Survey;
 use App\Models\SurveyTemplate;
 use App\Models\SurveyTemplateQuestion;
 use App\Models\SurveyTemplateSection;
+use App\Services\SurveyTemplateVersioningService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,9 +17,14 @@ use Inertia\Response;
 
 class SurveyTemplateController extends Controller
 {
+    public function __construct(
+        private readonly SurveyTemplateVersioningService $versioning
+    ) {}
+
     public function index(): Response
     {
         $templates = SurveyTemplate::query()
+            ->with('forkedFrom:id,title')
             ->withCount('sections')
             ->orderByDesc('id')
             ->paginate(20);
@@ -82,7 +88,7 @@ class SurveyTemplateController extends Controller
 
     public function show(SurveyTemplate $surveyTemplate): Response
     {
-        $surveyTemplate->load(['sections.questions']);
+        $surveyTemplate->load(['sections.questions', 'forkedFrom:id,title']);
 
         return Inertia::render('Admin/SurveyTemplates/Show', [
             'template' => $surveyTemplate,
@@ -91,7 +97,7 @@ class SurveyTemplateController extends Controller
 
     public function edit(SurveyTemplate $surveyTemplate): Response
     {
-        $surveyTemplate->load(['sections.questions']);
+        $surveyTemplate->load(['sections.questions', 'forkedFrom:id,title']);
 
         $surveysWithCompletedResponses = Survey::query()
             ->where('survey_template_id', $surveyTemplate->id)
@@ -121,6 +127,17 @@ class SurveyTemplateController extends Controller
             'sections.*.questions.*.weight' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
             'sections.*.questions.*.response_scale' => ['nullable', 'string', 'in:frequency,agreement'],
         ]);
+
+        if ($this->versioning->shouldFork($surveyTemplate)) {
+            $fork = $this->versioning->createFork($surveyTemplate, $data);
+
+            return redirect()
+                ->route('admin.survey-templates.edit', $fork)
+                ->with(
+                    'success',
+                    'Nova versão do mapeamento criada. O mapeamento original (#'.$surveyTemplate->id.') e todas as respostas foram preservados.'
+                );
+        }
 
         DB::transaction(function () use ($surveyTemplate, $data) {
             $surveyTemplate->update([
@@ -164,6 +181,20 @@ class SurveyTemplateController extends Controller
 
     public function destroy(SurveyTemplate $surveyTemplate): RedirectResponse
     {
+        if ($surveyTemplate->surveys()->exists()) {
+            return back()->with(
+                'error',
+                'Não é possível excluir: há pesquisas vinculadas a este mapeamento. O histórico de respostas deve ser preservado.'
+            );
+        }
+
+        if ($surveyTemplate->forks()->exists()) {
+            return back()->with(
+                'error',
+                'Não é possível excluir: existem versões derivadas deste mapeamento.'
+            );
+        }
+
         $surveyTemplate->delete();
 
         return redirect()->route('admin.survey-templates.index')->with('success', 'Mapeamento removido.');

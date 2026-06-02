@@ -85,7 +85,20 @@ const submit = () => {
             <h2 class="text-xl font-semibold leading-tight text-gray-900">Editar mapeamento</h2>
         </template>
 
+        <div
+            v-if="$page.props.flash?.success"
+            class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+        >
+            {{ $page.props.flash.success }}
+        </div>
+
         <form class="space-y-6 text-gray-900" @submit.prevent="submit">
+            <div
+                v-if="template.forked_from_id"
+                class="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900"
+            >
+                Nova versão derivada do mapeamento #{{ template.forked_from_id }}.
+            </div>
             <div
                 v-if="surveysWithCompletedResponses > 0"
                 class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
@@ -93,9 +106,9 @@ const submit = () => {
             >
                 <p class="font-semibold">Este mapeamento já tem pesquisas com respostas.</p>
                 <p class="mt-1">
-                    Alterações em texto, peso e inversão de pontuação são preservadas. Ao
-                    <strong>excluir</strong> uma pergunta ou dimensão, as respostas vinculadas a ela serão
-                    apagadas permanentemente.
+                    Ao salvar, será criada automaticamente uma <strong>nova versão</strong> deste mapeamento.
+                    O mapeamento original e todas as respostas já coletadas permanecem intactos.
+                    Use a nova versão apenas em pesquisas futuras.
                 </p>
             </div>
 
