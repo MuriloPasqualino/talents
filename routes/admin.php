@@ -67,6 +67,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
     Route::middleware('admin.can:strategic_calendar')->group(function () {
         Route::get('calendario-estrategico/{item}/anexo', [AdminStrategicCalendarController::class, 'attachment'])
             ->name('strategic-calendar.attachment');
+        Route::patch('calendario-estrategico/{item}/data', [AdminStrategicCalendarController::class, 'updateDate'])
+            ->name('strategic-calendar.update-date');
         Route::resource('calendario-estrategico', AdminStrategicCalendarController::class)
             ->except(['show'])
             ->names([
@@ -213,6 +215,7 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
         Route::delete('labels/{label}', [TaskBoardLabelController::class, 'destroy'])->name('labels.destroy');
 
         Route::post('cards/{card}/checklists', [TaskBoardChecklistController::class, 'store'])->name('cards.checklists.store');
+        Route::post('cards/{card}/checklists/reordenar', [TaskBoardChecklistController::class, 'reorder'])->name('cards.checklists.reorder');
         Route::patch('checklists/{checklist}', [TaskBoardChecklistController::class, 'update'])->name('checklists.update');
         Route::delete('checklists/{checklist}', [TaskBoardChecklistController::class, 'destroy'])->name('checklists.destroy');
 

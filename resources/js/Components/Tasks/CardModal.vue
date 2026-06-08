@@ -2,6 +2,7 @@
 import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import TaskDescriptionEditor from '@/Components/Tasks/TaskDescriptionEditor.vue';
 import TextInput from '@/Components/TextInput.vue';
 import {
     Bars3Icon,
@@ -72,6 +73,8 @@ const editingChecklistItemText = ref('');
 const newChecklistItems = ref({});
 /** Itens por checklist (ordem local para arrastar). */
 const localChecklistItemsById = ref({});
+/** Checklists em ordem local para arrastar. */
+const localChecklists = ref([]);
 
 const showNewLabelForm = ref(false);
 const newLabelDraft = ref({ name: '', color: '#3b82f6' });
@@ -104,6 +107,7 @@ watch(
         cardUpdate.member_ids = (c.members || []).map((m) => m.id);
         cardUpdate.label_ids = (c.labels || []).map((l) => l.id);
         syncLocalChecklistItems(c);
+        syncLocalChecklists(c);
     },
     { immediate: true },
 );
@@ -131,12 +135,25 @@ function sortChecklistItems(items) {
     });
 }
 
+function sortChecklists(checklists) {
+    return [...(checklists || [])].sort((a, b) => {
+        const posA = Number(a.position ?? 0);
+        const posB = Number(b.position ?? 0);
+        if (posA !== posB) return posA - posB;
+        return Number(a.id) - Number(b.id);
+    });
+}
+
 function syncLocalChecklistItems(card) {
     const map = {};
     for (const cl of card?.checklists || []) {
         map[cl.id] = sortChecklistItems(cl.items);
     }
     localChecklistItemsById.value = map;
+}
+
+function syncLocalChecklists(card) {
+    localChecklists.value = sortChecklists(card?.checklists);
 }
 
 function checklistItemsFor(checklist) {
@@ -467,8 +484,23 @@ function onChecklistItemsReorder(checklist, evt) {
         {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => reloadBoardPayloadAndSyncCard(),
             onError: () => syncLocalChecklistItems(props.card),
+        },
+    );
+}
+
+function onChecklistsReorder(evt) {
+    if (!props.isAdmin || !props.card?.id || evt?.oldIndex === evt?.newIndex) {
+        return;
+    }
+
+    router.post(
+        route('admin.tarefas.cards.checklists.reorder', props.card.id),
+        { checklist_ids: localChecklists.value.map((cl) => cl.id) },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => syncLocalChecklists(props.card),
         },
     );
 }
@@ -723,8 +755,8 @@ function itemDueClass(item) {
 </script>
 
 <template>
-    <Modal :show="show" max-width="lg" @close="emit('close')">
-        <div v-if="card" class="flex max-h-[85vh] flex-col overflow-hidden rounded-xl bg-white">
+    <Modal :show="show" max-width="5xl" @close="emit('close')">
+        <div v-if="card" class="flex max-h-[92vh] flex-col overflow-hidden rounded-xl bg-white">
             <div class="border-b border-slate-100 px-6 pt-5">
                 <p class="text-sm font-semibold text-slate-900">
                     {{ isReadOnly ? 'Tarefa' : 'Planejar atividade' }}
@@ -770,9 +802,11 @@ function itemDueClass(item) {
                         </div>
                         <div class="space-y-1">
                             <InputLabel value="Descrição / observações" />
-                            <p class="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                                {{ card.description?.trim() ? card.description : '—' }}
-                            </p>
+                            <TaskDescriptionEditor
+                                :model-value="card.description"
+                                readonly
+                                :show-attachment="false"
+                            />
                         </div>
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <div>
@@ -795,11 +829,9 @@ function itemDueClass(item) {
                         </div>
                         <div class="space-y-1">
                             <InputLabel value="Descrição / observações" />
-                            <textarea
+                            <TaskDescriptionEditor
                                 v-model="cardUpdate.description"
-                                rows="4"
-                                placeholder="Detalhes, observações e contexto da tarefa…"
-                                class="mt-1 w-full rounded-md border border-slate-200 bg-white text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                                @attach="uploadAttachment"
                             />
                         </div>
                         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -870,13 +902,31 @@ function itemDueClass(item) {
                         </button>
                     </div>
 
-                    <div class="mt-2 space-y-3">
+                    <VueDraggable
+                        v-model="localChecklists"
+                        item-key="id"
+                        tag="div"
+                        class="mt-2 space-y-3"
+                        handle=".checklist-group-drag-handle"
+                        :disabled="!isAdmin"
+                        :animation="150"
+                        ghost-class="opacity-40"
+                        @end="onChecklistsReorder"
+                    >
                         <div
-                            v-for="cl in card.checklists || []"
+                            v-for="cl in localChecklists"
                             :key="cl.id"
                             class="rounded-md border border-slate-200 p-2"
                         >
                             <div class="flex items-center justify-between gap-2">
+                                <button
+                                    v-if="isAdmin"
+                                    type="button"
+                                    class="checklist-group-drag-handle shrink-0 cursor-grab rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                                    title="Arrastar checklist"
+                                >
+                                    <Bars3Icon class="h-4 w-4" aria-hidden="true" />
+                                </button>
                                 <div class="min-w-0 flex-1">
                                     <TextInput
                                         v-if="isAdmin && editingChecklistId === cl.id"
@@ -1045,9 +1095,9 @@ function itemDueClass(item) {
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </VueDraggable>
 
-                    <p v-if="!(card.checklists || []).length" class="text-xs text-slate-500">
+                    <p v-if="!localChecklists.length" class="text-xs text-slate-500">
                         Nenhuma checklist criada ainda.
                     </p>
                 </div>
@@ -1057,7 +1107,6 @@ function itemDueClass(item) {
                         <PaperClipIcon class="h-4 w-4 text-slate-500" />
                         Anexos
                     </h4>
-                    <input v-if="!isReadOnly" type="file" class="mt-2 block text-sm" @change="uploadAttachment" />
                     <ul class="mt-2 space-y-1 text-xs">
                         <li v-for="a in card.attachments || []" :key="a.id">
                             <a :href="a.url" target="_blank" class="text-talents-700 underline">{{ a.original_name }}</a>

@@ -4,10 +4,17 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import SidebarLayout from '@/Components/SidebarLayout.vue';
 import SidebarNavItem from '@/Components/SidebarNavItem.vue';
+import SidebarNavSection from '@/Components/SidebarNavSection.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const { can } = usePermissions();
+
+const showVozDoTime = computed(
+    () => can('pesquisas', 'view') || can('denuncias', 'view'),
+);
+
 import {
     AcademicCapIcon,
     BriefcaseIcon,
@@ -17,6 +24,7 @@ import {
     ClipboardDocumentListIcon,
     FingerPrintIcon,
     HomeIcon,
+    MegaphoneIcon,
     RocketLaunchIcon,
     ShieldExclamationIcon,
     UserCircleIcon,
@@ -49,14 +57,31 @@ import {
                 label="Painel"
                 :collapsed="collapsed"
             />
-            <SidebarNavItem
-                v-if="can('pesquisas', 'view')"
-                :href="route('client.surveys.index')"
-                :active="route().current('client.surveys.*')"
-                :icon="ClipboardDocumentListIcon"
-                label="Pesquisas NR1"
-                :collapsed="collapsed"
-            />
+            <SidebarNavSection v-if="showVozDoTime" label="Voz do Time" :collapsed="collapsed">
+                <SidebarNavItem
+                    :href="route('client.voz-do-time.index')"
+                    :active="route().current('client.voz-do-time.*')"
+                    :icon="MegaphoneIcon"
+                    label="Visão geral"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="can('pesquisas', 'view')"
+                    :href="route('client.surveys.index')"
+                    :active="route().current('client.surveys.*')"
+                    :icon="ClipboardDocumentListIcon"
+                    label="Pesquisas NR1"
+                    :collapsed="collapsed"
+                />
+                <SidebarNavItem
+                    v-if="can('denuncias', 'view')"
+                    :href="route('client.complaints.index')"
+                    :active="route().current('client.complaints.*')"
+                    :icon="ShieldExclamationIcon"
+                    label="Denúncias"
+                    :collapsed="collapsed"
+                />
+            </SidebarNavSection>
             <SidebarNavItem
                 v-if="can('metodologia', 'view')"
                 :href="route('client.metodologia.index')"
@@ -95,14 +120,6 @@ import {
                 :active="route().current('client.positions.*')"
                 :icon="BriefcaseIcon"
                 label="Cargos"
-                :collapsed="collapsed"
-            />
-            <SidebarNavItem
-                v-if="can('denuncias', 'view')"
-                :href="route('client.complaints.index')"
-                :active="route().current('client.complaints.*')"
-                :icon="ShieldExclamationIcon"
-                label="Denúncias"
                 :collapsed="collapsed"
             />
             <SidebarNavItem

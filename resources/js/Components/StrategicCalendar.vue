@@ -1,6 +1,7 @@
 <script setup>
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
+import { Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -18,6 +19,12 @@ const props = defineProps({
     canNavigateNext: { type: Boolean, default: true },
     /** Rótulo do período do plano (ex.: "2 meses") para banner informativo */
     periodLabel: { type: String, default: null },
+    /** Permite editar data e abrir edição completa (admin) */
+    editable: { type: Boolean, default: false },
+    /** Nome da rota para atualizar data (ex.: admin.strategic-calendar.update-date) */
+    updateDateRoute: { type: String, default: null },
+    /** Nome da rota para editar item (ex.: admin.strategic-calendar.edit) */
+    editItemRoute: { type: String, default: null },
 });
 
 const emit = defineEmits(['navigate-month', 'go-today', 'update:view']);
@@ -181,6 +188,27 @@ const rootShellClass = computed(() =>
 const cellMinH = computed(() =>
     props.compact ? 'min-h-[4.25rem]' : 'min-h-[5.5rem] sm:min-h-[6.25rem]',
 );
+
+function itemSourceId(item) {
+    return item?.source_id ?? item?.id;
+}
+
+function editItemUrl(item) {
+    if (!props.editItemRoute) return null;
+    return route(props.editItemRoute, itemSourceId(item));
+}
+
+function updateItemDate(item, newDate) {
+    if (!props.editable || !props.updateDateRoute || !newDate) return;
+    const sourceId = itemSourceId(item);
+    if (!sourceId || String(item.occurs_on) === newDate) return;
+
+    router.patch(
+        route(props.updateDateRoute, sourceId),
+        { occurs_on: newDate },
+        { preserveScroll: true, preserveState: true },
+    );
+}
 
 function monthCellClass(cell) {
     const base =
@@ -390,8 +418,27 @@ function monthCellClass(cell) {
                         :key="it.id"
                         class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
                     >
-                        <div class="mb-2">
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                             <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                            <div v-if="editable" class="flex items-center gap-2">
+                                <label class="inline-flex items-center gap-1 text-xs text-slate-500">
+                                    <span>Data</span>
+                                    <input
+                                        type="date"
+                                        :value="it.occurs_on"
+                                        class="rounded-md border border-slate-200 px-1.5 py-0.5 text-xs text-slate-800"
+                                        @change="updateItemDate(it, $event.target.value)"
+                                    />
+                                </label>
+                                <Link
+                                    v-if="editItemUrl(it)"
+                                    :href="editItemUrl(it)"
+                                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800"
+                                    title="Editar item"
+                                >
+                                    <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                                </Link>
+                            </div>
                         </div>
                         <p class="font-semibold text-slate-900">{{ it.title }}</p>
                         <p v-if="it.description" class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
@@ -438,8 +485,19 @@ function monthCellClass(cell) {
                                 class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
                             >
                                 <div class="min-w-0 flex-1">
-                                    <div class="mb-1">
+                                    <div class="mb-1 flex flex-wrap items-center gap-2">
                                         <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                                        <label
+                                            v-if="editable"
+                                            class="inline-flex items-center gap-1 text-xs text-slate-500"
+                                        >
+                                            <input
+                                                type="date"
+                                                :value="it.occurs_on"
+                                                class="rounded-md border border-slate-200 px-1.5 py-0.5 text-xs"
+                                                @change="updateItemDate(it, $event.target.value)"
+                                            />
+                                        </label>
                                     </div>
                                     <p class="font-medium text-slate-900">{{ it.title }}</p>
                                     <p v-if="it.description" class="mt-1 line-clamp-2 text-sm text-slate-600">
@@ -457,6 +515,14 @@ function monthCellClass(cell) {
                                     </a>
                                     <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
                                 </div>
+                                <Link
+                                    v-if="editable && editItemUrl(it)"
+                                    :href="editItemUrl(it)"
+                                    class="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800"
+                                    title="Editar"
+                                >
+                                    <PencilSquareIcon class="h-5 w-5" aria-hidden="true" />
+                                </Link>
                             </li>
                         </ul>
                     </template>
@@ -485,8 +551,24 @@ function monthCellClass(cell) {
                                 :key="it.id"
                                 class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
                             >
-                                <div class="mb-2">
+                                <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
                                     <StrategicKindBadge :kind="it.kind" :label="kindLabel(it.kind)" />
+                                    <div v-if="editable" class="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            :value="it.occurs_on"
+                                            class="rounded-md border border-slate-200 px-1.5 py-0.5 text-xs text-slate-800"
+                                            @change="updateItemDate(it, $event.target.value)"
+                                        />
+                                        <Link
+                                            v-if="editItemUrl(it)"
+                                            :href="editItemUrl(it)"
+                                            class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-800"
+                                            title="Editar"
+                                        >
+                                            <PencilSquareIcon class="h-4 w-4" aria-hidden="true" />
+                                        </Link>
+                                    </div>
                                 </div>
                                 <p class="font-medium text-slate-900">{{ it.title }}</p>
                                 <p v-if="it.description" class="mt-2 line-clamp-3 text-sm text-slate-600">

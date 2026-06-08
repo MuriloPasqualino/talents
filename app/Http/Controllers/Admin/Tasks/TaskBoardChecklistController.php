@@ -7,6 +7,7 @@ use App\Models\TaskCard;
 use App\Models\TaskChecklist;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class TaskBoardChecklistController extends Controller
 {
@@ -77,5 +78,36 @@ class TaskBoardChecklistController extends Controller
         $checklist->delete();
 
         return back()->with('success', 'Checklist removida.');
+    }
+
+    public function reorder(Request $request, TaskCard $card): RedirectResponse
+    {
+        $data = $request->validate([
+            'checklist_ids' => ['required', 'array', 'min:1'],
+            'checklist_ids.*' => ['integer', 'exists:task_checklists,id'],
+        ]);
+
+        $checklistIds = collect($data['checklist_ids'])->map(fn ($id) => (int) $id)->values();
+        $ownedCount = TaskChecklist::query()
+            ->where('task_card_id', $card->id)
+            ->whereIn('id', $checklistIds)
+            ->count();
+
+        if ($ownedCount !== $checklistIds->count()) {
+            throw ValidationException::withMessages([
+                'checklist_ids' => 'Uma ou mais checklists não pertencem a esta tarefa.',
+            ]);
+        }
+
+        $position = 1000.0;
+        foreach ($checklistIds as $checklistId) {
+            TaskChecklist::query()
+                ->where('task_card_id', $card->id)
+                ->where('id', $checklistId)
+                ->update(['position' => $position]);
+            $position += 1000;
+        }
+
+        return back()->with('success', 'Ordem das checklists atualizada.');
     }
 }

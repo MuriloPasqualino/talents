@@ -18,6 +18,7 @@ use App\Http\Controllers\Client\StrategicCalendarController as ClientStrategicCa
 use App\Http\Controllers\Client\SurveyController;
 use App\Http\Controllers\Client\SurveyResultsController;
 use App\Http\Controllers\Client\TrainingController;
+use App\Http\Controllers\Client\VozDoTimeController;
 use App\Http\Controllers\Client\Tasks\BoardController as ClientTasksBoardController;
 use App\Http\Controllers\Client\Tasks\BoardFavoriteController as ClientTasksBoardFavoriteController;
 use App\Http\Controllers\Client\Tasks\CardAttachmentController as ClientTasksCardAttachmentController;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
         Route::post('import/departments', [ImportController::class, 'departments'])->name('import.departments');
         Route::resource('positions', PositionController::class)->except(['show']);
     });
+
+    Route::get('voz-do-time', [VozDoTimeController::class, 'index'])->name('voz-do-time.index');
 
     Route::middleware('can.module:pesquisas')->group(function () {
         Route::resource('surveys', SurveyController::class);

@@ -142,6 +142,17 @@ class StrategicCalendarController extends Controller
         ]);
     }
 
+    public function updateDate(Request $request, StrategicCalendarItem $item): RedirectResponse
+    {
+        $data = $request->validate([
+            'occurs_on' => ['required', 'date'],
+        ]);
+
+        $item->update(['occurs_on' => $data['occurs_on']]);
+
+        return back()->with('success', 'Data do item atualizada.');
+    }
+
     public function update(Request $request, StrategicCalendarItem $item): RedirectResponse
     {
         $data = $this->validated($request);

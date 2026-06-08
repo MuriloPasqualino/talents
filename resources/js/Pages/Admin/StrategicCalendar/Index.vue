@@ -96,6 +96,14 @@ watch(kindFilter, (v) => {
 function setKind(v) {
     kindFilter.value = v;
 }
+
+function updateRowDate(row, newDate) {
+    if (!newDate || newDate === row.occurs_on) return;
+    router.patch(route('admin.strategic-calendar.update-date', row.id), { occurs_on: newDate }, {
+        preserveScroll: true,
+        preserveState: true,
+    });
+}
 </script>
 
 <template>
@@ -179,6 +187,9 @@ function setKind(v) {
                 :items="monthItems"
                 :agenda-items="agendaItems"
                 :kind-labels="kindLabels"
+                editable
+                update-date-route="admin.strategic-calendar.update-date"
+                edit-item-route="admin.strategic-calendar.edit"
                 @navigate-month="navigateMonth"
                 @go-today="goToday"
             />
@@ -197,9 +208,12 @@ function setKind(v) {
                 >
                     <div class="min-w-0 flex-1 space-y-2">
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span class="text-sm tabular-nums text-slate-600">{{
-                                row.occurs_on ? new Date(row.occurs_on).toLocaleDateString('pt-BR') : '—'
-                            }}</span>
+                            <input
+                                type="date"
+                                :value="row.occurs_on || ''"
+                                class="rounded-md border border-slate-200 px-2 py-1 text-sm tabular-nums text-slate-700"
+                                @change="updateRowDate(row, $event.target.value)"
+                            />
                             <StrategicKindBadge :kind="row.kind" :label="kindLabels[row.kind] ?? row.kind" compact />
                             <span
                                 v-if="row.recurrence && recurrenceLabels?.[row.recurrence]"
