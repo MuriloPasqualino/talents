@@ -67,7 +67,7 @@ const chevronClasses = computed(() =>
 </script>
 
 <template>
-    <div class="mt-1 first:mt-0">
+    <div>
         <button
             type="button"
             :class="headerClasses"
@@ -85,9 +85,8 @@ const chevronClasses = computed(() =>
         </button>
 
         <div
-            v-if="collapsed || open"
-            class="space-y-0.5"
-            :class="collapsed ? '' : 'mt-0.5 border-l border-slate-200/80 pl-2 ml-4'"
+            v-if="!collapsed && open"
+            class="mt-0.5 space-y-0.5 border-l border-slate-200/80 pl-2 ml-4"
         >
             <slot />
         </div>
