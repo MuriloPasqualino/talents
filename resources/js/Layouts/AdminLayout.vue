@@ -57,8 +57,7 @@ const showEstrategiaGroup = computed(
     () =>
         canAdmin('methodology') ||
         canAdmin('strategic_calendar') ||
-        canAdmin('survey_templates') ||
-        canAdmin('tarefas'),
+        canAdmin('survey_templates'),
 );
 
 const estrategiaGroupActive = computed(
@@ -66,8 +65,7 @@ const estrategiaGroupActive = computed(
         route().current('admin.metodologia.*') ||
         route().current('admin.methodology-templates.*') ||
         route().current('admin.strategic-calendar.*') ||
-        route().current('admin.survey-templates.*') ||
-        route().current('admin.tarefas.*'),
+        route().current('admin.survey-templates.*'),
 );
 
 const showRecrutamentoGroup = computed(
@@ -214,15 +212,16 @@ const administracaoGroupActive = computed(
                     label="Mapeamentos"
                     :collapsed="collapsed"
                 />
-                <SidebarNavItem
-                    v-if="canAdmin('tarefas')"
-                    :href="route('admin.tarefas.quadros.index')"
-                    :active="route().current('admin.tarefas.*')"
-                    :icon="ViewColumnsIcon"
-                    label="Tarefas"
-                    :collapsed="collapsed"
-                />
             </SidebarNavGroup>
+
+            <SidebarNavItem
+                v-if="canAdmin('tarefas')"
+                :href="route('admin.tarefas.quadros.index')"
+                :active="route().current('admin.tarefas.*')"
+                :icon="ViewColumnsIcon"
+                label="Tarefas"
+                :collapsed="collapsed"
+            />
 
             <SidebarNavGroup
                 v-if="showRecrutamentoGroup"
