@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\TaskBoard;
+use App\Models\TaskCard;
 use App\Models\User;
 
 class TaskBoardPolicy
@@ -28,11 +29,34 @@ class TaskBoardPolicy
             return false;
         }
 
-        if ($board->company_id === null) {
-            return true;
+        $companyId = (int) $user->contextCompanyId();
+
+        if ($user->isCompanyAdmin()) {
+            if ($board->company_id === null) {
+                return true;
+            }
+
+            return (int) $board->company_id === $companyId;
         }
 
-        return (int) $board->company_id === (int) $user->contextCompanyId();
+        if ($user->isCompanyUser()) {
+            if ($board->company_id !== null && (int) $board->company_id !== $companyId) {
+                return false;
+            }
+
+            if ($board->hasMember($user->id)) {
+                return true;
+            }
+
+            return TaskCard::query()
+                ->where('is_archived', false)
+                ->visibleToCompany($companyId)
+                ->whereHas('members', fn ($q) => $q->where('users.id', $user->id))
+                ->whereHas('list', fn ($q) => $q->where('board_id', $board->id)->where('is_archived', false))
+                ->exists();
+        }
+
+        return false;
     }
 
     /**

@@ -17,7 +17,7 @@ class BoardController extends Controller
         $user = $request->user();
         $companyId = (int) $user->company_id;
 
-        $boards = TaskBoard::query()
+        $boardsQuery = TaskBoard::query()
             ->where('is_archived', false)
             ->where(function ($q) use ($companyId) {
                 $q->whereNull('company_id')
@@ -28,16 +28,27 @@ class BoardController extends Controller
                 'lists' => fn ($q) => $q->where('is_archived', false),
             ])
             ->orderByRaw('company_id is null desc')
-            ->orderBy('name')
+            ->orderBy('name');
+
+        if ($user->isCompanyUser()) {
+            $boardsQuery->accessibleByCompanyUser($user->id, $companyId);
+        }
+
+        $boards = $boardsQuery
             ->get()
             ->filter(fn (TaskBoard $board) => $user->can('view', $board))
             ->values()
-            ->map(function (TaskBoard $board) use ($companyId) {
-                $cardsCount = TaskCard::query()
+            ->map(function (TaskBoard $board) use ($companyId, $user) {
+                $cardsQuery = TaskCard::query()
                     ->whereHas('list', fn ($q) => $q->where('board_id', $board->id)->where('is_archived', false))
                     ->where('is_archived', false)
-                    ->visibleToCompany($companyId)
-                    ->count();
+                    ->visibleToCompany($companyId);
+
+                if ($user->isCompanyUser() && ! $board->hasMember($user->id)) {
+                    $cardsQuery->whereHas('members', fn ($q) => $q->where('users.id', $user->id));
+                }
+
+                $cardsCount = $cardsQuery->count();
 
                 return [
                     'id' => $board->id,
@@ -60,8 +71,9 @@ class BoardController extends Controller
     {
         $this->authorize('view', $board);
 
-        $payload = BoardPresenter::forClient($board, (int) $request->user()->company_id);
-        $companyUsers = BoardPresenter::companyUsersForMentions((int) $request->user()->company_id);
+        $user = $request->user();
+        $payload = BoardPresenter::forClient($board, (int) $user->company_id, $user);
+        $companyUsers = BoardPresenter::companyUsersForMentions((int) $user->company_id);
 
         return Inertia::render('Client/Tarefas/Show', [
             'boardPayload' => $payload,

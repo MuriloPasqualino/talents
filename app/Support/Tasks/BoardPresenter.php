@@ -132,15 +132,28 @@ final class BoardPresenter
     /**
      * @return array<string, mixed>
      */
-    public static function forClient(TaskBoard $board, int $companyId): array
+    public static function forClient(TaskBoard $board, int $companyId, ?User $user = null): array
     {
+        $onlyAssignedToUserId = null;
+        if ($user && $user->isCompanyUser() && ! $board->hasMember($user->id)) {
+            $onlyAssignedToUserId = $user->id;
+        }
+
         $board->loadMissing([
-            'lists.cards' => function ($q) use ($companyId) {
+            'lists.cards' => function ($q) use ($companyId, $onlyAssignedToUserId) {
                 $q->visibleToCompany($companyId)->orderBy('position');
+                if ($onlyAssignedToUserId !== null) {
+                    $q->whereHas('members', fn (Builder $m) => $m->where('users.id', $onlyAssignedToUserId));
+                }
             },
-            'lists' => function ($q) use ($companyId) {
+            'lists' => function ($q) use ($companyId, $onlyAssignedToUserId) {
                 $q->where('is_archived', false)
-                    ->whereHas('cards', fn (Builder $cq) => $cq->visibleToCompany($companyId))
+                    ->whereHas('cards', function (Builder $cq) use ($companyId, $onlyAssignedToUserId) {
+                        $cq->visibleToCompany($companyId);
+                        if ($onlyAssignedToUserId !== null) {
+                            $cq->whereHas('members', fn (Builder $m) => $m->where('users.id', $onlyAssignedToUserId));
+                        }
+                    })
                     ->orderBy('position');
             },
             'labels',
