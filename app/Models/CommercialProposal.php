@@ -42,6 +42,8 @@ class CommercialProposal extends Model
 
             'palestra_event_date' => 'date',
             'palestra_audience_estimate' => 'integer',
+
+            'service_descriptions' => 'array',
         ];
     }
 

@@ -3,6 +3,8 @@
 namespace App\Services\Commercial;
 
 use App\Models\CommercialProposal;
+use App\Models\CommercialSetting;
+use App\Support\CommercialProposalPdfDefaults;
 
 class CommercialProposalServiceLines
 {
@@ -37,88 +39,110 @@ class CommercialProposalServiceLines
     }
 
     /**
-     * @return array<int, array{key:string, label:string, detail:string, value_cents:int}>
+     * @return array<int, array{key:string, label:string, detail:string, description:string, value_cents:int}>
      */
-    public static function forProposal(CommercialProposal $p): array
+    public static function forProposal(CommercialProposal $p, ?CommercialSetting $settings = null): array
     {
+        $settings = $settings ?? CommercialSetting::current();
+        $overrides = $p->service_descriptions ?? [];
+        $defaultDescriptions = CommercialProposalPdfDefaults::serviceDescriptionsForSettings(
+            $settings->pdf_descricoes_servicos
+        );
+
         $lines = [];
 
         if ($p->svc_pesquisas) {
-            $lines[] = [
-                'key' => 'pesquisas',
-                'label' => self::labelForKey('pesquisas'),
-                'detail' => "{$p->employee_count} funcionários",
-                'value_cents' => (int) $p->total_pesquisas_cents,
-            ];
+            $lines[] = self::line(
+                'pesquisas',
+                self::labelForKey('pesquisas'),
+                "{$p->employee_count} funcionários",
+                (int) $p->total_pesquisas_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         if ($p->svc_profiler) {
-            $lines[] = [
-                'key' => 'profiler',
-                'label' => self::labelForKey('profiler'),
-                'detail' => "{$p->employee_count} funcionários",
-                'value_cents' => (int) $p->total_profiler_cents,
-            ];
+            $lines[] = self::line(
+                'profiler',
+                self::labelForKey('profiler'),
+                "{$p->employee_count} funcionários",
+                (int) $p->total_profiler_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         if ($p->svc_devolutiva) {
-            $lines[] = [
-                'key' => 'devolutiva',
-                'label' => self::labelForKey('devolutiva'),
-                'detail' => $p->svc_devolutiva === 'grupo' ? 'Modalidade em grupo' : 'Modalidade individual',
-                'value_cents' => (int) $p->total_devolutiva_cents,
-            ];
+            $lines[] = self::line(
+                'devolutiva',
+                self::labelForKey('devolutiva'),
+                $p->svc_devolutiva === 'grupo' ? 'Modalidade em grupo' : 'Modalidade individual',
+                (int) $p->total_devolutiva_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         if ($p->svc_nr1) {
-            $lines[] = [
-                'key' => 'nr1',
-                'label' => self::labelForKey('nr1'),
-                'detail' => "{$p->employee_count} funcionários",
-                'value_cents' => (int) $p->total_nr1_cents,
-            ];
+            $lines[] = self::line(
+                'nr1',
+                self::labelForKey('nr1'),
+                "{$p->employee_count} funcionários",
+                (int) $p->total_nr1_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         if ($p->svc_nr1_implantacao_modo) {
-            $lines[] = [
-                'key' => 'nr1_implantacao',
-                'label' => self::labelForKey('nr1_implantacao'),
-                'detail' => $p->svc_nr1_implantacao_modo === 'presencial'
+            $lines[] = self::line(
+                'nr1_implantacao',
+                self::labelForKey('nr1_implantacao'),
+                $p->svc_nr1_implantacao_modo === 'presencial'
                     ? 'Implantação Presencial (taxa única)'
                     : 'Implantação On-line por funcionário',
-                'value_cents' => (int) $p->total_nr1_implantacao_cents,
-            ];
+                (int) $p->total_nr1_implantacao_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         if ($p->svc_contratacao) {
-            $lines[] = [
-                'key' => 'contratacao',
-                'label' => self::labelForKey('contratacao'),
-                'detail' => sprintf(
+            $lines[] = self::line(
+                'contratacao',
+                self::labelForKey('contratacao'),
+                sprintf(
                     'Salário base R$ %s × %d funcionários',
                     number_format(((int) $p->svc_contratacao_salario_cents) / 100, 2, ',', '.'),
                     $p->employee_count,
                 ),
-                'value_cents' => (int) $p->total_contratacao_cents,
-            ];
+                (int) $p->total_contratacao_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         if ($p->svc_direcionamento) {
-            $lines[] = [
-                'key' => 'direcionamento',
-                'label' => self::labelForKey('direcionamento'),
-                'detail' => "{$p->employee_count} funcionários",
-                'value_cents' => (int) $p->total_direcionamento_cents,
-            ];
+            $lines[] = self::line(
+                'direcionamento',
+                self::labelForKey('direcionamento'),
+                "{$p->employee_count} funcionários",
+                (int) $p->total_direcionamento_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         if ($p->svc_palestras) {
-            $lines[] = [
-                'key' => 'palestras',
-                'label' => self::labelForKey('palestras'),
-                'detail' => $p->employee_count > 30 ? 'Pacote ampliado (acima de 30 funcionários)' : 'Pacote padrão',
-                'value_cents' => (int) $p->total_palestras_cents,
-            ];
+            $lines[] = self::line(
+                'palestras',
+                self::labelForKey('palestras'),
+                $p->employee_count > 30 ? 'Pacote ampliado (acima de 30 funcionários)' : 'Pacote padrão',
+                (int) $p->total_palestras_cents,
+                $overrides,
+                $defaultDescriptions,
+            );
         }
 
         $p->loadMissing('catalogLines.product');
@@ -129,11 +153,60 @@ class CommercialProposalServiceLines
                 'key' => $slug,
                 'label' => $line->label_snapshot,
                 'detail' => (string) ($line->detail_snapshot ?? ''),
+                'description' => self::resolveDescription(
+                    $slug,
+                    $overrides,
+                    $defaultDescriptions,
+                    (string) ($line->product?->description ?? ''),
+                ),
                 'value_cents' => (int) $line->total_cents,
             ];
         }
 
         return $lines;
+    }
+
+    /**
+     * @param  array<string, string|null>  $overrides
+     * @param  array<string, string>  $defaultDescriptions
+     * @return array{key:string, label:string, detail:string, description:string, value_cents:int}
+     */
+    private static function line(
+        string $key,
+        string $label,
+        string $detail,
+        int $valueCents,
+        array $overrides,
+        array $defaultDescriptions,
+    ): array {
+        return [
+            'key' => $key,
+            'label' => $label,
+            'detail' => $detail,
+            'description' => self::resolveDescription($key, $overrides, $defaultDescriptions),
+            'value_cents' => $valueCents,
+        ];
+    }
+
+    /**
+     * @param  array<string, string|null>  $overrides
+     * @param  array<string, string>  $defaultDescriptions
+     */
+    public static function resolveDescription(
+        string $key,
+        array $overrides,
+        array $defaultDescriptions,
+        string $catalogFallback = '',
+    ): string {
+        if (array_key_exists($key, $overrides) && filled($overrides[$key])) {
+            return (string) $overrides[$key];
+        }
+
+        if (isset($defaultDescriptions[$key]) && filled($defaultDescriptions[$key])) {
+            return (string) $defaultDescriptions[$key];
+        }
+
+        return $catalogFallback;
     }
 
     /**
@@ -155,8 +228,8 @@ class CommercialProposalServiceLines
     /**
      * Mapa key => linha para lookups rápidos.
      *
-     * @param  array<int, array{key:string, label:string, detail:string, value_cents:int}>  $lines
-     * @return array<string, array{key:string, label:string, detail:string, value_cents:int}>
+     * @param  array<int, array{key:string, label:string, detail:string, description:string, value_cents:int}>  $lines
+     * @return array<string, array{key:string, label:string, detail:string, description:string, value_cents:int}>
      */
     public static function indexByKey(array $lines): array
     {

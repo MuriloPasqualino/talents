@@ -61,6 +61,8 @@ class CommercialSetting extends Model
 
             'zapsign_api_token' => 'encrypted',
             'zapsign_send_automatic_email' => 'boolean',
+
+            'pdf_descricoes_servicos' => 'array',
         ];
     }
 

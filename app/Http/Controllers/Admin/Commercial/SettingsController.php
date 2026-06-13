@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommercialContractTemplate;
 use App\Models\CommercialProduct;
 use App\Models\CommercialSetting;
+use App\Support\CommercialProposalPdfDefaults;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,9 @@ class SettingsController extends Controller
         $settingsPayload = $settings->toArray();
         unset($settingsPayload['zapsign_api_token']);
         $settingsPayload['zapsign_api_token_set'] = filled(trim((string) ($settings->zapsign_api_token ?? '')));
+        $settingsPayload['pdf_descricoes_servicos'] = CommercialProposalPdfDefaults::serviceDescriptionsForSettings(
+            $settings->pdf_descricoes_servicos
+        );
 
         return Inertia::render('Admin/Comercial/Configuracoes', [
             'settings' => $settingsPayload,
@@ -130,6 +134,10 @@ class SettingsController extends Controller
             'pdf_validade_dias' => ['nullable', 'integer', 'min:1', 'max:365'],
             'pdf_observacoes' => ['nullable', 'string', 'max:2000'],
             'pdf_aceite_texto' => ['nullable', 'string', 'max:1000'],
+            'pdf_descricoes_servicos' => ['nullable', 'array'],
+            'pdf_descricoes_servicos.*' => ['nullable', 'string', 'max:10000'],
+            'pdf_condicoes_pagamento' => ['nullable', 'string', 'max:5000'],
+            'pdf_texto_encerramento' => ['nullable', 'string', 'max:5000'],
 
             // Dados da empresa (contratos / placeholders)
             'company_name' => ['nullable', 'string', 'max:255'],
@@ -158,6 +166,14 @@ class SettingsController extends Controller
 
         $settings = CommercialSetting::current();
         $settings->fill($data);
+
+        if (array_key_exists('pdf_descricoes_servicos', $data)) {
+            $settings->pdf_descricoes_servicos = array_filter(
+                $data['pdf_descricoes_servicos'] ?? [],
+                fn ($text) => filled($text)
+            );
+        }
+
         $settings->updated_by = $request->user()?->id;
         $settings->save();
 

@@ -81,6 +81,9 @@ const form = useForm({
     pdf_validade_dias: props.settings.pdf_validade_dias,
     pdf_observacoes: props.settings.pdf_observacoes ?? '',
     pdf_aceite_texto: props.settings.pdf_aceite_texto ?? '',
+    pdf_descricoes_servicos: { ...(props.settings.pdf_descricoes_servicos ?? {}) },
+    pdf_condicoes_pagamento: props.settings.pdf_condicoes_pagamento ?? '',
+    pdf_texto_encerramento: props.settings.pdf_texto_encerramento ?? '',
 
     zapsign_api_token: '',
     zapsign_api_base_url: props.settings.zapsign_api_base_url ?? 'https://api.zapsign.com.br/api/v1',
@@ -127,6 +130,17 @@ const toggleSeller = (user) => {
         { preserveScroll: true },
     );
 };
+
+const pdfServiceLabels = [
+    { key: 'pesquisas', label: 'Pesquisas e Organograma' },
+    { key: 'profiler', label: 'Profiler — Diagnóstico Comportamental' },
+    { key: 'devolutiva', label: 'Devolutiva e Diagnóstico' },
+    { key: 'nr1', label: 'NR-1 — Mapeamento (12 parcelas)' },
+    { key: 'nr1_implantacao', label: 'NR-1 — Implantação' },
+    { key: 'contratacao', label: 'Contratação / Recrutamento' },
+    { key: 'direcionamento', label: 'Direcionamento Estratégico' },
+    { key: 'palestras', label: 'Palestras e Treinamentos' },
+];
 
 const tableConfig = computed(() => [
     {
@@ -343,6 +357,42 @@ const tableConfig = computed(() => [
                                 v-model="form.pdf_aceite_texto"
                                 rows="3"
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Condições de pagamento (PDF)</label>
+                            <textarea
+                                v-model="form.pdf_condicoes_pagamento"
+                                rows="3"
+                                placeholder="Ex.: • Parcelamento em até 5x no cartão de crédito;"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Texto de encerramento (PDF)</label>
+                            <textarea
+                                v-model="form.pdf_texto_encerramento"
+                                rows="4"
+                                placeholder="Parágrafo final da proposta comercial..."
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                <section class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Descrições padrão dos serviços (PDF)</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Textos usados automaticamente em cada serviço da proposta. Podem ser personalizados por proposta.
+                    </p>
+                    <div class="mt-4 space-y-4">
+                        <div v-for="svc in pdfServiceLabels" :key="svc.key">
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ svc.label }}</label>
+                            <textarea
+                                v-model="form.pdf_descricoes_servicos[svc.key]"
+                                rows="6"
+                                class="mt-1 w-full rounded-xl border-slate-300 font-mono text-xs shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                placeholder="O que contempla, bullets (• ou -) e Objetivo..."
                             />
                         </div>
                     </div>

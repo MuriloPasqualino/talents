@@ -6,6 +6,21 @@ import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
+const LEGACY_SERVICE_KEYS = [
+    { key: 'pesquisas', label: 'Pesquisas e Organograma', active: (f) => f.svc_pesquisas },
+    { key: 'profiler', label: 'Profiler — Diagnóstico Comportamental', active: (f) => f.svc_profiler },
+    { key: 'devolutiva', label: 'Devolutiva e Diagnóstico', active: (f) => !!f.svc_devolutiva },
+    { key: 'nr1', label: 'NR-1 — Mapeamento (12 parcelas)', active: (f) => f.svc_nr1 },
+    {
+        key: 'nr1_implantacao',
+        label: 'NR-1 — Implantação',
+        active: (f) => f.svc_nr1 && !!f.svc_nr1_implantacao_modo,
+    },
+    { key: 'contratacao', label: 'Contratação / Recrutamento', active: (f) => f.svc_contratacao },
+    { key: 'direcionamento', label: 'Direcionamento Estratégico', active: (f) => f.svc_direcionamento },
+    { key: 'palestras', label: 'Palestras e Treinamentos', active: (f) => f.svc_palestras },
+];
+
 const props = defineProps({
     mode: { type: String, default: 'create' }, // 'create' | 'edit'
     proposal: { type: Object, default: null },
@@ -60,6 +75,9 @@ const formInitial = props.proposal
           palestra_audience_estimate: props.proposal.palestra_audience_estimate ?? '',
           palestra_format: props.proposal.palestra_format ?? '',
           catalog_products: buildCatalogProductsInitial(),
+          pdf_subtitle: props.proposal.pdf_subtitle ?? '',
+          pdf_objetivo: props.proposal.pdf_objetivo ?? '',
+          service_descriptions: { ...(props.proposal.service_descriptions ?? {}) },
       }
     : {
           client_name: '',
@@ -91,9 +109,43 @@ const formInitial = props.proposal
           palestra_audience_estimate: '',
           palestra_format: '',
           catalog_products: buildCatalogProductsInitial(),
+          pdf_subtitle: '',
+          pdf_objetivo: '',
+          service_descriptions: {},
       };
 
 const form = useForm(formInitial);
+
+const defaultDescriptionForKey = (key) => {
+    if (props.settings.pdf_descricoes_servicos?.[key]) {
+        return props.settings.pdf_descricoes_servicos[key];
+    }
+    const product = props.catalogProducts.find((p) => p.slug === key);
+    return product?.description ?? '';
+};
+
+const descriptionDisplay = (key) => {
+    if (Object.prototype.hasOwnProperty.call(form.service_descriptions, key)) {
+        return form.service_descriptions[key] ?? '';
+    }
+    return defaultDescriptionForKey(key);
+};
+
+const updateServiceDescription = (key, value) => {
+    const defaultText = defaultDescriptionForKey(key);
+    if (value.trim() === defaultText.trim() || value.trim() === '') {
+        const next = { ...form.service_descriptions };
+        delete next[key];
+        form.service_descriptions = next;
+        return;
+    }
+    form.service_descriptions = { ...form.service_descriptions, [key]: value };
+};
+
+const expandedDescriptions = ref({});
+const toggleDescription = (key) => {
+    expandedDescriptions.value[key] = !expandedDescriptions.value[key];
+};
 
 // Helpers de input em reais (string) -> centavos para o salário base de Contratação
 const salaryReais = ref(((Number(formInitial.svc_contratacao_salario_cents) || 0) / 100).toFixed(2).replace('.', ','));
@@ -130,6 +182,26 @@ const updateCatalogSalary = (productId, reaisStr) => {
         ? Math.max(0, Math.round(numeric * 100))
         : 0;
 };
+
+const activePdfServices = computed(() => {
+    const items = LEGACY_SERVICE_KEYS.filter((svc) => svc.active(form)).map((svc) => ({
+        key: svc.key,
+        label: svc.label,
+    }));
+
+    props.catalogProducts.forEach((product) => {
+        const sel = catalogSelection(product.id);
+        const enabled =
+            product.pricing_type === 'fixed_modality'
+                ? !!sel.modality
+                : !!sel.enabled;
+        if (enabled) {
+            items.push({ key: product.slug, label: product.name });
+        }
+    });
+
+    return items;
+});
 
 // Consulta CNPJ (Receita Federal) — reaproveita o endpoint já existente.
 const cnpjLookupLoading = ref(false);
@@ -557,6 +629,77 @@ const services = computed(() => {
                                     </div>
                                 </div>
                             </template>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Texto da proposta (PDF) -->
+                <section class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Texto da proposta (PDF)</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Subtítulo e objetivo geral exibidos no início do documento comercial.
+                    </p>
+                    <div class="mt-4 space-y-4">
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                Nome do programa / subtítulo
+                            </label>
+                            <input
+                                v-model="form.pdf_subtitle"
+                                type="text"
+                                placeholder="Ex.: Programa de Diagnóstico Organizacional e Desenvolvimento de Lideranças"
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Objetivo geral</label>
+                            <textarea
+                                v-model="form.pdf_objetivo"
+                                rows="4"
+                                placeholder="Descreva o objetivo geral da proposta para o cliente..."
+                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Descrições dos serviços no PDF -->
+                <section v-if="activePdfServices.length" class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Descrições no PDF</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Textos exibidos em cada serviço da proposta. Preenchidos automaticamente; clique para editar.
+                    </p>
+                    <div class="mt-4 space-y-3">
+                        <div
+                            v-for="svc in activePdfServices"
+                            :key="svc.key"
+                            class="rounded-xl border border-slate-200"
+                        >
+                            <button
+                                type="button"
+                                class="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-medium text-slate-900 hover:bg-slate-50"
+                                @click="toggleDescription(svc.key)"
+                            >
+                                <span>{{ svc.label }}</span>
+                                <span class="text-xs text-slate-400">
+                                    {{ expandedDescriptions[svc.key] ? 'Recolher' : 'Editar descrição' }}
+                                </span>
+                            </button>
+                            <div v-if="expandedDescriptions[svc.key]" class="border-t border-slate-100 px-4 pb-4 pt-3">
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                    Descrição no PDF
+                                </label>
+                                <textarea
+                                    :value="descriptionDisplay(svc.key)"
+                                    rows="8"
+                                    class="mt-1 w-full rounded-xl border-slate-300 font-mono text-xs shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    placeholder="O que contempla, bullets e objetivo do serviço..."
+                                    @input="updateServiceDescription(svc.key, $event.target.value)"
+                                />
+                                <p class="mt-1 text-xs text-slate-500">
+                                    Use linhas com • ou - para bullets. Deixe igual ao padrão para atualizar automaticamente.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </section>

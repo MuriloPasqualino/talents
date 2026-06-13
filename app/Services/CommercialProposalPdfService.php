@@ -26,7 +26,7 @@ class CommercialProposalPdfService
             'proposal' => $proposal,
             'settings' => $settings,
             'logoBase64' => TalentsLogoDataUri::get(),
-            'services' => CommercialProposalServiceLines::forProposal($proposal),
+            'services' => CommercialProposalServiceLines::forProposal($proposal, $settings),
             'validityDate' => now()->copy()->addDays((int) $settings->pdf_validade_dias),
         ]);
 

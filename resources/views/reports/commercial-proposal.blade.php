@@ -9,7 +9,7 @@
             font-family: DejaVu Sans, sans-serif;
             font-size: 12px;
             color: #0f172a;
-            line-height: 1.4;
+            line-height: 1.45;
             margin: 0;
             padding: 0 0 6mm;
             box-sizing: border-box;
@@ -43,6 +43,18 @@
             letter-spacing: -0.02em;
             line-height: 1.15;
         }
+        .subtitle {
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            margin: 8px 0 0;
+            line-height: 1.35;
+        }
+        .client-line {
+            font-size: 12px;
+            color: #475569;
+            margin-top: 6px;
+        }
         .accent-line {
             width: 56px;
             height: 3px;
@@ -60,6 +72,12 @@
             letter-spacing: 0.04em;
             font-weight: 700;
         }
+        h3.service-title {
+            font-size: 13px;
+            color: #0f172a;
+            margin: 18px 0 4px;
+            font-weight: 700;
+        }
         .muted { color: #64748b; font-size: 11px; line-height: 1.45; }
         .grid { width: 100%; border-collapse: collapse; }
         .grid td { vertical-align: top; padding: 3px 0; }
@@ -71,10 +89,45 @@
             font-weight: bold;
         }
         .grid .value { color: #0f172a; font-size: 12px; font-weight: bold; margin-top: 2px; }
+        .section-text {
+            font-size: 11px;
+            color: #334155;
+            line-height: 1.5;
+            margin: 4px 0 0;
+        }
+        .investment {
+            font-size: 11px;
+            color: #0f172a;
+            margin: 6px 0 4px;
+        }
+        .investment strong { color: #4a2070; }
+        .service-detail {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .service-block {
+            page-break-inside: avoid;
+            margin-bottom: 4px;
+        }
+        .desc-bullets {
+            margin: 4px 0 6px 18px;
+            padding: 0;
+            font-size: 11px;
+            color: #334155;
+            line-height: 1.45;
+        }
+        .desc-bullets li { margin-bottom: 3px; }
+        .desc-paragraph {
+            margin: 4px 0 6px;
+            font-size: 11px;
+            color: #334155;
+            line-height: 1.45;
+        }
         table.services {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 14px;
             font-size: 11px;
             page-break-inside: avoid;
         }
@@ -109,7 +162,7 @@
             line-height: 1.45;
         }
         .notes {
-            margin-top: 8px;
+            margin-top: 12px;
             padding: 0 0 0 14px;
             border-left: 3px solid #f4b400;
             font-size: 11px;
@@ -120,6 +173,12 @@
         .notes-proposal {
             border-left-color: #06b6d4;
             color: #475569;
+        }
+        .closing-text {
+            margin-top: 14px;
+            font-size: 11px;
+            color: #334155;
+            line-height: 1.55;
         }
         .footer-wrap {
             position: fixed;
@@ -154,6 +213,12 @@
 <body>
     @php
         $brl = fn ($cents) => 'R$ '.number_format(((int) $cents) / 100, 2, ',', '.');
+        $paymentConditions = filled($settings->pdf_condicoes_pagamento)
+            ? $settings->pdf_condicoes_pagamento
+            : \App\Support\CommercialProposalPdfDefaults::defaultPaymentConditions();
+        $closingText = filled($settings->pdf_texto_encerramento)
+            ? $settings->pdf_texto_encerramento
+            : \App\Support\CommercialProposalPdfDefaults::defaultClosingText();
     @endphp
 
     <div class="doc-main">
@@ -186,74 +251,78 @@
     </div>
 
     <h1>Proposta Comercial</h1>
+    @if($proposal->pdf_subtitle)
+        <p class="subtitle">{{ $proposal->pdf_subtitle }}</p>
+    @endif
+    <p class="client-line"><strong>Cliente:</strong> {{ $proposal->client_name }}</p>
     <div class="accent-line"></div>
 
-    <h2>Dados do cliente</h2>
-    <table class="grid">
-        <tr>
-            <td style="width: 60%;">
-                <div class="label">Razão social / Nome</div>
-                <div class="value">{{ $proposal->client_name }}</div>
-            </td>
-            <td style="width: 40%;">
-                <div class="label">CNPJ</div>
-                <div class="value">{{ $proposal->client_cnpj ?: '—' }}</div>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <div class="label">E-mail</div>
-                <div class="value">{{ $proposal->client_email ?: '—' }}</div>
-            </td>
-            <td>
-                <div class="label">Telefone</div>
-                <div class="value">{{ $proposal->client_phone ?: '—' }}</div>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <div class="label">Indicação</div>
-                <div class="value">{{ $proposal->indication ?: '—' }}</div>
-            </td>
-            <td>
-                <div class="label">Nº de funcionários</div>
-                <div class="value">{{ $proposal->employee_count }}</div>
-            </td>
-        </tr>
-    </table>
+    <h2>Público Atendido</h2>
+    <p class="section-text">Serão contemplados {{ number_format((int) $proposal->employee_count, 0, ',', '.') }} colaboradores.</p>
 
-    <h2>Serviços contratados</h2>
+    @if($proposal->pdf_objetivo)
+        <h2>Objetivo</h2>
+        <p class="section-text">{!! nl2br(e($proposal->pdf_objetivo)) !!}</p>
+    @endif
+
     @if(empty($services))
+        <h2>Serviços</h2>
         <p class="muted">Nenhum serviço selecionado nesta proposta.</p>
     @else
+        @foreach($services as $index => $line)
+            <div class="service-block">
+                <h3 class="service-title">{{ $index + 1 }}. {{ $line['label'] }}</h3>
+                @if(!empty($line['detail']))
+                    <p class="service-detail">{{ $line['detail'] }}</p>
+                @endif
+                <p class="investment"><strong>Investimento:</strong> {{ $brl($line['value_cents']) }}</p>
+                @if(!empty($line['description']))
+                    <div class="service-description">
+                        @include('reports.partials.description-text', ['text' => $line['description']])
+                    </div>
+                @endif
+            </div>
+        @endforeach
+
+        <h2>Resumo do Investimento</h2>
         <table class="services">
             <thead>
                 <tr>
-                    <th style="width: 40%;">Serviço</th>
-                    <th style="width: 40%;">Detalhe</th>
-                    <th class="value" style="width: 20%;">Valor</th>
+                    <th style="width: 70%;">Serviço</th>
+                    <th class="value" style="width: 30%;">Valor</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($services as $line)
                     <tr>
                         <td>{{ $line['label'] }}</td>
-                        <td class="muted">{{ $line['detail'] }}</td>
                         <td class="value">{{ $brl($line['value_cents']) }}</td>
                     </tr>
                 @endforeach
                 <tr class="total">
-                    <td colspan="2">Honorário Total</td>
+                    <td>Honorário Total</td>
                     <td class="value">{{ $brl((int) $proposal->total_final_cents) }}</td>
                 </tr>
             </tbody>
         </table>
     @endif
 
+    <h2>Condições de Pagamento</h2>
+    <div class="section-text">
+        @include('reports.partials.description-text', ['text' => $paymentConditions])
+        <p class="desc-paragraph">• Prazo de validade desta proposta: {{ $settings->pdf_validade_dias ?? 7 }} dias.</p>
+    </div>
+
     @if($proposal->seller)
         <p class="commission-inline">
             <strong>Vendedor responsável:</strong> {{ $proposal->seller->name }}
         </p>
+    @endif
+
+    @if($closingText)
+        <div class="closing-text">
+            {!! nl2br(e($closingText)) !!}
+        </div>
     @endif
 
     @if($settings->pdf_observacoes)

@@ -10,6 +10,7 @@ use App\Models\CommercialSetting;
 use App\Models\User;
 use App\Services\CommercialPricingService;
 use App\Services\CommercialProposalPdfService;
+use App\Support\CommercialProposalPdfDefaults;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -171,7 +172,7 @@ class ProposalController extends Controller
     {
         $s = CommercialSetting::current();
 
-        return $s->only([
+        $settings = $s->only([
             'profiler_tier1_max', 'profiler_tier1_cents',
             'profiler_tier2_max', 'profiler_tier2_cents',
             'profiler_tier3_max', 'profiler_tier3_cents',
@@ -194,6 +195,12 @@ class ProposalController extends Controller
             'default_commission_percent',
             'pdf_validade_dias',
         ]);
+
+        $settings['pdf_descricoes_servicos'] = CommercialProposalPdfDefaults::serviceDescriptionsForSettings(
+            $s->pdf_descricoes_servicos
+        );
+
+        return $settings;
     }
 
     /**
@@ -310,6 +317,11 @@ class ProposalController extends Controller
             'is_closed' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
 
+            'pdf_subtitle' => ['nullable', 'string', 'max:500'],
+            'pdf_objetivo' => ['nullable', 'string', 'max:5000'],
+            'service_descriptions' => ['nullable', 'array'],
+            'service_descriptions.*' => ['nullable', 'string', 'max:10000'],
+
             'catalog_products' => ['nullable', 'array'],
             'catalog_products.*.product_id' => ['required', 'integer', Rule::exists('commercial_products', 'id')],
             'catalog_products.*.enabled' => ['boolean'],
@@ -319,6 +331,50 @@ class ProposalController extends Controller
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);
 
+        $data['service_descriptions'] = $this->normalizeServiceDescriptions(
+            $data['service_descriptions'] ?? null
+        );
+
         return $data;
+    }
+
+    /**
+     * Remove entradas vazias ou iguais ao padrão — null significa "usar texto padrão".
+     *
+     * @param  array<string, string|null>|null  $descriptions
+     * @return array<string, string>|null
+     */
+    private function normalizeServiceDescriptions(?array $descriptions): ?array
+    {
+        if ($descriptions === null) {
+            return null;
+        }
+
+        $settings = CommercialSetting::current();
+        $defaults = CommercialProposalPdfDefaults::serviceDescriptionsForSettings(
+            $settings->pdf_descricoes_servicos
+        );
+
+        $catalogDescriptions = CommercialProduct::query()
+            ->whereNotNull('description')
+            ->where('description', '!=', '')
+            ->pluck('description', 'slug')
+            ->all();
+
+        $normalized = [];
+        foreach ($descriptions as $key => $text) {
+            if (! is_string($key) || ! filled($text)) {
+                continue;
+            }
+
+            $default = $defaults[$key] ?? ($catalogDescriptions[$key] ?? '');
+            if (trim($text) === trim((string) $default)) {
+                continue;
+            }
+
+            $normalized[$key] = trim($text);
+        }
+
+        return $normalized === [] ? null : $normalized;
     }
 }
