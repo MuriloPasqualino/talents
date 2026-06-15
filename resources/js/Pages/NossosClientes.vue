@@ -14,10 +14,13 @@ const description =
 
 const clients = [
     { name: 'Fortex', logo: '/images/clientes/fortex.png' },
+    { name: 'Giraffas', logo: '/images/clientes/Giraffas.jpg' },
+    { name: 'KMR Embalagens', logo: '/images/clientes/kmr.png' },
     { name: 'Mais Mais', logo: '/images/clientes/maismais.png' },
     { name: 'Multibor', logo: '/images/clientes/multibor.png' },
     { name: 'Pasqualino', logo: '/images/clientes/pasqualino.png' },
     { name: 'PASSEG', logo: '/images/clientes/passeg.png' },
+    { name: 'Pontix', logo: '/images/clientes/pontix.jpeg' },
     { name: 'Ramep', logo: '/images/clientes/ramep.jpg' },
     { name: 'SOEM', logo: '/images/clientes/soem.png' },
     { name: 'Wizzard', logo: '/images/clientes/wizzard.png' },
