@@ -21,6 +21,7 @@ RUN npm ci
 
 COPY . .
 COPY --from=composer-deps /app/vendor ./vendor
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
 # -----------------------------------------------------------------------------

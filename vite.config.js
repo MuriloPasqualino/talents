@@ -10,6 +10,23 @@ export default defineConfig({
             '@': path.resolve(__dirname, 'resources/js'),
         },
     },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('node_modules/apexcharts') || id.includes('node_modules/vue3-apexcharts')) {
+                        return 'apexcharts';
+                    }
+                    if (id.includes('node_modules/@tiptap')) {
+                        return 'tiptap';
+                    }
+                    if (id.includes('node_modules/bootstrap')) {
+                        return 'bootstrap';
+                    }
+                },
+            },
+        },
+    },
     plugins: [
         laravel({
             input: 'resources/js/app.js',
