@@ -14,6 +14,8 @@ class ActionPlan extends Model
         'status',
         'admin_published_at',
         'technical_opinion',
+        'technical_opinion_file_path',
+        'technical_opinion_file_name',
     ];
 
     protected function casts(): array

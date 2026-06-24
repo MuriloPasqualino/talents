@@ -77,15 +77,34 @@ const patchItem = (item) => {
 
         <div v-else class="space-y-6">
             <div
-                v-if="plan.technical_opinion"
+                v-if="plan.technical_opinion || plan.technical_opinion_file_url"
                 class="surface-card overflow-hidden p-6"
             >
                 <h3 class="text-lg font-semibold text-talents-900">Parecer técnico</h3>
                 <p class="mt-1 text-xs text-gray-500">Elaborado pela equipe Talents com base nos resultados desta pesquisa.</p>
                 <div
+                    v-if="plan.technical_opinion"
                     class="parecer-prose prose prose-sm mt-4 max-w-none text-gray-800 prose-headings:text-talents-900 prose-strong:text-talents-900"
                     v-html="plan.technical_opinion"
                 />
+                <a
+                    v-if="plan.technical_opinion_file_url"
+                    :href="plan.technical_opinion_file_url"
+                    class="mt-4 inline-flex items-center gap-2 rounded-lg border border-talents-200 bg-talents-50 px-4 py-2.5 text-sm font-medium text-talents-800 transition hover:bg-talents-100"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.75"
+                            d="M19.5 14.25v2.625a2.625 2.625 0 01-2.625 2.625H7.125A2.625 2.625 0 014.5 16.875V14.25M12 3v12m0 0l-3.75-3.75M12 15l3.75-3.75"
+                        />
+                    </svg>
+                    Baixar parecer técnico
+                    <span v-if="plan.technical_opinion_file_name" class="text-xs font-normal text-talents-600">
+                        ({{ plan.technical_opinion_file_name }})
+                    </span>
+                </a>
             </div>
 
             <div

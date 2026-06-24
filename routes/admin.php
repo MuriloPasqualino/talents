@@ -102,6 +102,8 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
             ->name('companies.surveys.ai-analysis');
         Route::post('companies/{company}/surveys/{survey}/technical-opinion', [ActionPlanAdminController::class, 'generateTechnicalOpinion'])
             ->name('companies.surveys.technical-opinion');
+        Route::get('companies/{company}/surveys/{survey}/technical-opinion-file', [ActionPlanAdminController::class, 'downloadTechnicalOpinionFile'])
+            ->name('companies.surveys.technical-opinion-file.download');
         Route::get('companies/{company}/users', [CompanyUserController::class, 'index'])->name('companies.users.index');
         Route::get('companies/{company}/users/create', [CompanyUserController::class, 'create'])->name('companies.users.create');
         Route::post('companies/{company}/users', [CompanyUserController::class, 'store'])->name('companies.users.store');

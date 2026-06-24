@@ -56,6 +56,7 @@ Route::middleware(['auth', 'verified', 'company'])->prefix('client')->name('clie
 
     Route::middleware('can.module:planos_acao')->group(function () {
         Route::get('surveys/{survey}/action-plan', [ActionPlanController::class, 'show'])->name('surveys.action-plan');
+        Route::get('surveys/{survey}/action-plan/technical-opinion-file', [ActionPlanController::class, 'downloadTechnicalOpinionFile'])->name('surveys.action-plan.technical-opinion-file');
         Route::patch('action-plan-items/{item}', [ActionPlanController::class, 'updateItem'])->name('action-plan-items.update');
     });
 

@@ -18,6 +18,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -74,6 +76,10 @@ class ActionPlanAdminController extends Controller
                 'id' => $plan->id,
                 'admin_published_at' => $plan->admin_published_at?->format('d/m/Y H:i'),
                 'technical_opinion' => $plan->technical_opinion ?? '',
+                'technical_opinion_file_name' => $plan->technical_opinion_file_name,
+                'technical_opinion_file_url' => $plan->technical_opinion_file_path
+                    ? route('admin.companies.surveys.technical-opinion-file.download', [$company, $survey])
+                    : null,
             ] : null,
             'technical_opinion' => $plan?->technical_opinion ?? '',
             'items' => $items,
@@ -163,6 +169,11 @@ class ActionPlanAdminController extends Controller
             'items.*.title' => ['nullable', 'string', 'max:255'],
             'items.*.description' => ['nullable', 'string'],
             'technical_opinion' => ['nullable', 'string'],
+            'technical_opinion_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:20480'],
+            'remove_technical_opinion_file' => ['nullable', 'boolean'],
+        ], [
+            'technical_opinion_file.mimes' => 'O arquivo do parecer deve ser PDF, DOC ou DOCX.',
+            'technical_opinion_file.max' => 'O arquivo do parecer não pode exceder 20 MB.',
         ]);
 
         $technicalOpinion = HtmlSanitizer::sanitizeRichText($data['technical_opinion'] ?? null);
@@ -170,18 +181,34 @@ class ActionPlanAdminController extends Controller
             fn (array $row) => trim((string) ($row['title'] ?? '')) !== ''
         )->values()->all();
 
+        $uploadedFile = $request->file('technical_opinion_file');
+        $removeFile = $request->boolean('remove_technical_opinion_file');
+
+        $plan = ActionPlan::query()->firstOrCreate(
+            [
+                'company_id' => $company->id,
+                'survey_id' => $survey->id,
+            ],
+            ['status' => 'open']
+        );
+
+        $existingFilePath = $plan->technical_opinion_file_path;
+        $newFilePath = $existingFilePath;
+        $newFileName = $plan->technical_opinion_file_name;
+
+        if ($uploadedFile !== null) {
+            $newFilePath = $uploadedFile->store('action-plans/'.$plan->id.'/technical-opinion', 'local');
+            $newFileName = $uploadedFile->getClientOriginalName();
+        } elseif ($removeFile) {
+            $newFilePath = null;
+            $newFileName = null;
+        }
+
         $hasPublishableContent = count($filteredItems) > 0
-            || ($technicalOpinion !== null && trim(strip_tags($technicalOpinion)) !== '');
+            || ($technicalOpinion !== null && trim(strip_tags($technicalOpinion)) !== '')
+            || $newFilePath !== null;
 
-        DB::transaction(function () use ($company, $survey, $filteredItems, $technicalOpinion, $hasPublishableContent) {
-            $plan = ActionPlan::query()->firstOrCreate(
-                [
-                    'company_id' => $company->id,
-                    'survey_id' => $survey->id,
-                ],
-                ['status' => 'open']
-            );
-
+        DB::transaction(function () use ($plan, $filteredItems, $technicalOpinion, $hasPublishableContent, $newFilePath, $newFileName) {
             $plan->items()->delete();
 
             foreach ($filteredItems as $index => $row) {
@@ -196,14 +223,45 @@ class ActionPlanAdminController extends Controller
 
             $plan->update([
                 'technical_opinion' => $technicalOpinion,
+                'technical_opinion_file_path' => $newFilePath,
+                'technical_opinion_file_name' => $newFileName,
                 'admin_published_at' => $hasPublishableContent ? now() : null,
             ]);
         });
+
+        if (($uploadedFile !== null || $removeFile)
+            && $existingFilePath
+            && $existingFilePath !== $newFilePath
+            && Storage::disk('local')->exists($existingFilePath)) {
+            Storage::disk('local')->delete($existingFilePath);
+        }
 
         return redirect()
             ->route('admin.companies.surveys.action-plan.edit', [$company, $survey])
             ->with('success', $hasPublishableContent
                 ? 'Parecer e plano de ação salvos e disponibilizados para a empresa.'
                 : 'Conteúdo removido — a empresa não verá parecer nem plano até você publicar novamente.');
+    }
+
+    public function downloadTechnicalOpinionFile(Company $company, Survey $survey): StreamedResponse
+    {
+        $this->assertSurveyBelongsToCompany($company, $survey);
+
+        $plan = ActionPlan::query()
+            ->where('company_id', $company->id)
+            ->where('survey_id', $survey->id)
+            ->first();
+
+        abort_unless(
+            $plan
+            && $plan->technical_opinion_file_path
+            && Storage::disk('local')->exists($plan->technical_opinion_file_path),
+            404
+        );
+
+        return Storage::disk('local')->download(
+            $plan->technical_opinion_file_path,
+            $plan->technical_opinion_file_name ?? 'parecer-tecnico'
+        );
     }
 }

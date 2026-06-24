@@ -9,8 +9,9 @@ import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { marked } from 'marked';
-import { computed, onBeforeUnmount, onMounted, onUnmounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
 
 marked.setOptions({ breaks: true, gfm: true });
 
@@ -46,7 +47,35 @@ const form = useForm({
             ? props.items.map((i) => ({ title: i.title, description: i.description ?? '' }))
             : [{ title: '', description: '' }],
     technical_opinion: initialOpinionHtml === '<p></p>' ? '' : initialOpinionHtml,
+    technical_opinion_file: null,
+    remove_technical_opinion_file: false,
 });
+
+const existingOpinionFileName = ref(props.plan?.technical_opinion_file_name ?? null);
+const existingOpinionFileUrl = ref(props.plan?.technical_opinion_file_url ?? null);
+const opinionFileInput = ref(null);
+
+const onOpinionFileChange = (event) => {
+    const file = event.target.files?.[0] ?? null;
+    form.technical_opinion_file = file;
+    if (file) {
+        form.remove_technical_opinion_file = false;
+    }
+};
+
+const clearSelectedOpinionFile = () => {
+    form.technical_opinion_file = null;
+    if (opinionFileInput.value) {
+        opinionFileInput.value.value = '';
+    }
+};
+
+const removeExistingOpinionFile = () => {
+    form.remove_technical_opinion_file = true;
+    existingOpinionFileName.value = null;
+    existingOpinionFileUrl.value = null;
+    clearSelectedOpinionFile();
+};
 
 const opinionEditor = useEditor({
     extensions: [StarterKit.configure({ heading: { levels: [2, 3, 4] } }), Underline],
@@ -148,8 +177,15 @@ const submit = () => {
         .transform((data) => ({
             items: data.items.filter((row) => String(row.title).trim() !== ''),
             technical_opinion: data.technical_opinion || null,
+            technical_opinion_file: data.technical_opinion_file,
+            remove_technical_opinion_file: data.remove_technical_opinion_file,
         }))
-        .put(route('admin.companies.surveys.action-plan.update', [props.company.id, props.survey.id]));
+        .put(route('admin.companies.surveys.action-plan.update', [props.company.id, props.survey.id]), {
+            onSuccess: () => {
+                clearSelectedOpinionFile();
+                form.remove_technical_opinion_file = false;
+            },
+        });
 };
 </script>
 
@@ -351,6 +387,61 @@ const submit = () => {
 
                 <div v-if="form.errors.technical_opinion" class="mt-2 text-sm text-red-600">
                     {{ form.errors.technical_opinion }}
+                </div>
+
+                <div class="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-4">
+                    <h4 class="text-sm font-semibold text-gray-900">Anexar arquivo do parecer (opcional)</h4>
+                    <p class="mt-1 text-xs text-gray-600">
+                        Em vez de (ou além de) digitar acima, você pode enviar um arquivo PDF, DOC ou DOCX. A empresa poderá baixá-lo na
+                        página Plano de ação. Tamanho máximo: 20 MB.
+                    </p>
+
+                    <div
+                        v-if="existingOpinionFileName"
+                        class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                    >
+                        <div class="flex items-center gap-2 text-gray-800">
+                            <DocumentTextIcon class="h-5 w-5 text-talents-700" aria-hidden="true" />
+                            <a
+                                v-if="existingOpinionFileUrl"
+                                :href="existingOpinionFileUrl"
+                                class="font-medium text-talents-800 hover:underline"
+                            >
+                                {{ existingOpinionFileName }}
+                            </a>
+                            <span v-else class="font-medium">{{ existingOpinionFileName }}</span>
+                            <span class="text-xs text-gray-500">(arquivo atual)</span>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                            @click="removeExistingOpinionFile"
+                        >
+                            Remover arquivo
+                        </button>
+                    </div>
+
+                    <div class="mt-3">
+                        <input
+                            ref="opinionFileInput"
+                            type="file"
+                            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            class="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-talents-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-talents-800"
+                            @change="onOpinionFileChange"
+                        />
+                        <p v-if="form.technical_opinion_file" class="mt-2 text-xs text-emerald-700">
+                            Novo arquivo selecionado: {{ form.technical_opinion_file.name }}
+                            <button type="button" class="ml-2 text-red-600 hover:underline" @click="clearSelectedOpinionFile">
+                                cancelar
+                            </button>
+                        </p>
+                        <p v-if="form.progress" class="mt-2 text-xs text-gray-500">
+                            Enviando… {{ form.progress.percentage }}%
+                        </p>
+                        <p v-if="form.errors.technical_opinion_file" class="mt-2 text-sm text-red-600">
+                            {{ form.errors.technical_opinion_file }}
+                        </p>
+                    </div>
                 </div>
             </div>
 
