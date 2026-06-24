@@ -76,52 +76,7 @@ class SettingsController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $integerCents = ['nullable', 'integer', 'min:0'];
-        $integerMax = ['nullable', 'integer', 'min:1'];
-
         $data = $request->validate([
-            // Profiler
-            'profiler_tier1_max' => $integerMax,
-            'profiler_tier1_cents' => $integerCents,
-            'profiler_tier2_max' => $integerMax,
-            'profiler_tier2_cents' => $integerCents,
-            'profiler_tier3_max' => $integerMax,
-            'profiler_tier3_cents' => $integerCents,
-            'profiler_tier4_cents' => $integerCents,
-
-            // Pesquisas e Organograma
-            'pesquisas_tier1_max' => $integerMax,
-            'pesquisas_tier1_cents' => $integerCents,
-            'pesquisas_tier2_max' => $integerMax,
-            'pesquisas_tier2_cents' => $integerCents,
-            'pesquisas_tier3_max' => $integerMax,
-            'pesquisas_tier3_cents' => $integerCents,
-            'pesquisas_tier4_cents' => $integerCents,
-
-            // Direcionamento
-            'direcionamento_hora_cents' => $integerCents,
-
-            // NR-1
-            'nr1_tier1_max' => $integerMax,
-            'nr1_tier1_cents' => $integerCents,
-            'nr1_tier2_max' => $integerMax,
-            'nr1_tier2_cents' => $integerCents,
-            'nr1_tier3_max' => $integerMax,
-            'nr1_tier3_cents' => $integerCents,
-            'nr1_tier4_cents' => $integerCents,
-
-            // Devolutiva
-            'devolutiva_individual_cents' => $integerCents,
-            'devolutiva_grupo_cents' => $integerCents,
-
-            // NR-1 Implantação
-            'nr1_implantacao_online_cents' => $integerCents,
-            'nr1_implantacao_presencial_cents' => $integerCents,
-
-            // Palestras
-            'palestras_base_cents' => $integerCents,
-            'palestras_threshold_funcionarios' => ['nullable', 'integer', 'min:0'],
-            'palestras_multiplier' => ['nullable', 'integer', 'min:1', 'max:10'],
             'default_commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             // PDF

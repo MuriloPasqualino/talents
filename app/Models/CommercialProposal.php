@@ -78,6 +78,29 @@ class CommercialProposal extends Model
         return (bool) $this->is_closed;
     }
 
+    public function hasLegacyServices(): bool
+    {
+        return (bool) $this->svc_pesquisas
+            || (bool) $this->svc_profiler
+            || filled($this->svc_devolutiva)
+            || (bool) $this->svc_nr1
+            || (bool) $this->svc_contratacao
+            || (bool) $this->svc_direcionamento
+            || (bool) $this->svc_palestras;
+    }
+
+    public function legacyTotalsCents(): int
+    {
+        return (int) $this->total_pesquisas_cents
+            + (int) $this->total_profiler_cents
+            + (int) $this->total_devolutiva_cents
+            + (int) $this->total_nr1_cents
+            + (int) $this->total_nr1_implantacao_cents
+            + (int) $this->total_contratacao_cents
+            + (int) $this->total_direcionamento_cents
+            + (int) $this->total_palestras_cents;
+    }
+
     public function hasSale(): bool
     {
         if ($this->relationLoaded('sale')) {

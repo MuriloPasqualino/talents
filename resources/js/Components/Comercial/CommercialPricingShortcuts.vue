@@ -3,19 +3,9 @@ import { Link } from '@inertiajs/vue3';
 
 const shortcuts = [
     {
-        tab: 'faixas',
-        title: 'Faixas por funcionários',
-        description: 'Profiler, pesquisas e NR-1 por quantidade de colaboradores.',
-    },
-    {
-        tab: 'fixos',
-        title: 'Valores fixos',
-        description: 'Devolutivas, direcionamento (hora), palestras, implantação NR-1 e demais valores únicos.',
-    },
-    {
         tab: 'produtos',
         title: 'Produtos do catálogo',
-        description: 'Cadastre novos produtos que aparecem nas propostas e contratos.',
+        description: 'Cadastre e configure preços dos produtos usados nas propostas e contratos.',
     },
     {
         tab: 'contratos',
@@ -26,7 +16,7 @@ const shortcuts = [
 </script>
 
 <template>
-    <div class="mb-6 grid gap-3 sm:grid-cols-3">
+    <div class="mb-6 grid gap-3 sm:grid-cols-2">
         <Link
             v-for="item in shortcuts"
             :key="item.tab"

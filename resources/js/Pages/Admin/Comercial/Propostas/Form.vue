@@ -5,25 +5,10 @@ import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPric
 import { formatCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
-
-const LEGACY_SERVICE_KEYS = [
-    { key: 'pesquisas', label: 'Pesquisas e Organograma', active: (f) => f.svc_pesquisas },
-    { key: 'profiler', label: 'Profiler — Diagnóstico Comportamental', active: (f) => f.svc_profiler },
-    { key: 'devolutiva', label: 'Devolutiva e Diagnóstico', active: (f) => !!f.svc_devolutiva },
-    { key: 'nr1', label: 'NR-1 — Mapeamento (12 parcelas)', active: (f) => f.svc_nr1 },
-    {
-        key: 'nr1_implantacao',
-        label: 'NR-1 — Implantação',
-        active: (f) => f.svc_nr1 && !!f.svc_nr1_implantacao_modo,
-    },
-    { key: 'contratacao', label: 'Contratação / Recrutamento', active: (f) => f.svc_contratacao },
-    { key: 'direcionamento', label: 'Direcionamento Estratégico', active: (f) => f.svc_direcionamento },
-    { key: 'palestras', label: 'Palestras e Treinamentos', active: (f) => f.svc_palestras },
-];
+import { computed, ref } from 'vue';
 
 const props = defineProps({
-    mode: { type: String, default: 'create' }, // 'create' | 'edit'
+    mode: { type: String, default: 'create' },
     proposal: { type: Object, default: null },
     sellers: { type: Array, default: () => [] },
     settings: { type: Object, required: true },
@@ -57,16 +42,6 @@ const formInitial = props.proposal
           indication: props.proposal.indication ?? '',
           employee_count: props.proposal.employee_count ?? 0,
           seller_id: props.proposal.seller_id ?? '',
-          svc_pesquisas: !!props.proposal.svc_pesquisas,
-          svc_profiler: !!props.proposal.svc_profiler,
-          svc_devolutiva: props.proposal.svc_devolutiva ?? '',
-          svc_nr1: !!props.proposal.svc_nr1,
-          svc_nr1_implantacao_modo: props.proposal.svc_nr1_implantacao_modo ?? '',
-          svc_contratacao: !!props.proposal.svc_contratacao,
-          svc_contratacao_salario_cents: props.proposal.svc_contratacao_salario_cents ?? 0,
-          svc_direcionamento: !!props.proposal.svc_direcionamento,
-          direcionamento_horas: props.proposal.direcionamento_horas ?? '',
-          svc_palestras: !!props.proposal.svc_palestras,
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
           palestra_topic: props.proposal.palestra_topic ?? '',
@@ -92,16 +67,6 @@ const formInitial = props.proposal
           indication: '',
           employee_count: 0,
           seller_id: '',
-          svc_pesquisas: false,
-          svc_profiler: false,
-          svc_devolutiva: '',
-          svc_nr1: false,
-          svc_nr1_implantacao_modo: '',
-          svc_contratacao: false,
-          svc_contratacao_salario_cents: 0,
-          svc_direcionamento: false,
-          direcionamento_horas: '',
-          svc_palestras: false,
           is_closed: false,
           notes: '',
           palestra_topic: '',
@@ -150,15 +115,14 @@ const toggleDescription = (key) => {
     expandedDescriptions.value[key] = !expandedDescriptions.value[key];
 };
 
-// Helpers de input em reais (string) -> centavos para o salário base de Contratação
-const salaryReais = ref(((Number(formInitial.svc_contratacao_salario_cents) || 0) / 100).toFixed(2).replace('.', ','));
-watch(salaryReais, (val) => {
-    const numeric = Number(String(val ?? '').replace(/\./g, '').replace(',', '.'));
-    form.svc_contratacao_salario_cents = Number.isFinite(numeric) ? Math.max(0, Math.round(numeric * 100)) : 0;
-});
-
 const formRef = computed(() => form);
-const { breakdownCents, totalFinalCents, catalogLines } = useCommercialPricing(formRef, settingsRef, catalogProductsRef);
+const proposalRef = computed(() => props.proposal);
+const { totalFinalCents, catalogLines, legacySummary } = useCommercialPricing(
+    formRef,
+    settingsRef,
+    catalogProductsRef,
+    proposalRef,
+);
 
 const catalogSelection = (productId) => {
     let sel = form.catalog_products.find((s) => s.product_id === productId);
@@ -170,7 +134,7 @@ const catalogSelection = (productId) => {
 };
 
 const catalogLineCents = (productId) => {
-    const line = breakdownCents.value.catalog_lines?.find((l) => l.product_id === productId);
+    const line = catalogLines.value?.find((l) => l.product_id === productId);
     return line?.value_cents ?? 0;
 };
 
@@ -186,25 +150,23 @@ const updateCatalogSalary = (productId, reaisStr) => {
         : 0;
 };
 
-const activePdfServices = computed(() => {
-    const items = LEGACY_SERVICE_KEYS.filter((svc) => svc.active(form)).map((svc) => ({
-        key: svc.key,
-        label: svc.label,
-    }));
+const isProductSelected = (product) => {
+    const sel = catalogSelection(product.id);
+    if (product.pricing_type === 'fixed_modality') {
+        return !!sel.modality;
+    }
+    return !!sel.enabled;
+};
 
-    props.catalogProducts.forEach((product) => {
-        const sel = catalogSelection(product.id);
-        const enabled =
-            product.pricing_type === 'fixed_modality'
-                ? !!sel.modality
-                : !!sel.enabled;
-        if (enabled) {
-            items.push({ key: product.slug, label: product.name });
-        }
-    });
+const palestrasProductSelected = computed(() =>
+    props.catalogProducts.some((p) => p.slug === 'palestras' && isProductSelected(p)),
+);
 
-    return items;
-});
+const activePdfServices = computed(() =>
+    props.catalogProducts
+        .filter((product) => isProductSelected(product))
+        .map((product) => ({ key: product.slug, label: product.name })),
+);
 
 // Consulta CNPJ (Receita Federal) — reaproveita o endpoint já existente.
 const cnpjLookupLoading = ref(false);
@@ -268,20 +230,17 @@ const isEdit = computed(() => props.mode === 'edit');
 const titleText = computed(() => (isEdit.value ? `Proposta ${props.proposal?.code}` : 'Nova proposta'));
 
 const services = computed(() => {
-    const legacy = [
-        { label: 'Pesquisas e Organograma', cents: breakdownCents.value.total_pesquisas_cents, on: form.svc_pesquisas },
-        { label: 'Profiler', cents: breakdownCents.value.total_profiler_cents, on: form.svc_profiler },
-        { label: 'Devolutiva', cents: breakdownCents.value.total_devolutiva_cents, on: !!form.svc_devolutiva },
-        { label: 'NR-1 Mapeamento', cents: breakdownCents.value.total_nr1_cents, on: form.svc_nr1 },
-        { label: 'NR-1 Implantação', cents: breakdownCents.value.total_nr1_implantacao_cents, on: !!form.svc_nr1_implantacao_modo && form.svc_nr1 },
-        { label: 'Contratação', cents: breakdownCents.value.total_contratacao_cents, on: form.svc_contratacao },
-        { label: 'Direcionamento Estratégico', cents: breakdownCents.value.total_direcionamento_cents, on: form.svc_direcionamento },
-        { label: 'Palestras e Treinamentos', cents: breakdownCents.value.total_palestras_cents, on: form.svc_palestras },
-    ];
+    const legacy = (legacySummary.value || []).map((line) => ({
+        label: line.label,
+        cents: line.cents,
+        on: true,
+        readonly: true,
+    }));
     const catalog = (catalogLines.value || []).map((line) => ({
         label: line.label,
         cents: line.value_cents,
         on: true,
+        readonly: false,
     }));
     return [...legacy, ...catalog];
 });
@@ -431,153 +390,63 @@ const services = computed(() => {
                     </div>
                 </section>
 
-                <!-- Serviços -->
+                <!-- Produtos -->
                 <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Serviços contratados</h3>
-                    <p class="mt-1 text-xs text-slate-500">Marque os serviços e o cálculo aparece no resumo ao lado.</p>
+                    <h3 class="text-lg font-semibold text-slate-900">Produtos</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Selecione os produtos; o cálculo aparece no resumo ao lado.
+                        Cadastre novos em Comercial → Valores e contratos → aba Produtos.
+                    </p>
 
-                    <div class="mt-4 space-y-4">
-                        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50">
-                            <input v-model="form.svc_pesquisas" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <div class="flex-1">
-                                <div class="font-medium text-slate-900">Pesquisas e Organograma</div>
-                                <p class="text-xs text-slate-500">Por funcionário, conforme faixa.</p>
-                            </div>
-                            <div class="text-right text-sm tabular-nums text-slate-700">
-                                {{ formatBRL(breakdownCents.total_pesquisas_cents) }}
-                            </div>
-                        </label>
-
-                        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50">
-                            <input v-model="form.svc_profiler" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <div class="flex-1">
-                                <div class="font-medium text-slate-900">Profiler — Diagnóstico Comportamental</div>
-                                <p class="text-xs text-slate-500">Por funcionário, conforme faixa.</p>
-                            </div>
-                            <div class="text-right text-sm tabular-nums text-slate-700">
-                                {{ formatBRL(breakdownCents.total_profiler_cents) }}
-                            </div>
-                        </label>
-
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <div class="flex items-center justify-between">
-                                <div class="font-medium text-slate-900">Devolutiva e Diagnóstico</div>
-                                <div class="text-right text-sm tabular-nums text-slate-700">
-                                    {{ formatBRL(breakdownCents.total_devolutiva_cents) }}
-                                </div>
-                            </div>
-                            <select
-                                v-model="form.svc_devolutiva"
-                                class="mt-2 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                    <div v-if="catalogProducts.length" class="mt-4 space-y-4">
+                        <template v-for="product in catalogProducts" :key="product.id">
+                            <label
+                                v-if="product.pricing_type === 'fixed' || product.pricing_type === 'per_employee' || product.pricing_type === 'tiered_per_employee' || product.pricing_type === 'threshold_multiplier'"
+                                class="flex items-start gap-3 rounded-xl border border-talents-100 bg-talents-50/30 p-3 hover:bg-talents-50/50"
                             >
-                                <option value="">— Não contratado —</option>
-                                <option value="individual">Individual ({{ formatBRL(settings.devolutiva_individual_cents) }})</option>
-                                <option value="grupo">Grupo ({{ formatBRL(settings.devolutiva_grupo_cents) }})</option>
-                            </select>
-                        </div>
-
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <label class="flex items-start gap-3">
-                                <input v-model="form.svc_nr1" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
+                                <input
+                                    v-model="catalogSelection(product.id).enabled"
+                                    type="checkbox"
+                                    class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                                />
                                 <div class="flex-1">
-                                    <div class="font-medium text-slate-900">NR-1 — Mapeamento (12 parcelas)</div>
-                                    <p class="text-xs text-slate-500">Por funcionário, conforme faixa.</p>
+                                    <div class="font-medium text-slate-900">{{ product.name }}</div>
+                                    <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
                                 </div>
                                 <div class="text-right text-sm tabular-nums text-slate-700">
-                                    {{ formatBRL(breakdownCents.total_nr1_cents) }}
+                                    {{ formatBRL(catalogLineCents(product.id)) }}
                                 </div>
                             </label>
-                            <div v-if="form.svc_nr1" class="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+
+                            <div
+                                v-else-if="product.pricing_type === 'fixed_modality'"
+                                class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
+                            >
+                                <div class="font-medium text-slate-900">{{ product.name }}</div>
                                 <select
-                                    v-model="form.svc_nr1_implantacao_modo"
-                                    class="w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    v-model="catalogSelection(product.id).modality"
+                                    class="mt-2 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                    @change="catalogSelection(product.id).enabled = !!catalogSelection(product.id).modality"
                                 >
-                                    <option value="">— Sem implantação —</option>
-                                    <option value="online">Implantação On-line ({{ formatBRL(settings.nr1_implantacao_online_cents) }} / func.)</option>
-                                    <option value="presencial">Implantação Presencial ({{ formatBRL(settings.nr1_implantacao_presencial_cents) }} fixo)</option>
+                                    <option value="">— Não contratado —</option>
+                                    <option
+                                        v-for="mod in product.pricing_config?.modalities || []"
+                                        :key="mod.key"
+                                        :value="mod.key"
+                                    >
+                                        {{ mod.label }} ({{ formatBRL(mod.cents) }})
+                                    </option>
                                 </select>
-                                <span class="text-right text-sm tabular-nums text-slate-700">
-                                    Implantação: {{ formatBRL(breakdownCents.total_nr1_implantacao_cents) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <label class="flex items-start gap-3">
-                                <input v-model="form.svc_contratacao" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                                <div class="flex-1">
-                                    <div class="font-medium text-slate-900">Contratação / Recrutamento</div>
-                                    <p class="text-xs text-slate-500">Salário base × nº de funcionários.</p>
+                                <div class="mt-2 text-right text-sm tabular-nums text-slate-700">
+                                    {{ formatBRL(catalogLineCents(product.id)) }}
                                 </div>
-                                <div class="text-right text-sm tabular-nums text-slate-700">
-                                    {{ formatBRL(breakdownCents.total_contratacao_cents) }}
-                                </div>
-                            </label>
-                            <div v-if="form.svc_contratacao" class="mt-3">
-                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                    Salário base por funcionário (R$)
-                                </label>
-                                <input
-                                    v-model="salaryReais"
-                                    type="text"
-                                    placeholder="0,00"
-                                    class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                />
                             </div>
-                        </div>
 
-                        <div class="rounded-xl border border-slate-200 p-3">
-                            <label class="flex items-start gap-3 hover:bg-slate-50">
-                                <input v-model="form.svc_direcionamento" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                                <div class="flex-1">
-                                    <div class="font-medium text-slate-900">Direcionamento Estratégico</div>
-                                    <p class="text-xs text-slate-500">
-                                        Valor hora {{ formatBRL(settings.direcionamento_hora_cents ?? settings.direcionamento_tier1_cents) }}.
-                                    </p>
-                                </div>
-                                <div class="text-right text-sm tabular-nums text-slate-700">
-                                    {{ formatBRL(breakdownCents.total_direcionamento_cents) }}
-                                </div>
-                            </label>
-                            <div v-if="form.svc_direcionamento" class="mt-3 border-t border-slate-100 pt-3">
-                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Quantidade de horas</label>
-                                <input
-                                    v-model.number="form.direcionamento_horas"
-                                    type="number"
-                                    min="0"
-                                    step="0.5"
-                                    placeholder="0"
-                                    class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                />
-                            </div>
-                        </div>
-
-                        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50">
-                            <input v-model="form.svc_palestras" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <div class="flex-1">
-                                <div class="font-medium text-slate-900">Palestras e Treinamentos</div>
-                                <p class="text-xs text-slate-500">
-                                    Base {{ formatBRL(settings.palestras_base_cents) }};
-                                    multiplicado por {{ settings.palestras_multiplier }}× acima de {{ settings.palestras_threshold_funcionarios }} func.
-                                </p>
-                            </div>
-                            <div class="text-right text-sm tabular-nums text-slate-700">
-                                {{ formatBRL(breakdownCents.total_palestras_cents) }}
-                            </div>
-                        </label>
-                    </div>
-
-                    <div v-if="catalogProducts.length" class="mt-8 border-t border-slate-200 pt-6">
-                        <h4 class="text-sm font-semibold text-slate-900">Produtos do catálogo</h4>
-                        <p class="mt-1 text-xs text-slate-500">
-                            Produtos cadastrados em Comercial → Valores e contratos → aba Produtos.
-                        </p>
-                        <div class="mt-4 space-y-4">
-                            <template v-for="product in catalogProducts" :key="product.id">
-                                <label
-                                    v-if="product.pricing_type === 'fixed' || product.pricing_type === 'per_employee' || product.pricing_type === 'tiered_per_employee' || product.pricing_type === 'threshold_multiplier'"
-                                    class="flex items-start gap-3 rounded-xl border border-talents-100 bg-talents-50/30 p-3 hover:bg-talents-50/50"
-                                >
+                            <div
+                                v-else-if="product.pricing_type === 'salary_times_employees'"
+                                class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
+                            >
+                                <label class="flex items-start gap-3">
                                     <input
                                         v-model="catalogSelection(product.id).enabled"
                                         type="checkbox"
@@ -585,71 +454,30 @@ const services = computed(() => {
                                     />
                                     <div class="flex-1">
                                         <div class="font-medium text-slate-900">{{ product.name }}</div>
-                                        <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
+                                        <p class="text-xs text-slate-500">Salário base × nº de funcionários.</p>
                                     </div>
                                     <div class="text-right text-sm tabular-nums text-slate-700">
                                         {{ formatBRL(catalogLineCents(product.id)) }}
                                     </div>
                                 </label>
-
-                                <div
-                                    v-else-if="product.pricing_type === 'fixed_modality'"
-                                    class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
-                                >
-                                    <div class="font-medium text-slate-900">{{ product.name }}</div>
-                                    <select
-                                        v-model="catalogSelection(product.id).modality"
-                                        class="mt-2 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                        @change="catalogSelection(product.id).enabled = !!catalogSelection(product.id).modality"
-                                    >
-                                        <option value="">— Não contratado —</option>
-                                        <option
-                                            v-for="mod in product.pricing_config?.modalities || []"
-                                            :key="mod.key"
-                                            :value="mod.key"
-                                        >
-                                            {{ mod.label }} ({{ formatBRL(mod.cents) }})
-                                        </option>
-                                    </select>
-                                    <div class="mt-2 text-right text-sm tabular-nums text-slate-700">
-                                        {{ formatBRL(catalogLineCents(product.id)) }}
-                                    </div>
-                                </div>
-
-                                <div
-                                    v-else-if="product.pricing_type === 'salary_times_employees'"
-                                    class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
-                                >
-                                    <label class="flex items-start gap-3">
-                                        <input
-                                            v-model="catalogSelection(product.id).enabled"
-                                            type="checkbox"
-                                            class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
-                                        />
-                                        <div class="flex-1">
-                                            <div class="font-medium text-slate-900">{{ product.name }}</div>
-                                            <p class="text-xs text-slate-500">Salário base × nº de funcionários.</p>
-                                        </div>
-                                        <div class="text-right text-sm tabular-nums text-slate-700">
-                                            {{ formatBRL(catalogLineCents(product.id)) }}
-                                        </div>
+                                <div v-if="catalogSelection(product.id).enabled" class="mt-3">
+                                    <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                        Salário base por funcionário (R$)
                                     </label>
-                                    <div v-if="catalogSelection(product.id).enabled" class="mt-3">
-                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                            Salário base por funcionário (R$)
-                                        </label>
-                                        <input
-                                            :value="catalogSalaryReais(product.id)"
-                                            type="text"
-                                            placeholder="0,00"
-                                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                            @input="updateCatalogSalary(product.id, $event.target.value)"
-                                        />
-                                    </div>
+                                    <input
+                                        :value="catalogSalaryReais(product.id)"
+                                        type="text"
+                                        placeholder="0,00"
+                                        class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                        @input="updateCatalogSalary(product.id, $event.target.value)"
+                                    />
                                 </div>
-                            </template>
-                        </div>
+                            </div>
+                        </template>
                     </div>
+                    <p v-else class="mt-4 text-sm text-slate-500">
+                        Nenhum produto cadastrado. Acesse Comercial → Valores e contratos → aba Produtos.
+                    </p>
                 </section>
 
                 <!-- Texto da proposta (PDF) -->
@@ -724,7 +552,7 @@ const services = computed(() => {
                 </section>
 
                 <!-- Palestra — evento (contrato) -->
-                <section v-if="form.svc_palestras" class="surface-card p-6">
+                <section v-if="palestrasProductSelected" class="surface-card p-6">
                     <h3 class="text-lg font-semibold text-slate-900">Palestra — dados do evento (contrato)</h3>
                     <p class="mt-1 text-xs text-slate-500">
                         Alimentam os placeholders do modelo &quot;Palestra — Padrão Talents&quot; (tema, data, local, formato, etc.).
@@ -870,13 +698,17 @@ const services = computed(() => {
                     <ul class="mt-4 space-y-2 text-sm">
                         <li
                             v-for="svc in services"
-                            :key="svc.label"
+                            :key="`${svc.label}-${svc.readonly ? 'legacy' : 'catalog'}`"
                             class="flex items-center justify-between gap-2"
-                            :class="!svc.on ? 'text-slate-400' : 'text-slate-700'"
+                            :class="!svc.on ? 'text-slate-400' : svc.readonly ? 'text-slate-500' : 'text-slate-700'"
                         >
-                            <span class="truncate">{{ svc.label }}</span>
+                            <span class="truncate">
+                                {{ svc.label }}
+                                <span v-if="svc.readonly" class="text-xs text-slate-400">(histórico)</span>
+                            </span>
                             <span class="tabular-nums">{{ formatBRL(svc.cents) }}</span>
                         </li>
+                        <li v-if="!services.length" class="text-sm text-slate-400">Nenhum produto selecionado.</li>
                     </ul>
 
                     <div class="mt-4 border-t border-slate-200 pt-4">

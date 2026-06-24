@@ -87,11 +87,16 @@ class ProposalController extends Controller
     {
         [$data, $totals, $catalogLines] = $this->validatedWithTotals($request);
 
-        $proposal = CommercialProposal::create(array_merge($data, $totals, [
-            'code' => CommercialProposal::nextCode(),
-            'created_by' => $request->user()?->id,
-            'closed_at' => ($data['is_closed'] ?? false) ? now() : null,
-        ]));
+        $proposal = CommercialProposal::create(array_merge(
+            $this->legacyDefaults(),
+            $data,
+            $totals,
+            [
+                'code' => CommercialProposal::nextCode(),
+                'created_by' => $request->user()?->id,
+                'closed_at' => ($data['is_closed'] ?? false) ? now() : null,
+            ],
+        ));
 
         $this->syncCatalogLines($proposal, $catalogLines);
 
@@ -113,7 +118,7 @@ class ProposalController extends Controller
 
     public function update(Request $request, CommercialProposal $proposal): RedirectResponse
     {
-        [$data, $totals, $catalogLines] = $this->validatedWithTotals($request);
+        [$data, $totals, $catalogLines] = $this->validatedWithTotals($request, $proposal);
 
         $wasClosed = $proposal->is_closed;
         $isClosed = (bool) ($data['is_closed'] ?? false);
@@ -173,22 +178,6 @@ class ProposalController extends Controller
         $s = CommercialSetting::current();
 
         $settings = $s->only([
-            'profiler_tier1_max', 'profiler_tier1_cents',
-            'profiler_tier2_max', 'profiler_tier2_cents',
-            'profiler_tier3_max', 'profiler_tier3_cents',
-            'profiler_tier4_cents',
-            'pesquisas_tier1_max', 'pesquisas_tier1_cents',
-            'pesquisas_tier2_max', 'pesquisas_tier2_cents',
-            'pesquisas_tier3_max', 'pesquisas_tier3_cents',
-            'pesquisas_tier4_cents',
-            'direcionamento_hora_cents',
-            'nr1_tier1_max', 'nr1_tier1_cents',
-            'nr1_tier2_max', 'nr1_tier2_cents',
-            'nr1_tier3_max', 'nr1_tier3_cents',
-            'nr1_tier4_cents',
-            'devolutiva_individual_cents', 'devolutiva_grupo_cents',
-            'nr1_implantacao_online_cents', 'nr1_implantacao_presencial_cents',
-            'palestras_base_cents', 'palestras_threshold_funcionarios', 'palestras_multiplier',
             'default_commission_percent',
             'pdf_validade_dias',
         ]);
@@ -203,15 +192,20 @@ class ProposalController extends Controller
     /**
      * @return array{0: array<string, mixed>, 1: array<string, mixed>, 2: array<int, array<string, mixed>>}
      */
-    private function validatedWithTotals(Request $request): array
+    private function validatedWithTotals(Request $request, ?CommercialProposal $existing = null): array
     {
         $data = $this->validateProposal($request);
         $catalogProducts = $data['catalog_products'] ?? [];
         unset($data['catalog_products']);
 
-        $totals = $this->pricing->calculate(array_merge($data, [
+        $calcInputs = array_merge($data, [
             'catalog_products' => $catalogProducts,
-        ]));
+        ]);
+
+        $totals = $existing && $existing->hasLegacyServices()
+            ? $this->pricing->calculatePreservingLegacy($existing, $calcInputs)
+            : $this->pricing->calculate($calcInputs);
+
         $catalogLines = $totals['catalog_lines'] ?? [];
         unset($totals['catalog_lines']);
 
@@ -258,8 +252,41 @@ class ProposalController extends Controller
             'modality' => $line->options['modality'] ?? '',
             'salary_cents' => (int) ($line->options['salary_cents'] ?? 0),
         ])->values()->all();
+        $payload['has_legacy_services'] = $proposal->hasLegacyServices();
+        $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
 
         return $payload;
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string, cents: int}>
+     */
+    private function legacySummaryLines(CommercialProposal $proposal): array
+    {
+        $lines = [];
+
+        $map = [
+            ['flag' => $proposal->svc_pesquisas, 'key' => 'pesquisas', 'label' => 'Pesquisas e Organograma', 'col' => 'total_pesquisas_cents'],
+            ['flag' => $proposal->svc_profiler, 'key' => 'profiler', 'label' => 'Profiler — Diagnóstico Comportamental', 'col' => 'total_profiler_cents'],
+            ['flag' => filled($proposal->svc_devolutiva), 'key' => 'devolutiva', 'label' => 'Devolutiva e Diagnóstico', 'col' => 'total_devolutiva_cents'],
+            ['flag' => $proposal->svc_nr1, 'key' => 'nr1', 'label' => 'NR-1 — Mapeamento (12 parcelas)', 'col' => 'total_nr1_cents'],
+            ['flag' => filled($proposal->svc_nr1_implantacao_modo), 'key' => 'nr1_implantacao', 'label' => 'NR-1 — Implantação', 'col' => 'total_nr1_implantacao_cents'],
+            ['flag' => $proposal->svc_contratacao, 'key' => 'contratacao', 'label' => 'Contratação / Recrutamento', 'col' => 'total_contratacao_cents'],
+            ['flag' => $proposal->svc_direcionamento, 'key' => 'direcionamento', 'label' => 'Direcionamento Estratégico', 'col' => 'total_direcionamento_cents'],
+            ['flag' => $proposal->svc_palestras, 'key' => 'palestras', 'label' => 'Palestras e Treinamentos', 'col' => 'total_palestras_cents'],
+        ];
+
+        foreach ($map as $item) {
+            if ($item['flag']) {
+                $lines[] = [
+                    'key' => $item['key'],
+                    'label' => $item['label'],
+                    'cents' => (int) $proposal->{$item['col']},
+                ];
+            }
+        }
+
+        return $lines;
     }
 
     /**
@@ -292,17 +319,6 @@ class ProposalController extends Controller
             'employee_count' => ['required', 'integer', 'min:0', 'max:100000'],
 
             'seller_id' => ['nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->where('is_commercial', true))],
-
-            'svc_pesquisas' => ['boolean'],
-            'svc_profiler' => ['boolean'],
-            'svc_devolutiva' => ['nullable', Rule::in(['individual', 'grupo'])],
-            'svc_nr1' => ['boolean'],
-            'svc_nr1_implantacao_modo' => ['nullable', Rule::in(['online', 'presencial'])],
-            'svc_contratacao' => ['boolean'],
-            'svc_contratacao_salario_cents' => ['nullable', 'integer', 'min:0'],
-            'svc_direcionamento' => ['boolean'],
-            'direcionamento_horas' => ['nullable', 'numeric', 'min:0', 'max:10000'],
-            'svc_palestras' => ['boolean'],
 
             'palestra_topic' => ['nullable', 'string', 'max:500'],
             'palestra_event_date' => ['nullable', 'date'],
@@ -374,5 +390,24 @@ class ProposalController extends Controller
         }
 
         return $normalized === [] ? null : $normalized;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function legacyDefaults(): array
+    {
+        return [
+            'svc_pesquisas' => false,
+            'svc_profiler' => false,
+            'svc_devolutiva' => null,
+            'svc_nr1' => false,
+            'svc_nr1_implantacao_modo' => null,
+            'svc_contratacao' => false,
+            'svc_contratacao_salario_cents' => null,
+            'svc_direcionamento' => false,
+            'direcionamento_horas' => null,
+            'svc_palestras' => false,
+        ];
     }
 }

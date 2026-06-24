@@ -5,7 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import CommercialProductsManager from '@/Pages/Admin/Comercial/CommercialProductsManager.vue';
 import ContractTemplatesManager from '@/Pages/Admin/Comercial/ContractTemplatesManager.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps({
     settings: { type: Object, required: true },
@@ -15,9 +15,9 @@ const props = defineProps({
     pricingTypeLabels: { type: Object, default: () => ({}) },
 });
 
-const tab = ref('faixas');
+const tab = ref('produtos');
 
-const validTabs = ['faixas', 'fixos', 'produtos', 'pdf', 'vendedores', 'empresa', 'contratos'];
+const validTabs = ['produtos', 'pdf', 'vendedores', 'empresa', 'contratos'];
 
 const setTab = (id) => {
     if (!validTabs.includes(id)) return;
@@ -29,57 +29,31 @@ const setTab = (id) => {
 
 onMounted(() => {
     const q = new URLSearchParams(window.location.search).get('tab');
-    if (q && validTabs.includes(q)) {
+    const legacyTabs = ['faixas', 'fixos'];
+    if (q && legacyTabs.includes(q)) {
+        setTab('produtos');
+    } else if (q && validTabs.includes(q)) {
         tab.value = q;
     }
 });
 
+const buildPdfDescriptions = () => {
+    const existing = { ...(props.settings.pdf_descricoes_servicos ?? {}) };
+    props.commercialProducts.forEach((product) => {
+        if (!(product.slug in existing)) {
+            existing[product.slug] = product.description ?? '';
+        }
+    });
+    return existing;
+};
+
 const form = useForm({
-    profiler_tier1_max: props.settings.profiler_tier1_max,
-    profiler_tier1_cents: props.settings.profiler_tier1_cents,
-    profiler_tier2_max: props.settings.profiler_tier2_max,
-    profiler_tier2_cents: props.settings.profiler_tier2_cents,
-    profiler_tier3_max: props.settings.profiler_tier3_max,
-    profiler_tier3_cents: props.settings.profiler_tier3_cents,
-    profiler_tier4_cents: props.settings.profiler_tier4_cents,
-
-    pesquisas_tier1_max: props.settings.pesquisas_tier1_max,
-    pesquisas_tier1_cents: props.settings.pesquisas_tier1_cents,
-    pesquisas_tier2_max: props.settings.pesquisas_tier2_max,
-    pesquisas_tier2_cents: props.settings.pesquisas_tier2_cents,
-    pesquisas_tier3_max: props.settings.pesquisas_tier3_max,
-    pesquisas_tier3_cents: props.settings.pesquisas_tier3_cents,
-    pesquisas_tier4_cents: props.settings.pesquisas_tier4_cents,
-
-    direcionamento_hora_cents: props.settings.direcionamento_hora_cents
-        ?? props.settings.direcionamento_tier1_cents
-        ?? 5000,
-
-    nr1_tier1_max: props.settings.nr1_tier1_max,
-    nr1_tier1_cents: props.settings.nr1_tier1_cents,
-    nr1_tier2_max: props.settings.nr1_tier2_max,
-    nr1_tier2_cents: props.settings.nr1_tier2_cents,
-    nr1_tier3_max: props.settings.nr1_tier3_max,
-    nr1_tier3_cents: props.settings.nr1_tier3_cents,
-    nr1_tier4_cents: props.settings.nr1_tier4_cents,
-
-    devolutiva_individual_cents: props.settings.devolutiva_individual_cents,
-    devolutiva_grupo_cents: props.settings.devolutiva_grupo_cents,
-
-    nr1_implantacao_online_cents: props.settings.nr1_implantacao_online_cents,
-    nr1_implantacao_presencial_cents: props.settings.nr1_implantacao_presencial_cents,
-
-    palestras_base_cents: props.settings.palestras_base_cents,
-    palestras_threshold_funcionarios: props.settings.palestras_threshold_funcionarios,
-    palestras_multiplier: props.settings.palestras_multiplier,
     default_commission_percent: props.settings.default_commission_percent ?? 0,
-
     pdf_validade_dias: props.settings.pdf_validade_dias,
     pdf_aceite_texto: props.settings.pdf_aceite_texto ?? '',
-    pdf_descricoes_servicos: { ...(props.settings.pdf_descricoes_servicos ?? {}) },
+    pdf_descricoes_servicos: buildPdfDescriptions(),
     pdf_condicoes_pagamento: props.settings.pdf_condicoes_pagamento ?? '',
     pdf_texto_encerramento: props.settings.pdf_texto_encerramento ?? '',
-
     zapsign_api_token: '',
     zapsign_api_base_url: props.settings.zapsign_api_base_url ?? 'https://api.zapsign.com.br/api/v1',
     zapsign_send_automatic_email: props.settings.zapsign_send_automatic_email !== false,
@@ -89,28 +63,7 @@ const submit = () => {
     form.put(route('admin.comercial.settings.update'), { preserveScroll: true });
 };
 
-// Helpers para edição em reais
-const moneyKeys = [
-    'profiler_tier1_cents', 'profiler_tier2_cents', 'profiler_tier3_cents', 'profiler_tier4_cents',
-    'pesquisas_tier1_cents', 'pesquisas_tier2_cents', 'pesquisas_tier3_cents', 'pesquisas_tier4_cents',
-    'direcionamento_hora_cents',
-    'nr1_tier1_cents', 'nr1_tier2_cents', 'nr1_tier3_cents', 'nr1_tier4_cents',
-    'devolutiva_individual_cents', 'devolutiva_grupo_cents',
-    'nr1_implantacao_online_cents', 'nr1_implantacao_presencial_cents',
-    'palestras_base_cents',
-];
-const reaisProxy = {};
-moneyKeys.forEach((key) => {
-    reaisProxy[key] = ref(((Number(form[key]) || 0) / 100).toFixed(2).replace('.', ','));
-    watch(reaisProxy[key], (val) => {
-        const numeric = Number(String(val ?? '').replace(/\./g, '').replace(',', '.'));
-        form[key] = Number.isFinite(numeric) ? Math.max(0, Math.round(numeric * 100)) : 0;
-    });
-});
-
 const tabs = [
-    { id: 'faixas', label: 'Faixas por funcionários' },
-    { id: 'fixos', label: 'Valores fixos' },
     { id: 'produtos', label: 'Produtos' },
     { id: 'pdf', label: 'PDF' },
     { id: 'empresa', label: 'Empresa' },
@@ -126,37 +79,11 @@ const toggleSeller = (user) => {
     );
 };
 
-const pdfServiceLabels = [
-    { key: 'pesquisas', label: 'Pesquisas e Organograma' },
-    { key: 'profiler', label: 'Profiler — Diagnóstico Comportamental' },
-    { key: 'devolutiva', label: 'Devolutiva e Diagnóstico' },
-    { key: 'nr1', label: 'NR-1 — Mapeamento (12 parcelas)' },
-    { key: 'nr1_implantacao', label: 'NR-1 — Implantação' },
-    { key: 'contratacao', label: 'Contratação / Recrutamento' },
-    { key: 'direcionamento', label: 'Direcionamento Estratégico' },
-    { key: 'palestras', label: 'Palestras e Treinamentos' },
-];
-
-const tableConfig = computed(() => [
-    {
-        title: 'Profiler — Diagnóstico Comportamental',
-        prefix: 'profiler',
-        defaultMaxes: [5, 10, 20],
-        helpRow4: 'Acima de 20 funcionários',
-    },
-    {
-        title: 'Pesquisas e Organograma',
-        prefix: 'pesquisas',
-        defaultMaxes: [10, 20, 30],
-        helpRow4: 'Acima de 30 funcionários',
-    },
-    {
-        title: 'NR-1 — Mapeamento de Risco Psicossocial',
-        prefix: 'nr1',
-        defaultMaxes: [5, 10, 20],
-        helpRow4: 'Acima de 20 funcionários',
-    },
-]);
+const pdfProductLabels = computed(() =>
+    props.commercialProducts
+        .filter((p) => p.is_active !== false)
+        .map((p) => ({ key: p.slug, label: p.name })),
+);
 </script>
 
 <template>
@@ -194,141 +121,6 @@ const tableConfig = computed(() => [
         </div>
 
         <form class="mt-6 space-y-6" @submit.prevent="submit">
-            <!-- Tab: Faixas -->
-            <template v-if="tab === 'faixas'">
-                <section v-for="tbl in tableConfig" :key="tbl.prefix" class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">{{ tbl.title }}</h3>
-                    <p class="mt-1 text-xs text-slate-500">Faixas por número de funcionários e valor por funcionário (em R$).</p>
-
-                    <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                        <div v-for="i in 3" :key="i">
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Faixa {{ i }} — até X funcionários
-                            </label>
-                            <input
-                                v-model.number="form[`${tbl.prefix}_tier${i}_max`]"
-                                type="number"
-                                min="1"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                            <label class="mt-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Valor por funcionário (R$)
-                            </label>
-                            <input
-                                v-model="reaisProxy[`${tbl.prefix}_tier${i}_cents`].value"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div class="sm:col-span-3">
-                            <div class="rounded-xl bg-slate-50 p-3">
-                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                    Faixa final — {{ tbl.helpRow4 }}
-                                </label>
-                                <input
-                                    v-model="reaisProxy[`${tbl.prefix}_tier4_cents`].value"
-                                    type="text"
-                                    class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </template>
-
-            <!-- Tab: Valores fixos -->
-            <template v-if="tab === 'fixos'">
-                <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Devolutiva e Diagnóstico</h3>
-                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Individual (R$)</label>
-                            <input
-                                v-model="reaisProxy.devolutiva_individual_cents.value"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Grupo (R$)</label>
-                            <input
-                                v-model="reaisProxy.devolutiva_grupo_cents.value"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                    </div>
-                </section>
-
-                <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">NR-1 — Implantação</h3>
-                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">On-line (R$ / func.)</label>
-                            <input
-                                v-model="reaisProxy.nr1_implantacao_online_cents.value"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Presencial (R$ fixo)</label>
-                            <input
-                                v-model="reaisProxy.nr1_implantacao_presencial_cents.value"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                    </div>
-                </section>
-
-                <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Direcionamento Estratégico</h3>
-                    <p class="mt-1 text-xs text-slate-500">Valor base por hora. O total na proposta é calculado multiplicando pelas horas informadas.</p>
-                    <div class="mt-4 max-w-xs">
-                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Valor por hora (R$)</label>
-                        <input
-                            v-model="reaisProxy.direcionamento_hora_cents.value"
-                            type="text"
-                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                        />
-                    </div>
-                </section>
-
-                <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Palestras e Treinamentos</h3>
-                    <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Valor base (R$)</label>
-                            <input
-                                v-model="reaisProxy.palestras_base_cents.value"
-                                type="text"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Limite de funcionários</label>
-                            <input
-                                v-model.number="form.palestras_threshold_funcionarios"
-                                type="number"
-                                min="0"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Multiplicador acima do limite</label>
-                            <input
-                                v-model.number="form.palestras_multiplier"
-                                type="number"
-                                min="1"
-                                max="10"
-                                class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
-                            />
-                        </div>
-                    </div>
-                </section>
-            </template>
-
             <!-- Tab: PDF -->
             <template v-if="tab === 'pdf'">
                 <section class="surface-card p-6">
@@ -375,12 +167,12 @@ const tableConfig = computed(() => [
                 </section>
 
                 <section class="surface-card p-6">
-                    <h3 class="text-lg font-semibold text-slate-900">Descrições padrão dos serviços (PDF)</h3>
+                    <h3 class="text-lg font-semibold text-slate-900">Descrições padrão dos produtos (PDF)</h3>
                     <p class="mt-1 text-xs text-slate-500">
-                        Textos usados automaticamente em cada serviço da proposta. Podem ser personalizados por proposta.
+                        Textos usados automaticamente em cada produto da proposta. Podem ser personalizados por proposta.
                     </p>
-                    <div class="mt-4 space-y-4">
-                        <div v-for="svc in pdfServiceLabels" :key="svc.key">
+                    <div v-if="pdfProductLabels.length" class="mt-4 space-y-4">
+                        <div v-for="svc in pdfProductLabels" :key="svc.key">
                             <label class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ svc.label }}</label>
                             <textarea
                                 v-model="form.pdf_descricoes_servicos[svc.key]"
@@ -390,6 +182,9 @@ const tableConfig = computed(() => [
                             />
                         </div>
                     </div>
+                    <p v-else class="mt-4 text-sm text-slate-500">
+                        Cadastre produtos na aba Produtos para configurar as descrições do PDF.
+                    </p>
                 </section>
 
                 <section class="surface-card p-6">

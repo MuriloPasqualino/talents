@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Commercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommercialProposal;
+use App\Models\CommercialProposalProductLine;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -212,48 +213,79 @@ class DashboardController extends Controller
      */
     private function summaryByService(?Carbon $start, ?Carbon $end): array
     {
-        $services = [
-            ['key' => 'svc_pesquisas', 'label' => 'Pesquisas e Organograma', 'totalCol' => 'total_pesquisas_cents'],
-            ['key' => 'svc_profiler', 'label' => 'Profiler', 'totalCol' => 'total_profiler_cents'],
-            ['key' => 'svc_devolutiva', 'label' => 'Devolutiva', 'totalCol' => 'total_devolutiva_cents'],
-            ['key' => 'svc_nr1', 'label' => 'NR-1 Mapeamento', 'totalCol' => 'total_nr1_cents'],
-            ['key' => 'svc_nr1_implantacao_modo', 'label' => 'NR-1 Implantação', 'totalCol' => 'total_nr1_implantacao_cents'],
-            ['key' => 'svc_contratacao', 'label' => 'Contratação', 'totalCol' => 'total_contratacao_cents'],
-            ['key' => 'svc_direcionamento', 'label' => 'Direcionamento Estratégico', 'totalCol' => 'total_direcionamento_cents'],
-            ['key' => 'svc_palestras', 'label' => 'Palestras e Treinamentos', 'totalCol' => 'total_palestras_cents'],
-        ];
+        $budgetStats = $this->productLineStats($start, $end, false);
+        $closedStats = $this->productLineStats($start, $end, true);
+
+        $labels = array_values(array_unique(array_merge(
+            array_keys($budgetStats),
+            array_keys($closedStats),
+        )));
+        sort($labels);
 
         $rows = [];
-        foreach ($services as $svc) {
-            $isStringCol = in_array($svc['key'], ['svc_devolutiva', 'svc_nr1_implantacao_modo'], true);
-
-            $budgetBase = CommercialProposal::query()
-                ->when($isStringCol, fn ($q) => $q->whereNotNull($svc['key']), fn ($q) => $q->where($svc['key'], true))
-                ->when($start, fn (Builder $q) => $q->where('created_at', '>=', $start))
-                ->when($end, fn (Builder $q) => $q->where('created_at', '<=', $end));
-
-            $closedBase = CommercialProposal::query()
-                ->where('is_closed', true)
-                ->when($isStringCol, fn ($q) => $q->whereNotNull($svc['key']), fn ($q) => $q->where($svc['key'], true))
-                ->when($start, fn (Builder $q) => $q->where('closed_at', '>=', $start))
-                ->when($end, fn (Builder $q) => $q->where('closed_at', '<=', $end));
-
-            $budgetCount = (clone $budgetBase)->count();
-            $closedCount = (clone $closedBase)->count();
-            $closedAmongBudget = (clone $budgetBase)->where('is_closed', true)->count();
-            $conversionRate = $budgetCount > 0 ? round(100 * $closedAmongBudget / $budgetCount, 1) : 0.0;
+        foreach ($labels as $label) {
+            $budget = $budgetStats[$label] ?? ['proposal_count' => 0, 'total_cents' => 0];
+            $closed = $closedStats[$label] ?? ['proposal_count' => 0, 'total_cents' => 0];
+            $budgetCount = (int) $budget['proposal_count'];
+            $closedAmongBudget = $this->closedAmongBudgetForProductLabel($label, $start, $end);
 
             $rows[] = [
-                'label' => $svc['label'],
+                'label' => $label,
                 'budget_count' => $budgetCount,
-                'budget_total_cents' => (int) (clone $budgetBase)->sum($svc['totalCol']),
-                'closed_count' => $closedCount,
-                'closed_total_cents' => (int) (clone $closedBase)->sum($svc['totalCol']),
-                'conversion_rate' => $conversionRate,
+                'budget_total_cents' => (int) $budget['total_cents'],
+                'closed_count' => (int) $closed['proposal_count'],
+                'closed_total_cents' => (int) $closed['total_cents'],
+                'conversion_rate' => $budgetCount > 0
+                    ? round(100 * $closedAmongBudget / $budgetCount, 1)
+                    : 0.0,
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * @return array<string, array{proposal_count: int, total_cents: int}>
+     */
+    private function productLineStats(?Carbon $start, ?Carbon $end, bool $onlyClosed): array
+    {
+        $query = CommercialProposalProductLine::query()
+            ->join('commercial_proposals as p', 'p.id', '=', 'commercial_proposal_product_lines.commercial_proposal_id')
+            ->selectRaw('commercial_proposal_product_lines.label_snapshot as label')
+            ->selectRaw('COUNT(DISTINCT commercial_proposal_product_lines.commercial_proposal_id) as proposal_count')
+            ->selectRaw('SUM(commercial_proposal_product_lines.total_cents) as total_cents')
+            ->groupBy('commercial_proposal_product_lines.label_snapshot');
+
+        if ($onlyClosed) {
+            $query->where('p.is_closed', true)
+                ->when($start, fn (Builder $q) => $q->where('p.closed_at', '>=', $start))
+                ->when($end, fn (Builder $q) => $q->where('p.closed_at', '<=', $end));
+        } else {
+            $query->when($start, fn (Builder $q) => $q->where('p.created_at', '>=', $start))
+                ->when($end, fn (Builder $q) => $q->where('p.created_at', '<=', $end));
+        }
+
+        $out = [];
+        foreach ($query->get() as $row) {
+            $out[(string) $row->label] = [
+                'proposal_count' => (int) $row->proposal_count,
+                'total_cents' => (int) $row->total_cents,
+            ];
+        }
+
+        return $out;
+    }
+
+    private function closedAmongBudgetForProductLabel(string $label, ?Carbon $start, ?Carbon $end): int
+    {
+        return (int) CommercialProposalProductLine::query()
+            ->join('commercial_proposals as p', 'p.id', '=', 'commercial_proposal_product_lines.commercial_proposal_id')
+            ->where('commercial_proposal_product_lines.label_snapshot', $label)
+            ->where('p.is_closed', true)
+            ->when($start, fn (Builder $q) => $q->where('p.created_at', '>=', $start))
+            ->when($end, fn (Builder $q) => $q->where('p.created_at', '<=', $end))
+            ->distinct('commercial_proposal_product_lines.commercial_proposal_id')
+            ->count('commercial_proposal_product_lines.commercial_proposal_id');
     }
 
     /**

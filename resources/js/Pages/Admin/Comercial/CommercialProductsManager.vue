@@ -167,8 +167,8 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
             <div>
                 <h3 class="text-lg font-semibold text-slate-900">Produtos do catálogo</h3>
                 <p class="mt-1 text-xs text-slate-500">
-                    Cadastre produtos extras que aparecem na proposta, no PDF e nos contratos (placeholders
-                    <code class="rounded bg-slate-100 px-1">svc_*_slug</code>).
+                    Cadastre os produtos que aparecem na proposta, no PDF e nos contratos (placeholders pelo
+                    <code class="rounded bg-slate-100 px-1">slug</code> do produto).
                 </p>
             </div>
             <button
@@ -223,7 +223,7 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                     </tr>
                     <tr v-if="!sortedProducts.length">
                         <td colspan="5" class="px-4 py-10 text-center text-slate-500">
-                            Nenhum produto cadastrado. Os serviços padrão (Profiler, NR-1, etc.) continuam nas faixas acima.
+                            Nenhum produto cadastrado. Use o botão acima para criar o primeiro produto do catálogo.
                         </td>
                     </tr>
                 </tbody>
