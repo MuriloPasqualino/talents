@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Tasks;
 
+use App\Enums\TaskCardRecurrence;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\TaskAttachment;
@@ -114,9 +115,10 @@ class TaskBoardController extends Controller
             ->with('success', 'Quadro criado.');
     }
 
-    public function show(TaskBoard $board): Response
+    public function show(Request $request, TaskBoard $board): Response
     {
-        $payload = BoardPresenter::forAdmin($board);
+        $includeArchived = $request->boolean('ver_arquivados');
+        $payload = BoardPresenter::forAdmin($board, $includeArchived);
         $activity = $board->activityLogs()->with('actor:id,name')->latest()->limit(50)->get()->map(fn ($row) => [
             'id' => $row->id,
             'action' => $row->action,
@@ -145,6 +147,10 @@ class TaskBoardController extends Controller
                 ['value' => 'company', 'label' => 'Empresa'],
                 ['value' => 'inherit', 'label' => 'Seguir a lista'],
             ],
+            'recurrenceOptions' => array_map(
+                fn (TaskCardRecurrence $r) => ['value' => $r->value, 'label' => $r->label()],
+                TaskCardRecurrence::cases(),
+            ),
         ]);
     }
 

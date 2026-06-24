@@ -4,6 +4,9 @@ import TaskCardMeta from '@/Components/Tasks/TaskCardMeta.vue';
 import { router } from '@inertiajs/vue3';
 import {
     ArrowsPointingOutIcon,
+    ArchiveBoxArrowDownIcon,
+    ArchiveBoxIcon,
+    ArrowUturnLeftIcon,
     ChevronDoubleLeftIcon,
     EllipsisHorizontalIcon,
     PencilSquareIcon,
@@ -247,6 +250,97 @@ function deleteList(list, event) {
     });
 }
 
+function archiveList(list, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !list?.id || list.is_archived) return;
+
+    closeListMenu();
+
+    const name = list.name || 'esta lista';
+    const cardCount = list.cards?.length ?? 0;
+    const cardsWarning =
+        cardCount > 0 ? `\n\n${cardCount} tarefa(s) nesta coluna também serão arquivadas.` : '';
+
+    if (!window.confirm(`Arquivar a lista "${name}"?${cardsWarning}`)) {
+        return;
+    }
+
+    router.post(route('admin.tarefas.listas.arquivar', list.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => reload(),
+    });
+}
+
+function restoreList(list, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !list?.id) return;
+
+    closeListMenu();
+
+    router.post(route('admin.tarefas.listas.restaurar', list.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => reload(),
+    });
+}
+
+function archiveCard(card, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !card?.id || card.is_archived) return;
+
+    const title = card.title || 'esta tarefa';
+    if (!window.confirm(`Arquivar "${title}"?`)) {
+        return;
+    }
+
+    router.post(route('admin.tarefas.cards.arquivar', card.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => reload(),
+    });
+}
+
+function restoreCard(card, event) {
+    event?.stopPropagation?.();
+    if (!props.isAdmin || !card?.id) return;
+
+    router.post(route('admin.tarefas.cards.restaurar', card.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => reload(),
+    });
+}
+
+function listPositionBetween(newIndex) {
+    const lists = localLists.value;
+    const prev = newIndex > 0 ? Number(lists[newIndex - 1].position) : 0;
+    const next =
+        newIndex < lists.length - 1 ? Number(lists[newIndex + 1].position) : prev + 2000;
+    if (newIndex === 0 && lists.length > 1) {
+        const first = Number(lists[1].position);
+        return first > 0 ? first / 2 : 500;
+    }
+    if (newIndex >= lists.length - 1) {
+        return prev + 1000;
+    }
+    return (prev + next) / 2;
+}
+
+function onListDragEnd(evt) {
+    if (!props.isAdmin) return;
+
+    const list = localLists.value[evt.newIndex];
+    if (!list?.id) return;
+
+    const position = listPositionBetween(evt.newIndex);
+
+    router.patch(
+        route('admin.tarefas.listas.update', list.id),
+        { position },
+        {
+            preserveScroll: true,
+            onSuccess: () => reload(),
+        },
+    );
+}
+
 onMounted(() => {
     document.addEventListener('click', closeListMenu);
     window.addEventListener('scroll', onListMenuViewportChange, true);
@@ -435,21 +529,36 @@ function expandList(list) {
 <template>
     <div class="space-y-3">
         <div class="flex items-start gap-3 overflow-x-auto pb-3">
-            <div
-                v-for="list in localLists"
-                :key="list.id"
-                :data-list-id="list.id"
-                class="flex shrink-0 flex-col rounded-xl p-2 shadow-sm ring-1 ring-slate-200 transition-all duration-200"
-                :class="[
-                    isListCollapsed(list.id) ? 'w-10 cursor-pointer' : 'w-72',
-                    list.color ? '' : 'bg-slate-100',
-                ]"
-                :style="listColumnStyle(list)"
-                @click="isListCollapsed(list.id) && expandList(list)"
+            <VueDraggable
+                v-model="localLists"
+                item-key="id"
+                tag="div"
+                class="flex items-start gap-3"
+                :disabled="!isAdmin"
+                handle=".list-column-drag-handle"
+                :animation="150"
+                ghost-class="opacity-40"
+                @end="onListDragEnd"
             >
+                <div
+                    v-for="list in localLists"
+                    :key="list.id"
+                    :data-list-id="list.id"
+                    class="flex shrink-0 flex-col rounded-xl p-2 shadow-sm ring-1 ring-slate-200 transition-all duration-200"
+                    :class="[
+                        isListCollapsed(list.id) ? 'w-10 cursor-pointer' : 'w-72',
+                        list.color ? '' : 'bg-slate-100',
+                        list.is_archived ? 'opacity-60 ring-dashed ring-slate-300' : '',
+                    ]"
+                    :style="listColumnStyle(list)"
+                    @click="isListCollapsed(list.id) && expandList(list)"
+                >
                 <header
-                    class="flex items-start justify-between gap-2 px-1.5 pb-1 pt-1"
-                    :class="isListCollapsed(list.id) ? 'flex-col items-center gap-1' : ''"
+                    class="list-column-drag-handle flex items-start justify-between gap-2 px-1.5 pb-1 pt-1"
+                    :class="[
+                        isListCollapsed(list.id) ? 'flex-col items-center gap-1' : '',
+                        isAdmin && !list.is_archived ? 'cursor-grab active:cursor-grabbing' : '',
+                    ]"
                 >
                     <div
                         v-if="isListCollapsed(list.id)"
@@ -481,9 +590,12 @@ function expandList(list) {
                             class="truncate text-sm font-semibold text-slate-900"
                             :class="isAdmin ? 'cursor-text rounded px-1 py-0.5 hover:bg-white/60' : ''"
                             :title="isAdmin ? 'Clique para renomear' : undefined"
-                            @click.stop="isAdmin && startRenameList(list, $event)"
+                            @click.stop="isAdmin && !list.is_archived && startRenameList(list, $event)"
                         >
                             {{ list.name }}
+                            <span v-if="list.is_archived" class="ml-1 text-[10px] font-normal uppercase text-slate-500">
+                                (arquivada)
+                            </span>
                         </h3>
                         <p
                             v-if="isAdmin && editingListId !== list.id"
@@ -511,7 +623,7 @@ function expandList(list) {
                     v-model="list.cards"
                     group="kanban-cards"
                     item-key="id"
-                    :disabled="!isAdmin"
+                    :disabled="!isAdmin || list.is_archived"
                     class="flex min-h-[8px] flex-col gap-2 px-0.5"
                     @end="(e) => onCardDragEnd(list.id, e)"
                 >
@@ -520,17 +632,41 @@ function expandList(list) {
                         :key="card.id"
                         :data-card-id="card.id"
                         class="group relative cursor-pointer rounded-lg bg-white px-3 py-2 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-talents-300"
+                        :class="card.is_archived ? 'opacity-70 ring-dashed' : ''"
                         @click="openCard(card)"
                     >
-                        <button
+                        <div
                             v-if="isAdmin"
-                            type="button"
-                            class="absolute right-1 top-1 z-10 rounded-md bg-white/90 p-1 text-rose-600 opacity-0 shadow-sm ring-1 ring-slate-200 transition hover:bg-rose-50 group-hover:opacity-100"
-                            title="Excluir tarefa"
-                            @click.stop="requestDeleteCard(card)"
+                            class="absolute right-1 top-1 z-10 flex gap-0.5 opacity-0 transition group-hover:opacity-100"
                         >
-                            <TrashIcon class="h-3.5 w-3.5" />
-                        </button>
+                            <button
+                                v-if="card.is_archived"
+                                type="button"
+                                class="rounded-md bg-white/90 p-1 text-talents-700 shadow-sm ring-1 ring-slate-200 hover:bg-talents-50"
+                                title="Restaurar tarefa"
+                                @click.stop="restoreCard(card, $event)"
+                            >
+                                <ArrowUturnLeftIcon class="h-3.5 w-3.5" />
+                            </button>
+                            <template v-else>
+                                <button
+                                    type="button"
+                                    class="rounded-md bg-white/90 p-1 text-slate-600 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+                                    title="Arquivar tarefa"
+                                    @click.stop="archiveCard(card, $event)"
+                                >
+                                    <ArchiveBoxIcon class="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    class="rounded-md bg-white/90 p-1 text-rose-600 shadow-sm ring-1 ring-slate-200 hover:bg-rose-50"
+                                    title="Excluir tarefa"
+                                    @click.stop="requestDeleteCard(card)"
+                                >
+                                    <TrashIcon class="h-3.5 w-3.5" />
+                                </button>
+                            </template>
+                        </div>
                         <div v-if="card.cover_color" class="-mx-3 -mt-2 mb-2 h-2 rounded-t-lg" :style="{ backgroundColor: card.cover_color }" />
 
                         <div v-if="card.labels?.length" class="mb-1.5 flex flex-wrap gap-1">
@@ -545,7 +681,7 @@ function expandList(list) {
 
                         <div class="flex items-start gap-2">
                             <input
-                                v-if="isAdmin"
+                                v-if="isAdmin && !card.is_archived"
                                 type="checkbox"
                                 class="mt-0.5 h-4 w-4 shrink-0 rounded-full border-slate-300 text-talents-600 focus:ring-talents-500"
                                 :checked="!!card.completed_at"
@@ -570,7 +706,7 @@ function expandList(list) {
                     </div>
                 </VueDraggable>
 
-                <div v-if="isAdmin && !isListCollapsed(list.id)" class="px-0.5 pt-2">
+                <div v-if="isAdmin && !isListCollapsed(list.id) && !list.is_archived" class="px-0.5 pt-2">
                     <div v-if="composing[list.id]" class="space-y-2">
                         <div
                             v-if="
@@ -628,7 +764,8 @@ function expandList(list) {
                         Adicionar um cartão
                     </button>
                 </div>
-            </div>
+                </div>
+            </VueDraggable>
 
             <div v-if="isAdmin" class="w-72 shrink-0">
                 <div v-if="showNewListInput" class="space-y-2 rounded-xl bg-slate-100 p-2 shadow-sm ring-1 ring-slate-200">
@@ -745,6 +882,24 @@ function expandList(list) {
                         />
                     </div>
                 </div>
+                <button
+                    v-if="list.is_archived"
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-talents-700 hover:bg-talents-50"
+                    @click="restoreList(listMenuPosition.list, $event)"
+                >
+                    <ArrowUturnLeftIcon class="h-3.5 w-3.5" />
+                    Restaurar lista
+                </button>
+                <button
+                    v-else
+                    type="button"
+                    class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    @click="archiveList(listMenuPosition.list, $event)"
+                >
+                    <ArchiveBoxArrowDownIcon class="h-3.5 w-3.5" />
+                    Arquivar lista
+                </button>
                 <button
                     type="button"
                     class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-rose-600 hover:bg-rose-50"

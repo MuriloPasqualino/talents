@@ -226,11 +226,15 @@ Route::middleware(['auth', 'verified', 'super_admin'])->prefix('admin')->name('a
 
         Route::post('quadros/{board}/listas', [TaskBoardListController::class, 'store'])->name('quadros.listas.store');
         Route::patch('listas/{list}', [TaskBoardListController::class, 'update'])->name('listas.update');
+        Route::post('listas/{list}/arquivar', [TaskBoardListController::class, 'archive'])->name('listas.arquivar');
+        Route::post('listas/{list}/restaurar', [TaskBoardListController::class, 'restore'])->name('listas.restaurar');
         Route::delete('listas/{list}', [TaskBoardListController::class, 'destroy'])->name('listas.destroy');
 
         Route::post('listas/{list}/cards', [TaskBoardCardController::class, 'store'])->name('listas.cards.store');
         Route::patch('cards/{card}', [TaskBoardCardController::class, 'update'])->name('cards.update');
         Route::post('cards/{card}/mover', [TaskBoardCardController::class, 'move'])->name('cards.move');
+        Route::post('cards/{card}/arquivar', [TaskBoardCardController::class, 'archive'])->name('cards.arquivar');
+        Route::post('cards/{card}/restaurar', [TaskBoardCardController::class, 'restore'])->name('cards.restaurar');
         Route::delete('cards/{card}', [TaskBoardCardController::class, 'destroy'])->name('cards.destroy');
 
         Route::post('quadros/{board}/labels', [TaskBoardLabelController::class, 'store'])->name('quadros.labels.store');

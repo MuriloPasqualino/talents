@@ -1292,4 +1292,272 @@ class TaskModuleTest extends TestCase
         $this->assertNotNull($card->completed_at);
         $this->assertSame($list->id, $card->list_id);
     }
+
+    public function test_admin_can_archive_and_restore_card(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/cards/'.$card->id.'/arquivar')
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertTrue($card->is_archived);
+
+        $payload = BoardPresenter::forAdmin($board->fresh());
+        $this->assertEmpty($payload['lists']->flatMap(fn ($l) => $l['cards'])->filter(fn ($c) => $c['id'] === $card->id));
+
+        $archivedPayload = BoardPresenter::forAdmin($board->fresh(), true);
+        $archivedIds = $archivedPayload['lists']->flatMap(fn ($l) => $l['cards'])->pluck('id')->all();
+        $this->assertContains($card->id, $archivedIds);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/cards/'.$card->id.'/restaurar')
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertFalse($card->is_archived);
+    }
+
+    public function test_admin_can_archive_list_and_restore_with_cards(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Backlog',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/listas/'.$list->id.'/arquivar')
+            ->assertRedirect();
+
+        $list->refresh();
+        $card->refresh();
+        $this->assertTrue($list->is_archived);
+        $this->assertTrue($card->is_archived);
+
+        $this->actingAs($admin)
+            ->post('/admin/tarefas/listas/'.$list->id.'/restaurar')
+            ->assertRedirect();
+
+        $list->refresh();
+        $card->refresh();
+        $this->assertFalse($list->is_archived);
+        $this->assertFalse($card->is_archived);
+    }
+
+    public function test_admin_can_reorder_lists(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $first = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Primeira',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $second = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Segunda',
+            'position' => 2000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/listas/'.$second->id, ['position' => 500])
+            ->assertRedirect();
+
+        $second->refresh();
+        $this->assertSame(500.0, (float) $second->position);
+
+        $ordered = $board->fresh()->lists()->orderBy('position')->pluck('name')->all();
+        $this->assertSame(['Segunda', 'Primeira'], $ordered);
+    }
+
+    public function test_recurring_card_completion_spawns_copy_in_origin_list(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $todoList = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'Concluído',
+            'position' => 3000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $todoList->id,
+            'title' => 'Reunião semanal',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+            'due_date' => '2026-06-24',
+            'recurrence' => 'weekly',
+            'completed_at' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, ['complete' => true])
+            ->assertRedirect();
+
+        $card->refresh();
+        $this->assertNotNull($card->completed_at);
+
+        $spawned = TaskCard::query()
+            ->where('list_id', $todoList->id)
+            ->where('id', '!=', $card->id)
+            ->first();
+
+        $this->assertNotNull($spawned);
+        $this->assertSame('Reunião semanal', $spawned->title);
+        $this->assertNull($spawned->completed_at);
+        $this->assertSame('2026-07-01', $spawned->due_date?->toDateString());
+        $this->assertSame('weekly', $spawned->recurrence?->value);
+    }
+
+    public function test_recurring_card_does_not_spawn_after_recurrence_end(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $todoList = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $todoList->id,
+            'title' => 'Última ocorrência',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+            'due_date' => '2026-06-24',
+            'recurrence' => 'weekly',
+            'recurrence_ends_on' => '2026-06-24',
+            'completed_at' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, ['complete' => true])
+            ->assertRedirect();
+
+        $this->assertSame(
+            1,
+            TaskCard::query()->where('list_id', $todoList->id)->count(),
+        );
+    }
+
+    public function test_recurrence_requires_due_date_on_update(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $board = TaskBoard::query()->create([
+            'company_id' => null,
+            'name' => 'Quadro',
+            'is_archived' => false,
+        ]);
+
+        $list = TaskList::query()->create([
+            'board_id' => $board->id,
+            'name' => 'A fazer',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'allow_company_drop_in' => false,
+            'is_archived' => false,
+        ]);
+
+        $card = TaskCard::query()->create([
+            'list_id' => $list->id,
+            'title' => 'Tarefa',
+            'position' => 1000,
+            'visibility' => 'internal',
+            'is_archived' => false,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch('/admin/tarefas/cards/'.$card->id, [
+                'recurrence' => 'daily',
+                'due_date' => null,
+            ])
+            ->assertSessionHasErrors('due_date');
+    }
 }

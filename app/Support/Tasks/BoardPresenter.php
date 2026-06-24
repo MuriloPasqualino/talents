@@ -17,7 +17,11 @@ final class BoardPresenter
     /**
      * Eager load de listas + cartões num único nível (evita conflito lists vs lists.cards no Laravel).
      */
-    private static function loadAdminBoardListsWithCards(TaskBoard $board, bool $fullCardRelations = false): void
+    private static function loadAdminBoardListsWithCards(
+        TaskBoard $board,
+        bool $fullCardRelations = false,
+        bool $includeArchived = false,
+    ): void
     {
         $cardWith = $fullCardRelations
             ? [
@@ -37,16 +41,26 @@ final class BoardPresenter
 
         $board->load([
             'company:id,name',
-            'lists' => fn ($q) => $q->where('is_archived', false)
-                ->orderBy('position')
-                ->orderBy('id')
-                ->with([
-                    'cards' => fn ($cq) => $cq->where('is_archived', false)
-                        ->orderBy('position')
-                        ->orderBy('id')
-                        ->with($cardWith)
-                        ->withCount(['comments', 'attachments']),
-                ]),
+            'lists' => function ($q) use ($includeArchived, $cardWith) {
+                if (! $includeArchived) {
+                    $q->where('is_archived', false);
+                }
+                $q->orderBy('is_archived')
+                    ->orderBy('position')
+                    ->orderBy('id')
+                    ->with([
+                        'cards' => function ($cq) use ($includeArchived, $cardWith) {
+                            if (! $includeArchived) {
+                                $cq->where('is_archived', false);
+                            }
+                            $cq->orderBy('is_archived')
+                                ->orderBy('position')
+                                ->orderBy('id')
+                                ->with($cardWith)
+                                ->withCount(['comments', 'attachments']);
+                        },
+                    ]);
+            },
         ]);
     }
 
@@ -117,16 +131,16 @@ final class BoardPresenter
         ];
     }
 
-    public static function forAdmin(TaskBoard $board): array
+    public static function forAdmin(TaskBoard $board, bool $includeArchived = false): array
     {
-        self::loadAdminBoardListsWithCards($board, true);
+        self::loadAdminBoardListsWithCards($board, true, $includeArchived);
 
         $board->loadMissing([
             'labels',
             'members:id,name,email,company_id',
         ]);
 
-        return self::serializeBoard($board, false);
+        return self::serializeBoard($board, false, $includeArchived);
     }
 
     /**
@@ -166,7 +180,7 @@ final class BoardPresenter
     /**
      * @return array<string, mixed>
      */
-    private static function serializeBoard(TaskBoard $board, bool $clientMode): array
+    private static function serializeBoard(TaskBoard $board, bool $clientMode, bool $includeArchived = false): array
     {
         $lists = $board->lists->map(fn ($list) => self::serializeList($list, $clientMode));
 
@@ -199,6 +213,7 @@ final class BoardPresenter
             'is_internal' => $board->company_id === null,
             'is_starred' => $isStarred,
             'client_mode' => $clientMode,
+            'show_archived' => $includeArchived,
             'lists' => $lists,
             'labels' => $labels,
             'members' => $members,
@@ -221,6 +236,7 @@ final class BoardPresenter
             'position' => $list->position,
             'visibility' => $list->visibility,
             'allow_company_drop_in' => $list->allow_company_drop_in,
+            'is_archived' => (bool) $list->is_archived,
             'cards' => $cards,
         ];
     }
@@ -244,6 +260,10 @@ final class BoardPresenter
             'cover_color' => $card->cover_color,
             'due_date' => $card->due_date?->toDateString(),
             'completed_at' => $card->completed_at?->toIso8601String(),
+            'is_archived' => (bool) $card->is_archived,
+            'recurrence' => $card->recurrence?->value,
+            'recurrence_label' => $card->recurrence?->label(),
+            'recurrence_ends_on' => $card->recurrence_ends_on?->toDateString(),
             'company' => $card->company ? ['id' => $card->company->id, 'name' => $card->company->name] : null,
             'labels' => $card->labels->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'color' => $l->color])->values(),
             'members' => $card->members->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values(),
@@ -308,6 +328,10 @@ final class BoardPresenter
             'start_date' => $card->start_date?->toDateString(),
             'due_date' => $card->due_date?->toDateString(),
             'completed_at' => $card->completed_at?->toIso8601String(),
+            'is_archived' => (bool) $card->is_archived,
+            'recurrence' => $card->recurrence?->value,
+            'recurrence_label' => $card->recurrence?->label(),
+            'recurrence_ends_on' => $card->recurrence_ends_on?->toDateString(),
             'labels' => $card->labels->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'color' => $l->color])->values(),
             'members' => $card->members->map(fn ($u) => [
                 'id' => $u->id,

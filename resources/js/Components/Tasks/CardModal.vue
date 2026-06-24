@@ -5,6 +5,8 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TaskDescriptionEditor from '@/Components/Tasks/TaskDescriptionEditor.vue';
 import TextInput from '@/Components/TextInput.vue';
 import {
+    ArchiveBoxArrowDownIcon,
+    ArrowUturnLeftIcon,
     Bars3Icon,
     CalendarDaysIcon,
     ChatBubbleOvalLeftEllipsisIcon,
@@ -25,9 +27,11 @@ const props = defineProps({
     companies: { type: Array, default: () => [] },
     isAdmin: { type: Boolean, default: false },
     visibilityCardOptions: { type: Array, default: () => [] },
+    recurrenceOptions: { type: Array, default: () => [] },
 });
 
 const isReadOnly = computed(() => !props.isAdmin);
+const showRecurrenceEnd = computed(() => Boolean(cardUpdate.recurrence));
 
 const emit = defineEmits(['close', 'refresh', 'sync-card']);
 const activeTab = ref('details');
@@ -41,6 +45,8 @@ const cardUpdate = useForm({
     cover_color: '',
     due_date: '',
     start_date: '',
+    recurrence: '',
+    recurrence_ends_on: '',
     company_id: '',
     member_ids: [],
     label_ids: [],
@@ -103,6 +109,8 @@ watch(
         cardUpdate.cover_color = c.cover_color || '';
         cardUpdate.due_date = c.due_date || '';
         cardUpdate.start_date = c.start_date || '';
+        cardUpdate.recurrence = c.recurrence || '';
+        cardUpdate.recurrence_ends_on = c.recurrence_ends_on || '';
         cardUpdate.company_id = c.company_id || '';
         cardUpdate.member_ids = (c.members || []).map((m) => m.id);
         cardUpdate.label_ids = (c.labels || []).map((l) => l.id);
@@ -207,6 +215,8 @@ function saveCard() {
                 company_id: data.company_id || null,
                 due_date: data.due_date || null,
                 start_date: data.start_date || null,
+                recurrence: data.recurrence || null,
+                recurrence_ends_on: data.recurrence ? data.recurrence_ends_on || null : null,
                 cover_color: data.cover_color || null,
             }))
             .patch(url, {
@@ -242,6 +252,34 @@ function deleteCard() {
     router.delete(route('admin.tarefas.cards.destroy', props.card.id), {
         preserveScroll: true,
         onSuccess: () => emit('close'),
+    });
+}
+
+function archiveCard() {
+    if (!props.card?.id || !props.isAdmin || props.card.is_archived) return;
+    const title = props.card.title || 'esta tarefa';
+    if (!window.confirm(`Arquivar "${title}"?`)) {
+        return;
+    }
+
+    router.post(route('admin.tarefas.cards.arquivar', props.card.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit('close');
+            emit('refresh');
+        },
+    });
+}
+
+function restoreCard() {
+    if (!props.card?.id || !props.isAdmin) return;
+
+    router.post(route('admin.tarefas.cards.restaurar', props.card.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            emit('close');
+            emit('refresh');
+        },
     });
 }
 
@@ -817,6 +855,10 @@ function itemDueClass(item) {
                                 <InputLabel value="Vencimento" />
                                 <p class="mt-1 text-sm text-slate-800">{{ formatDateLabel(card.due_date) }}</p>
                             </div>
+                            <div v-if="card.recurrence_label">
+                                <InputLabel value="Repetição" />
+                                <p class="mt-1 text-sm text-slate-800">{{ card.recurrence_label }}</p>
+                            </div>
                         </div>
                     </template>
                     <template v-else>
@@ -847,6 +889,32 @@ function itemDueClass(item) {
                                 <InputLabel value="Vencimento" />
                                 <TextInput
                                     v-model="cardUpdate.due_date"
+                                    type="date"
+                                    class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
+                                />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <div>
+                                <InputLabel value="Repetir" />
+                                <select
+                                    v-model="cardUpdate.recurrence"
+                                    class="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-none focus:border-talents-500 focus:ring-talents-500"
+                                >
+                                    <option value="">Não se repete</option>
+                                    <option
+                                        v-for="r in recurrenceOptions"
+                                        :key="r.value"
+                                        :value="r.value"
+                                    >
+                                        {{ r.label }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div v-if="showRecurrenceEnd">
+                                <InputLabel value="Repetir até" />
+                                <TextInput
+                                    v-model="cardUpdate.recurrence_ends_on"
                                     type="date"
                                     class="mt-1 w-full border-slate-200 bg-white text-sm shadow-none"
                                 />
@@ -1378,12 +1446,31 @@ function itemDueClass(item) {
                 </template>
                 <template v-else>
                     <button
+                        v-if="card?.is_archived"
                         type="button"
-                        class="mr-auto rounded-md border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
-                        @click="deleteCard"
+                        class="mr-auto inline-flex items-center gap-1.5 rounded-md border border-talents-300 px-3 py-2 text-sm font-medium text-talents-700 transition hover:bg-talents-50"
+                        @click="restoreCard"
                     >
-                        Excluir tarefa
+                        <ArrowUturnLeftIcon class="h-4 w-4" />
+                        Restaurar tarefa
                     </button>
+                    <template v-else>
+                        <button
+                            type="button"
+                            class="mr-auto inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            @click="archiveCard"
+                        >
+                            <ArchiveBoxArrowDownIcon class="h-4 w-4" />
+                            Arquivar tarefa
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-md border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                            @click="deleteCard"
+                        >
+                            Excluir tarefa
+                        </button>
+                    </template>
                     <button
                         type="button"
                         class="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"

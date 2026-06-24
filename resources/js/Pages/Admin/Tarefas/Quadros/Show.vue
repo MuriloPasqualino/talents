@@ -13,6 +13,7 @@ const props = defineProps({
     companies: Array,
     visibilityListOptions: Array,
     visibilityCardOptions: Array,
+    recurrenceOptions: Array,
 });
 
 const modalOpen = ref(false);
@@ -42,9 +43,20 @@ function syncSelectedCard(cardId) {
 }
 
 function refreshBoard() {
-    router.visit(route('admin.tarefas.quadros.show', props.boardPayload.id), {
+    const params = props.boardPayload?.show_archived ? { ver_arquivados: 1 } : {};
+    router.get(route('admin.tarefas.quadros.show', props.boardPayload.id), params, {
         preserveScroll: true,
     });
+}
+
+const showArchived = computed(() => Boolean(props.boardPayload?.show_archived));
+
+function toggleShowArchived() {
+    router.get(
+        route('admin.tarefas.quadros.show', props.boardPayload.id),
+        showArchived.value ? {} : { ver_arquivados: 1 },
+        { preserveScroll: true },
+    );
 }
 
 function deleteListCard(card, event) {
@@ -110,6 +122,15 @@ function formatDate(value) {
             />
 
             <div class="flex items-center justify-end gap-2">
+                <button
+                    v-if="viewMode === 'kanban'"
+                    type="button"
+                    class="rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-slate-300"
+                    :class="showArchived ? 'bg-amber-100 text-amber-900 ring-amber-300' : 'bg-white text-slate-700'"
+                    @click="toggleShowArchived"
+                >
+                    {{ showArchived ? 'Ocultar arquivados' : 'Ver arquivados' }}
+                </button>
                 <button
                     type="button"
                     class="rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-slate-300"
@@ -188,6 +209,7 @@ function formatDate(value) {
             :companies="companies || []"
             :is-admin="true"
             :visibility-card-options="visibilityCardOptions || []"
+            :recurrence-options="recurrenceOptions || []"
             @close="modalOpen = false"
             @refresh="refreshBoard"
             @sync-card="syncSelectedCard"

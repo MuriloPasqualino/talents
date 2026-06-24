@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TaskCardRecurrence;
 use App\Support\Tasks\TaskCardVisibility as TaskCardVisibilityHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,8 @@ class TaskCard extends Model
         'cover_attachment_id',
         'start_date',
         'due_date',
+        'recurrence',
+        'recurrence_ends_on',
         'completed_at',
         'is_archived',
         'created_by_user_id',
@@ -34,6 +37,8 @@ class TaskCard extends Model
             'position' => 'float',
             'start_date' => 'date',
             'due_date' => 'date',
+            'recurrence' => TaskCardRecurrence::class,
+            'recurrence_ends_on' => 'date',
             'completed_at' => 'datetime',
             'is_archived' => 'boolean',
         ];

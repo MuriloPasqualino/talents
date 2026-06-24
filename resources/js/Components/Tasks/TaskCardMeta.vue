@@ -16,6 +16,7 @@ import {
     CheckCircleIcon,
     ClipboardDocumentListIcon,
     DocumentTextIcon,
+    ArrowPathIcon,
     PaperClipIcon,
 } from '@heroicons/vue/24/outline';
 import { computed } from 'vue';
@@ -46,6 +47,15 @@ const checklistTitle = computed(() => {
 <template>
     <div class="mt-2 flex items-end justify-between gap-2">
         <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+            <span
+                v-if="card.recurrence_label"
+                class="inline-flex items-center gap-0.5 rounded bg-violet-50 px-1.5 py-0.5 font-medium text-violet-700"
+                :title="`Repete ${card.recurrence_label.toLowerCase()}`"
+            >
+                <ArrowPathIcon class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {{ card.recurrence_label }}
+            </span>
+
             <span
                 v-if="dueAlert.show"
                 class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium"

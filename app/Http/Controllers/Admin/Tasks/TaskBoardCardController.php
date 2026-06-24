@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Admin\Tasks;
 
+use App\Actions\Tasks\ArchiveTaskCard;
+use App\Actions\Tasks\ArchiveTaskList;
 use App\Actions\Tasks\LogTaskActivity;
 use App\Actions\Tasks\MoveTaskCard;
+use App\Actions\Tasks\RestoreTaskCard;
+use App\Actions\Tasks\RestoreTaskList;
 use App\Actions\Tasks\ToggleTaskCardCompletion;
+use App\Enums\TaskCardRecurrence;
 use App\Enums\WorkspaceType;
 use App\Http\Controllers\Controller;
 use App\Models\TaskCard;
@@ -30,7 +35,13 @@ class TaskBoardCardController extends Controller
             'position' => ['nullable', 'numeric'],
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
+            'recurrence' => ['nullable', 'string', 'in:'.implode(',', TaskCardRecurrence::values())],
+            'recurrence_ends_on' => ['nullable', 'date'],
         ]);
+
+        if (! empty($data['recurrence']) && empty($data['due_date'])) {
+            return back()->withErrors(['due_date' => 'Defina uma data de vencimento para usar repetição.']);
+        }
 
         $max = (float) $list->cards()->max('position');
         $data['position'] = $data['position'] ?? ($max + 1000);
@@ -49,6 +60,8 @@ class TaskBoardCardController extends Controller
             'position' => $data['position'],
             'start_date' => $data['start_date'] ?? null,
             'due_date' => $data['due_date'] ?? null,
+            'recurrence' => $data['recurrence'] ?? null,
+            'recurrence_ends_on' => $data['recurrence_ends_on'] ?? null,
             'created_by_user_id' => $request->user()->id,
         ]);
 
@@ -85,6 +98,8 @@ class TaskBoardCardController extends Controller
             'position' => ['sometimes', 'numeric'],
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
+            'recurrence' => ['nullable', 'string', 'in:'.implode(',', TaskCardRecurrence::values())],
+            'recurrence_ends_on' => ['nullable', 'date'],
             'completed_at' => ['nullable', 'date'],
             'cover_color' => ['nullable', 'string', 'max:32'],
             'member_ids' => ['nullable', 'array'],
@@ -96,6 +111,12 @@ class TaskBoardCardController extends Controller
         $memberIds = $data['member_ids'] ?? null;
         $labelIds = $data['label_ids'] ?? null;
         unset($data['member_ids'], $data['label_ids']);
+
+        $mergedRecurrence = array_key_exists('recurrence', $data) ? $data['recurrence'] : ($card->recurrence?->value);
+        $mergedDueDate = array_key_exists('due_date', $data) ? $data['due_date'] : $card->due_date?->toDateString();
+        if (! empty($mergedRecurrence) && empty($mergedDueDate)) {
+            return back()->withErrors(['due_date' => 'Defina uma data de vencimento para usar repetição.']);
+        }
 
         $mergedCompanyId = array_key_exists('company_id', $data) ? $data['company_id'] : $card->company_id;
         $mergedVisibility = $data['visibility'] ?? $card->visibility;
@@ -163,6 +184,20 @@ class TaskBoardCardController extends Controller
         $log->handle($board, null, 'card.deleted', request()->user(), []);
 
         return back()->with('success', 'Cartão removido.');
+    }
+
+    public function archive(TaskCard $card, ArchiveTaskCard $archive): RedirectResponse
+    {
+        $archive->handle($card, request()->user());
+
+        return back()->with('success', 'Tarefa arquivada.');
+    }
+
+    public function restore(TaskCard $card, RestoreTaskCard $restore): RedirectResponse
+    {
+        $restore->handle($card, request()->user());
+
+        return back()->with('success', 'Tarefa restaurada.');
     }
 
     /**

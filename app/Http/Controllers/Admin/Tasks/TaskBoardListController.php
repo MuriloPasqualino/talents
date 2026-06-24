@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin\Tasks;
 
+use App\Actions\Tasks\ArchiveTaskList;
 use App\Actions\Tasks\LogTaskActivity;
+use App\Actions\Tasks\RestoreTaskList;
 use App\Http\Controllers\Controller;
 use App\Models\TaskBoard;
 use App\Models\TaskList;
@@ -69,6 +71,20 @@ class TaskBoardListController extends Controller
         $log->handle($board, null, 'list.deleted', request()->user(), []);
 
         return back()->with('success', 'Lista removida.');
+    }
+
+    public function archive(TaskList $list, ArchiveTaskList $archive): RedirectResponse
+    {
+        $archive->handle($list, request()->user());
+
+        return back()->with('success', 'Lista arquivada.');
+    }
+
+    public function restore(TaskList $list, RestoreTaskList $restore): RedirectResponse
+    {
+        $restore->handle($list, request()->user());
+
+        return back()->with('success', 'Lista restaurada.');
     }
 
     private function normalizeColor(?string $color): ?string
