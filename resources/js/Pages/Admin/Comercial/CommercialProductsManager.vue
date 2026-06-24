@@ -13,6 +13,7 @@ const FLEXIBLE_RATE_DEFS = [
     { key: 'unit', label: 'Por unidade' },
 ];
 const editing = ref(null);
+const modalOpen = ref(false);
 
 const emptyConfig = (type) => {
     switch (type) {
