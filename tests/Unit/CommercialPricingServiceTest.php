@@ -148,4 +148,56 @@ class CommercialPricingServiceTest extends TestCase
         $this->assertSame(50000, $r['total_catalog_products_cents']);
         $this->assertSame(62700, $r['total_final_cents']);
     }
+
+    public function test_flexible_rates_with_discount(): void
+    {
+        $product = $this->makeProduct(10, 'direcionamento', CommercialProductPricingType::FlexibleRates, [
+            'rates' => [
+                'hour' => ['enabled' => true, 'cents_per_unit' => 54700],
+                'quantity' => ['enabled' => false, 'cents_per_unit' => 0],
+                'unit' => ['enabled' => false, 'cents_per_unit' => 0],
+            ],
+        ]);
+
+        $r = $this->calculateWithProducts([
+            [
+                'product_id' => 10,
+                'enabled' => true,
+                'rate_mode' => 'hour',
+                'units' => 10,
+                'adjustment' => 'discount',
+                'discount_percent' => 10,
+            ],
+        ], 5, collect([$product]));
+
+        $this->assertSame(492300, $r['total_catalog_products_cents']);
+    }
+
+    public function test_flexible_rates_bonus_is_zero_but_included(): void
+    {
+        $product = $this->makeProduct(11, 'consultoria', CommercialProductPricingType::FlexibleRates, [
+            'rates' => [
+                'hour' => ['enabled' => true, 'cents_per_unit' => 10000],
+                'quantity' => ['enabled' => false, 'cents_per_unit' => 0],
+                'unit' => ['enabled' => false, 'cents_per_unit' => 0],
+            ],
+        ]);
+
+        $svc = new CommercialPricingService();
+        $r = $svc->calculate([
+            'employee_count' => 1,
+            'catalog_products' => [[
+                'product_id' => 11,
+                'enabled' => true,
+                'rate_mode' => 'hour',
+                'units' => 2,
+                'adjustment' => 'bonus',
+            ]],
+            '_catalog_products' => collect([$product]),
+        ], $this->defaultSettings());
+
+        $this->assertSame(0, $r['total_catalog_products_cents']);
+        $this->assertCount(1, $r['catalog_lines']);
+        $this->assertStringContainsString('Bonificação', $r['catalog_lines'][0]['detail']);
+    }
 }

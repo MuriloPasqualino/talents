@@ -222,10 +222,7 @@ class ProposalController extends Controller
         foreach ($catalogLines as $line) {
             $proposal->catalogLines()->create([
                 'commercial_product_id' => $line['product_id'],
-                'options' => array_filter([
-                    'modality' => $line['options']['modality'] ?? null,
-                    'salary_cents' => $line['options']['salary_cents'] ?? null,
-                ], fn ($v) => $v !== null && $v !== ''),
+                'options' => $line['options'] ?? [],
                 'label_snapshot' => $line['label'],
                 'detail_snapshot' => $line['detail'] ?? '',
                 'total_cents' => (int) $line['value_cents'],
@@ -251,6 +248,10 @@ class ProposalController extends Controller
             'enabled' => true,
             'modality' => $line->options['modality'] ?? '',
             'salary_cents' => (int) ($line->options['salary_cents'] ?? 0),
+            'rate_mode' => $line->options['rate_mode'] ?? '',
+            'units' => $line->options['units'] ?? '',
+            'adjustment' => $line->options['adjustment'] ?? 'none',
+            'discount_percent' => $line->options['discount_percent'] ?? '',
         ])->values()->all();
         $payload['has_legacy_services'] = $proposal->hasLegacyServices();
         $payload['legacy_summary'] = $this->legacySummaryLines($proposal);
@@ -341,6 +342,10 @@ class ProposalController extends Controller
             'catalog_products.*.enabled' => ['boolean'],
             'catalog_products.*.modality' => ['nullable', 'string', 'max:64'],
             'catalog_products.*.salary_cents' => ['nullable', 'integer', 'min:0'],
+            'catalog_products.*.rate_mode' => ['nullable', Rule::in(['hour', 'quantity', 'unit'])],
+            'catalog_products.*.units' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+            'catalog_products.*.adjustment' => ['nullable', Rule::in(['none', 'bonus', 'discount'])],
+            'catalog_products.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $data['commission_percent'] = (float) (CommercialSetting::current()->default_commission_percent ?? 0);

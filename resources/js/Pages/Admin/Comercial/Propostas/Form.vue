@@ -2,6 +2,7 @@
 import CommercialModuleNav from '@/Components/Comercial/CommercialModuleNav.vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { formatBRL, useCommercialPricing } from '@/composables/useCommercialPricing';
+import { enabledFlexibleRates, FLEXIBLE_RATE_DEFS } from '@/composables/useCatalogProductPricing';
 import { formatCnpj } from '@/utils/formatCnpj';
 import axios from 'axios';
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
@@ -22,12 +23,19 @@ const buildCatalogProductsInitial = () => {
     const existing = Object.fromEntries(
         (props.proposal?.catalog_products ?? []).map((s) => [s.product_id, s]),
     );
-    return props.catalogProducts.map((p) => ({
-        product_id: p.id,
-        enabled: !!existing[p.id]?.enabled,
-        modality: existing[p.id]?.modality ?? '',
-        salary_cents: existing[p.id]?.salary_cents ?? 0,
-    }));
+    return props.catalogProducts.map((p) => {
+        const ex = existing[p.id] ?? {};
+        return {
+            product_id: p.id,
+            enabled: !!ex.enabled,
+            modality: ex.modality ?? '',
+            salary_cents: ex.salary_cents ?? 0,
+            rate_mode: ex.rate_mode ?? '',
+            units: ex.units ?? '',
+            adjustment: ex.adjustment ?? 'none',
+            discount_percent: ex.discount_percent ?? '',
+        };
+    });
 };
 
 const formInitial = props.proposal
@@ -127,7 +135,16 @@ const { totalFinalCents, catalogLines, legacySummary } = useCommercialPricing(
 const catalogSelection = (productId) => {
     let sel = form.catalog_products.find((s) => s.product_id === productId);
     if (!sel) {
-        sel = { product_id: productId, enabled: false, modality: '', salary_cents: 0 };
+        sel = {
+            product_id: productId,
+            enabled: false,
+            modality: '',
+            salary_cents: 0,
+            rate_mode: '',
+            units: '',
+            adjustment: 'none',
+            discount_percent: '',
+        };
         form.catalog_products.push(sel);
     }
     return sel;
@@ -155,7 +172,20 @@ const isProductSelected = (product) => {
     if (product.pricing_type === 'fixed_modality') {
         return !!sel.modality;
     }
+    if (product.pricing_type === 'flexible_rates') {
+        return !!sel.enabled && !!sel.rate_mode && Number(sel.units) > 0;
+    }
     return !!sel.enabled;
+};
+
+const flexibleRatesForProduct = (product) => enabledFlexibleRates(product);
+
+const unitsLabelForMode = (mode) =>
+    FLEXIBLE_RATE_DEFS.find((d) => d.key === mode)?.unitsLabel ?? 'Quantidade';
+
+const formatRateUnitPrice = (product, mode) => {
+    const cents = product.pricing_config?.rates?.[mode]?.cents_per_unit ?? 0;
+    return formatBRL(cents);
 };
 
 const palestrasProductSelected = computed(() =>
@@ -439,6 +469,88 @@ const services = computed(() => {
                                 </select>
                                 <div class="mt-2 text-right text-sm tabular-nums text-slate-700">
                                     {{ formatBRL(catalogLineCents(product.id)) }}
+                                </div>
+                            </div>
+
+                            <div
+                                v-else-if="product.pricing_type === 'flexible_rates'"
+                                class="rounded-xl border border-talents-100 bg-talents-50/30 p-3"
+                            >
+                                <label class="flex items-start gap-3">
+                                    <input
+                                        v-model="catalogSelection(product.id).enabled"
+                                        type="checkbox"
+                                        class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500"
+                                    />
+                                    <div class="flex-1">
+                                        <div class="font-medium text-slate-900">{{ product.name }}</div>
+                                        <p v-if="product.description" class="text-xs text-slate-500">{{ product.description }}</p>
+                                    </div>
+                                    <div class="text-right text-sm tabular-nums text-slate-700">
+                                        {{ formatBRL(catalogLineCents(product.id)) }}
+                                    </div>
+                                </label>
+
+                                <div v-if="catalogSelection(product.id).enabled" class="mt-3 space-y-3 border-t border-talents-100 pt-3">
+                                    <div>
+                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Tipo de precificação</label>
+                                        <select
+                                            v-model="catalogSelection(product.id).rate_mode"
+                                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                        >
+                                            <option value="">— Selecionar —</option>
+                                            <option
+                                                v-for="rate in flexibleRatesForProduct(product)"
+                                                :key="rate.key"
+                                                :value="rate.key"
+                                            >
+                                                {{ rate.label }} ({{ formatRateUnitPrice(product, rate.key) }})
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div v-if="catalogSelection(product.id).rate_mode">
+                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                            {{ unitsLabelForMode(catalogSelection(product.id).rate_mode) }}
+                                        </label>
+                                        <input
+                                            v-model.number="catalogSelection(product.id).units"
+                                            type="number"
+                                            min="0"
+                                            step="0.5"
+                                            placeholder="0"
+                                            class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                        />
+                                    </div>
+
+                                    <div v-if="catalogSelection(product.id).rate_mode && Number(catalogSelection(product.id).units) > 0">
+                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Ajuste comercial</label>
+                                        <select
+                                            v-model="catalogSelection(product.id).adjustment"
+                                            class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                        >
+                                            <option value="none">Sem ajuste</option>
+                                            <option value="bonus">Bonificação (R$ 0,00)</option>
+                                            <option value="discount">Desconto (%)</option>
+                                        </select>
+                                    </div>
+
+                                    <div
+                                        v-if="catalogSelection(product.id).adjustment === 'discount'
+                                            && catalogSelection(product.id).rate_mode
+                                            && Number(catalogSelection(product.id).units) > 0"
+                                    >
+                                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Desconto (%)</label>
+                                        <input
+                                            v-model.number="catalogSelection(product.id).discount_percent"
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                            placeholder="Ex.: 10"
+                                            class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 

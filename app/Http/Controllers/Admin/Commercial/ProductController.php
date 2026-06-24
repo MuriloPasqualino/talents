@@ -109,6 +109,16 @@ class ProductController extends Controller
                 'threshold_employees' => max(0, (int) ($config['threshold_employees'] ?? 30)),
                 'multiplier' => max(1, (int) ($config['multiplier'] ?? 2)),
             ],
+            CommercialProductPricingType::FlexibleRates => [
+                'rates' => collect(['hour', 'quantity', 'unit'])
+                    ->mapWithKeys(fn (string $key) => [
+                        $key => [
+                            'enabled' => (bool) ($config['rates'][$key]['enabled'] ?? false),
+                            'cents_per_unit' => max(0, (int) ($config['rates'][$key]['cents_per_unit'] ?? 0)),
+                        ],
+                    ])
+                    ->all(),
+            ],
         };
     }
 

@@ -7,7 +7,11 @@ const props = defineProps({
     pricingTypeLabels: { type: Object, default: () => ({}) },
 });
 
-const modalOpen = ref(false);
+const FLEXIBLE_RATE_DEFS = [
+    { key: 'hour', label: 'Por hora' },
+    { key: 'quantity', label: 'Por quantidade' },
+    { key: 'unit', label: 'Por unidade' },
+];
 const editing = ref(null);
 
 const emptyConfig = (type) => {
@@ -30,6 +34,14 @@ const emptyConfig = (type) => {
             return { modalities: [{ key: 'padrao', label: 'Padrão', cents: 0 }] };
         case 'threshold_multiplier':
             return { base_cents: 0, threshold_employees: 30, multiplier: 2 };
+        case 'flexible_rates':
+            return {
+                rates: {
+                    hour: { enabled: true, cents_per_unit: 0 },
+                    quantity: { enabled: false, cents_per_unit: 0 },
+                    unit: { enabled: false, cents_per_unit: 0 },
+                },
+            };
         default:
             return {};
     }
@@ -86,6 +98,11 @@ const hydrateReais = (product) => {
         ['tier1', 'tier2', 'tier3', 'tier4'].forEach((t) => syncReaisFromCents(t, cfg[`${t}_cents`]));
     }
     if (product.pricing_type === 'threshold_multiplier') syncReaisFromCents('base', cfg.base_cents);
+    if (product.pricing_type === 'flexible_rates') {
+        FLEXIBLE_RATE_DEFS.forEach((def) => {
+            syncReaisFromCents(`flex_${def.key}`, cfg.rates?.[def.key]?.cents_per_unit ?? 0);
+        });
+    }
     if (product.pricing_type === 'fixed_modality') {
         (cfg.modalities || []).forEach((m, i) => syncReaisFromCents(`mod_${i}`, m.cents));
     }
@@ -119,6 +136,15 @@ const applyReaisToConfig = () => {
             break;
         case 'threshold_multiplier':
             cfg.base_cents = centsFromReais('base');
+            break;
+        case 'flexible_rates':
+            cfg.rates = FLEXIBLE_RATE_DEFS.reduce((acc, def) => {
+                acc[def.key] = {
+                    enabled: !!cfg.rates?.[def.key]?.enabled,
+                    cents_per_unit: centsFromReais(`flex_${def.key}`),
+                };
+                return acc;
+            }, {});
             break;
         default:
             break;
@@ -352,6 +378,34 @@ const typeLabel = (type) => props.pricingTypeLabels[type] ?? type;
                                 min="1"
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm"
                             />
+                        </div>
+                    </div>
+
+                    <div v-if="form.pricing_type === 'flexible_rates'" class="space-y-3">
+                        <p class="text-xs text-slate-500">
+                            Defina os valores unitários pré-configurados. Na proposta, o vendedor escolhe o tipo (hora, quantidade ou unidade) e informa a quantidade.
+                        </p>
+                        <div
+                            v-for="def in FLEXIBLE_RATE_DEFS"
+                            :key="def.key"
+                            class="rounded-xl border border-slate-200 p-3"
+                        >
+                            <label class="flex items-center gap-2 text-sm font-medium text-slate-900">
+                                <input
+                                    v-model="form.pricing_config.rates[def.key].enabled"
+                                    type="checkbox"
+                                    class="rounded border-slate-300 text-talents-600"
+                                />
+                                {{ def.label }}
+                            </label>
+                            <div v-if="form.pricing_config.rates[def.key].enabled" class="mt-2">
+                                <label class="text-xs font-medium uppercase text-slate-500">Valor (R$)</label>
+                                <input
+                                    v-model="reaisFields[`flex_${def.key}`]"
+                                    type="text"
+                                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm"
+                                />
+                            </div>
                         </div>
                     </div>
 

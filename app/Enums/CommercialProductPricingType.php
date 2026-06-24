@@ -10,6 +10,7 @@ enum CommercialProductPricingType: string
     case FixedModality = 'fixed_modality';
     case SalaryTimesEmployees = 'salary_times_employees';
     case ThresholdMultiplier = 'threshold_multiplier';
+    case FlexibleRates = 'flexible_rates';
 
     /**
      * @return array<string, string>
@@ -23,6 +24,7 @@ enum CommercialProductPricingType: string
             self::FixedModality->value => 'Modalidade (valor fixo por opção)',
             self::SalaryTimesEmployees->value => 'Salário × funcionários',
             self::ThresholdMultiplier->value => 'Base com multiplicador por faixa',
+            self::FlexibleRates->value => 'Hora / quantidade / unidade',
         ];
     }
 }
