@@ -21,6 +21,7 @@ class CommercialProposal extends Model
             'svc_contratacao' => 'boolean',
             'svc_contratacao_salario_cents' => 'integer',
             'svc_direcionamento' => 'boolean',
+            'direcionamento_horas' => 'decimal:2',
             'svc_palestras' => 'boolean',
 
             'total_pesquisas_cents' => 'integer',

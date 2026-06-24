@@ -51,13 +51,9 @@ const form = useForm({
     pesquisas_tier3_cents: props.settings.pesquisas_tier3_cents,
     pesquisas_tier4_cents: props.settings.pesquisas_tier4_cents,
 
-    direcionamento_tier1_max: props.settings.direcionamento_tier1_max,
-    direcionamento_tier1_cents: props.settings.direcionamento_tier1_cents,
-    direcionamento_tier2_max: props.settings.direcionamento_tier2_max,
-    direcionamento_tier2_cents: props.settings.direcionamento_tier2_cents,
-    direcionamento_tier3_max: props.settings.direcionamento_tier3_max,
-    direcionamento_tier3_cents: props.settings.direcionamento_tier3_cents,
-    direcionamento_tier4_cents: props.settings.direcionamento_tier4_cents,
+    direcionamento_hora_cents: props.settings.direcionamento_hora_cents
+        ?? props.settings.direcionamento_tier1_cents
+        ?? 5000,
 
     nr1_tier1_max: props.settings.nr1_tier1_max,
     nr1_tier1_cents: props.settings.nr1_tier1_cents,
@@ -97,7 +93,7 @@ const submit = () => {
 const moneyKeys = [
     'profiler_tier1_cents', 'profiler_tier2_cents', 'profiler_tier3_cents', 'profiler_tier4_cents',
     'pesquisas_tier1_cents', 'pesquisas_tier2_cents', 'pesquisas_tier3_cents', 'pesquisas_tier4_cents',
-    'direcionamento_tier1_cents', 'direcionamento_tier2_cents', 'direcionamento_tier3_cents', 'direcionamento_tier4_cents',
+    'direcionamento_hora_cents',
     'nr1_tier1_cents', 'nr1_tier2_cents', 'nr1_tier3_cents', 'nr1_tier4_cents',
     'devolutiva_individual_cents', 'devolutiva_grupo_cents',
     'nr1_implantacao_online_cents', 'nr1_implantacao_presencial_cents',
@@ -153,12 +149,6 @@ const tableConfig = computed(() => [
         prefix: 'pesquisas',
         defaultMaxes: [10, 20, 30],
         helpRow4: 'Acima de 30 funcionários',
-    },
-    {
-        title: 'Direcionamento Estratégico',
-        prefix: 'direcionamento',
-        defaultMaxes: [5, 10, 20],
-        helpRow4: 'Acima de 20 funcionários',
     },
     {
         title: 'NR-1 — Mapeamento de Risco Psicossocial',
@@ -289,6 +279,19 @@ const tableConfig = computed(() => [
                                 class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
                             />
                         </div>
+                    </div>
+                </section>
+
+                <section class="surface-card p-6">
+                    <h3 class="text-lg font-semibold text-slate-900">Direcionamento Estratégico</h3>
+                    <p class="mt-1 text-xs text-slate-500">Valor base por hora. O total na proposta é calculado multiplicando pelas horas informadas.</p>
+                    <div class="mt-4 max-w-xs">
+                        <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Valor por hora (R$)</label>
+                        <input
+                            v-model="reaisProxy.direcionamento_hora_cents.value"
+                            type="text"
+                            class="mt-1 w-full rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                        />
                     </div>
                 </section>
 

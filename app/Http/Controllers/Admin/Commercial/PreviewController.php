@@ -30,6 +30,7 @@ class PreviewController extends Controller
             'svc_contratacao' => ['boolean'],
             'svc_contratacao_salario_cents' => ['nullable', 'integer', 'min:0'],
             'svc_direcionamento' => ['boolean'],
+            'direcionamento_horas' => ['nullable', 'numeric', 'min:0', 'max:10000'],
             'svc_palestras' => ['boolean'],
             'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'catalog_products' => ['nullable', 'array'],

@@ -37,6 +37,7 @@ class CommercialPricingService
      *   - svc_contratacao (bool)                  → coluna H
      *   - svc_contratacao_salario_cents (int)     → coluna I (em centavos!)
      *   - svc_direcionamento (bool)               → coluna J
+     *   - direcionamento_horas (float)            → horas contratadas
      *   - svc_palestras (bool)                    → coluna K
      *   - commission_percent (float)              → coluna O (0..100)
      *
@@ -241,25 +242,25 @@ class CommercialPricingService
     }
 
     /**
-     * Coluna W — Direcionamento Estratégico:
-     *   B × IFS(B≤A16,B16; B≤A17,B17; B≤A18,B18; B>A18,B19)
+     * Direcionamento Estratégico: horas × valor hora (configuração comercial).
      */
     private function calcDirecionamento(int $employees, array $in, CommercialSetting $s): int
     {
-        if (! ($in['svc_direcionamento'] ?? false) || $employees <= 0) {
+        if (! ($in['svc_direcionamento'] ?? false)) {
             return 0;
         }
 
-        return $employees * $this->pickTier(
-            $employees,
-            [$s->direcionamento_tier1_max, $s->direcionamento_tier2_max, $s->direcionamento_tier3_max],
-            [
-                $s->direcionamento_tier1_cents,
-                $s->direcionamento_tier2_cents,
-                $s->direcionamento_tier3_cents,
-                $s->direcionamento_tier4_cents,
-            ],
-        );
+        $hours = (float) ($in['direcionamento_horas'] ?? 0);
+        if ($hours <= 0) {
+            return 0;
+        }
+
+        $horaCents = (int) ($s->direcionamento_hora_cents ?? $s->direcionamento_tier1_cents ?? 0);
+        if ($horaCents <= 0) {
+            return 0;
+        }
+
+        return (int) round($hours * $horaCents);
     }
 
     /**

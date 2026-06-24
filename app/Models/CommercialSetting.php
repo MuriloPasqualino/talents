@@ -35,6 +35,7 @@ class CommercialSetting extends Model
             'direcionamento_tier3_max' => 'integer',
             'direcionamento_tier3_cents' => 'integer',
             'direcionamento_tier4_cents' => 'integer',
+            'direcionamento_hora_cents' => 'integer',
 
             'nr1_tier1_max' => 'integer',
             'nr1_tier1_cents' => 'integer',

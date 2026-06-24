@@ -99,13 +99,7 @@ class SettingsController extends Controller
             'pesquisas_tier4_cents' => $integerCents,
 
             // Direcionamento
-            'direcionamento_tier1_max' => $integerMax,
-            'direcionamento_tier1_cents' => $integerCents,
-            'direcionamento_tier2_max' => $integerMax,
-            'direcionamento_tier2_cents' => $integerCents,
-            'direcionamento_tier3_max' => $integerMax,
-            'direcionamento_tier3_cents' => $integerCents,
-            'direcionamento_tier4_cents' => $integerCents,
+            'direcionamento_hora_cents' => $integerCents,
 
             // NR-1
             'nr1_tier1_max' => $integerMax,

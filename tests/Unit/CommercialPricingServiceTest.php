@@ -32,13 +32,7 @@ class CommercialPricingServiceTest extends TestCase
             $s->pesquisas_tier3_cents = 11450;
             $s->pesquisas_tier4_cents = 10700;
             // Direcionamento
-            $s->direcionamento_tier1_max = 5;
-            $s->direcionamento_tier1_cents = 5000;
-            $s->direcionamento_tier2_max = 10;
-            $s->direcionamento_tier2_cents = 4750;
-            $s->direcionamento_tier3_max = 20;
-            $s->direcionamento_tier3_cents = 4500;
-            $s->direcionamento_tier4_cents = 4250;
+            $s->direcionamento_hora_cents = 5000;
             // NR-1
             $s->nr1_tier1_max = 5;
             $s->nr1_tier1_cents = 1700;
@@ -71,6 +65,7 @@ class CommercialPricingServiceTest extends TestCase
             'employee_count' => 1,
             'svc_pesquisas' => true,
             'svc_direcionamento' => true,
+            'direcionamento_horas' => 1,
             'svc_palestras' => true,
         ], $this->defaultSettings());
 
@@ -99,6 +94,7 @@ class CommercialPricingServiceTest extends TestCase
             'svc_contratacao' => true,
             'svc_contratacao_salario_cents' => 100000,
             'svc_direcionamento' => true,
+            'direcionamento_horas' => 2,
             'svc_palestras' => true,
             'commission_percent' => 5,
         ], $this->defaultSettings());
@@ -132,6 +128,7 @@ class CommercialPricingServiceTest extends TestCase
             'svc_contratacao' => true,
             'svc_contratacao_salario_cents' => 100000,
             'svc_direcionamento' => true,
+            'direcionamento_horas' => 3,
             'svc_palestras' => true,
         ], $this->defaultSettings());
 
@@ -141,9 +138,34 @@ class CommercialPricingServiceTest extends TestCase
         $this->assertSame(5100, $r['total_nr1_cents']);         // 3 * 17
         $this->assertSame(421400 + 5100, $r['total_nr1_implantacao_cents']);
         $this->assertSame(300000, $r['total_contratacao_cents']);
-        $this->assertSame(15000, $r['total_direcionamento_cents']); // 3 * 50
+        $this->assertSame(15000, $r['total_direcionamento_cents']); // 3 h × R$ 50
         $this->assertSame(157700, $r['total_palestras_cents']);
         $this->assertSame(1251200, $r['total_final_cents']);
+    }
+
+    public function test_direcionamento_requires_hours(): void
+    {
+        $svc = new CommercialPricingService();
+        $r = $svc->calculate([
+            'employee_count' => 10,
+            'svc_direcionamento' => true,
+        ], $this->defaultSettings());
+
+        $this->assertSame(0, $r['total_direcionamento_cents']);
+    }
+
+    public function test_direcionamento_multiplies_hours_by_hourly_rate(): void
+    {
+        $settings = $this->defaultSettings();
+        $settings->direcionamento_hora_cents = 12000;
+
+        $svc = new CommercialPricingService();
+        $r = $svc->calculate([
+            'svc_direcionamento' => true,
+            'direcionamento_horas' => 4.5,
+        ], $settings);
+
+        $this->assertSame(54000, $r['total_direcionamento_cents']);
     }
 
     /**

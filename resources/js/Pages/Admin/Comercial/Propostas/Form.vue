@@ -65,6 +65,7 @@ const formInitial = props.proposal
           svc_contratacao: !!props.proposal.svc_contratacao,
           svc_contratacao_salario_cents: props.proposal.svc_contratacao_salario_cents ?? 0,
           svc_direcionamento: !!props.proposal.svc_direcionamento,
+          direcionamento_horas: props.proposal.direcionamento_horas ?? '',
           svc_palestras: !!props.proposal.svc_palestras,
           is_closed: !!props.proposal.is_closed,
           notes: props.proposal.notes ?? '',
@@ -99,6 +100,7 @@ const formInitial = props.proposal
           svc_contratacao: false,
           svc_contratacao_salario_cents: 0,
           svc_direcionamento: false,
+          direcionamento_horas: '',
           svc_palestras: false,
           is_closed: false,
           notes: '',
@@ -524,16 +526,31 @@ const services = computed(() => {
                             </div>
                         </div>
 
-                        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50">
-                            <input v-model="form.svc_direcionamento" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
-                            <div class="flex-1">
-                                <div class="font-medium text-slate-900">Direcionamento Estratégico</div>
-                                <p class="text-xs text-slate-500">Por funcionário, conforme faixa.</p>
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <label class="flex items-start gap-3 hover:bg-slate-50">
+                                <input v-model="form.svc_direcionamento" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />
+                                <div class="flex-1">
+                                    <div class="font-medium text-slate-900">Direcionamento Estratégico</div>
+                                    <p class="text-xs text-slate-500">
+                                        Valor hora {{ formatBRL(settings.direcionamento_hora_cents ?? settings.direcionamento_tier1_cents) }}.
+                                    </p>
+                                </div>
+                                <div class="text-right text-sm tabular-nums text-slate-700">
+                                    {{ formatBRL(breakdownCents.total_direcionamento_cents) }}
+                                </div>
+                            </label>
+                            <div v-if="form.svc_direcionamento" class="mt-3 border-t border-slate-100 pt-3">
+                                <label class="text-xs font-medium uppercase tracking-wide text-slate-500">Quantidade de horas</label>
+                                <input
+                                    v-model.number="form.direcionamento_horas"
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    placeholder="0"
+                                    class="mt-1 w-full max-w-xs rounded-xl border-slate-300 shadow-sm focus:border-talents-500 focus:ring-talents-500"
+                                />
                             </div>
-                            <div class="text-right text-sm tabular-nums text-slate-700">
-                                {{ formatBRL(breakdownCents.total_direcionamento_cents) }}
-                            </div>
-                        </label>
+                        </div>
 
                         <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50">
                             <input v-model="form.svc_palestras" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-talents-600 focus:ring-talents-500" />

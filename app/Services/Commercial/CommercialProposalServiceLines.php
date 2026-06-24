@@ -124,10 +124,19 @@ class CommercialProposalServiceLines
         }
 
         if ($p->svc_direcionamento) {
+            $hours = (float) ($p->direcionamento_horas ?? 0);
+            $detail = $hours > 0
+                ? sprintf(
+                    '%s h × R$ %s/hora',
+                    rtrim(rtrim(number_format($hours, 2, ',', '.'), '0'), ','),
+                    number_format(((int) ($settings->direcionamento_hora_cents ?? $settings->direcionamento_tier1_cents ?? 0)) / 100, 2, ',', '.'),
+                )
+                : 'Horas não informadas';
+
             $lines[] = self::line(
                 'direcionamento',
                 self::labelForKey('direcionamento'),
-                "{$p->employee_count} funcionários",
+                $detail,
                 (int) $p->total_direcionamento_cents,
                 $overrides,
                 $defaultDescriptions,

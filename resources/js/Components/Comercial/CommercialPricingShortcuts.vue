@@ -5,12 +5,12 @@ const shortcuts = [
     {
         tab: 'faixas',
         title: 'Faixas por funcionários',
-        description: 'Profiler, pesquisas, direcionamento e NR-1 por quantidade de colaboradores.',
+        description: 'Profiler, pesquisas e NR-1 por quantidade de colaboradores.',
     },
     {
         tab: 'fixos',
         title: 'Valores fixos',
-        description: 'Devolutivas, palestras, implantação NR-1 e demais valores únicos.',
+        description: 'Devolutivas, direcionamento (hora), palestras, implantação NR-1 e demais valores únicos.',
     },
     {
         tab: 'produtos',

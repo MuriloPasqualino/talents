@@ -78,13 +78,13 @@ export function useCommercialPricing(formRef, settingsRef, catalogProductsRef = 
     });
 
     const direcionamento = computed(() => {
-        if (!formRef.value?.svc_direcionamento || employees.value <= 0) return 0;
+        if (!formRef.value?.svc_direcionamento) return 0;
+        const hours = Number(formRef.value?.direcionamento_horas ?? 0);
+        if (hours <= 0) return 0;
         const cfg = s();
-        return employees.value * pickTier(
-            employees.value,
-            [cfg.direcionamento_tier1_max, cfg.direcionamento_tier2_max, cfg.direcionamento_tier3_max],
-            [cfg.direcionamento_tier1_cents, cfg.direcionamento_tier2_cents, cfg.direcionamento_tier3_cents, cfg.direcionamento_tier4_cents],
-        );
+        const horaCents = Number(cfg.direcionamento_hora_cents ?? cfg.direcionamento_tier1_cents ?? 0);
+        if (horaCents <= 0) return 0;
+        return Math.round(hours * horaCents);
     });
 
     const palestras = computed(() => {
