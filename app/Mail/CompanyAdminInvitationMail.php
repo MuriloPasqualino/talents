@@ -22,8 +22,12 @@ class CompanyAdminInvitationMail extends Mailable
 
     public function envelope(): Envelope
     {
+        $subject = $this->user->hasCompletedRegistration()
+            ? 'Redefinição de senha — '.$this->company->name
+            : 'Acesso ao portal Talents — '.$this->company->name;
+
         return new Envelope(
-            subject: 'Acesso ao portal Talents — '.$this->company->name,
+            subject: $subject,
         );
     }
 

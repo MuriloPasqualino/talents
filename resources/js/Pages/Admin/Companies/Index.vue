@@ -21,11 +21,14 @@ const hasPendingRegistration = (companyId) => pendingRegistrationIdSet.has(Numbe
 const resendingId = ref(null);
 
 const resendInvitation = (company) => {
-    if (!hasPendingRegistration(company.id) || resendingId.value) {
+    if (resendingId.value) {
         return;
     }
     const email = company.contact_email || 'o e-mail de contacto';
-    if (!confirm(`Reenviar o convite de cadastro para ${email}?`)) {
+    const message = hasPendingRegistration(company.id)
+        ? `Reenviar o convite de cadastro para ${email}?`
+        : `Enviar link para redefinir a senha para ${email}?`;
+    if (!confirm(message)) {
         return;
     }
     resendingId.value = company.id;
@@ -101,13 +104,19 @@ const submit = () => {
                         </td>
                         <td class="px-4 py-3 text-right space-x-3">
                             <button
-                                v-if="hasPendingRegistration(c.id)"
                                 type="button"
-                                class="text-sm font-medium text-amber-700 hover:underline disabled:opacity-50"
+                                class="text-sm font-medium hover:underline disabled:opacity-50"
+                                :class="hasPendingRegistration(c.id) ? 'text-amber-700' : 'text-talents-700'"
                                 :disabled="resendingId === c.id"
                                 @click="resendInvitation(c)"
                             >
-                                {{ resendingId === c.id ? 'Enviando…' : 'Reenviar convite' }}
+                                {{
+                                    resendingId === c.id
+                                        ? 'Enviando…'
+                                        : hasPendingRegistration(c.id)
+                                          ? 'Reenviar convite'
+                                          : 'Redefinir senha'
+                                }}
                             </button>
                             <Link :href="route('admin.companies.show', c.id)" class="font-medium text-talents-700 hover:underline">Ver</Link>
                         </td>

@@ -217,12 +217,6 @@ class CompanyUserController extends Controller
     {
         $this->assertCompanyWorkspace($company, $user);
 
-        if ($user->hasCompletedRegistration()) {
-            return redirect()
-                ->route('admin.companies.users.index', $company)
-                ->with('error', 'Este utilizador já concluiu o cadastro.');
-        }
-
         try {
             $this->resendUserInvitation->execute($user, $company);
         } catch (\Throwable $e) {
@@ -233,9 +227,13 @@ class CompanyUserController extends Controller
                 ->with('error', 'Não foi possível reenviar o convite. Erro: '.$e->getMessage());
         }
 
+        $message = $user->hasCompletedRegistration()
+            ? 'Link para redefinir a senha enviado para '.$user->email.'.'
+            : 'Convite reenviado para '.$user->email.'.';
+
         return redirect()
             ->route('admin.companies.users.index', $company)
-            ->with('success', 'Convite reenviado para '.$user->email.'.');
+            ->with('success', $message);
     }
 
     private function companyUsersQuery(Company $company)

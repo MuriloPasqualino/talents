@@ -36,11 +36,14 @@ const showDeleteModal = ref(false);
 const resendingInvitation = ref(false);
 
 const resendInvitation = () => {
-    if (!props.pendingRegistration || resendingInvitation.value) {
+    if (!props.registrationAdminEmail || resendingInvitation.value) {
         return;
     }
     const email = props.registrationAdminEmail || props.company.contact_email || 'o e-mail de contacto';
-    if (!confirm(`Reenviar o convite de cadastro para ${email}?`)) {
+    const message = props.pendingRegistration
+        ? `Reenviar o convite de cadastro para ${email}?`
+        : `Enviar link para redefinir a senha para ${email}?`;
+    if (!confirm(message)) {
         return;
     }
     resendingInvitation.value = true;
@@ -178,13 +181,24 @@ const deleteCompany = () => {
                     </div>
                     <div class="flex shrink-0 flex-wrap gap-2">
                         <button
-                            v-if="pendingRegistration"
+                            v-if="registrationAdminEmail"
                             type="button"
-                            class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 shadow-sm transition hover:bg-amber-100 disabled:opacity-50"
+                            class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium shadow-sm transition disabled:opacity-50"
+                            :class="
+                                pendingRegistration
+                                    ? 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:border-talents-200 hover:bg-talents-50/50 hover:text-talents-800'
+                            "
                             :disabled="resendingInvitation"
                             @click="resendInvitation"
                         >
-                            {{ resendingInvitation ? 'Enviando…' : 'Reenviar convite de cadastro' }}
+                            {{
+                                resendingInvitation
+                                    ? 'Enviando…'
+                                    : pendingRegistration
+                                      ? 'Reenviar convite de cadastro'
+                                      : 'Enviar link de redefinição de senha'
+                            }}
                         </button>
                         <Link
                             :href="route('admin.companies.edit', company.id)"

@@ -34,10 +34,13 @@ function functionLabel(user) {
 }
 
 const resendInvitation = (user) => {
-    if (!user.pending_registration || resendingId.value) {
+    if (resendingId.value) {
         return;
     }
-    if (!confirm(`Reenviar o link de cadastro para ${user.email}?`)) {
+    const message = user.pending_registration
+        ? `Reenviar o link de cadastro para ${user.email}?`
+        : `Enviar link para redefinir a senha para ${user.email}?`;
+    if (!confirm(message)) {
         return;
     }
     resendingId.value = user.id;
@@ -101,13 +104,20 @@ const resendInvitation = (user) => {
                         </td>
                         <td class="space-x-3 px-4 py-2 text-right">
                             <button
-                                v-if="canAdmin('equipe', 'edit') && u.pending_registration"
+                                v-if="canAdmin('equipe', 'edit')"
                                 type="button"
-                                class="font-medium text-amber-700 hover:underline disabled:opacity-50"
+                                class="font-medium hover:underline disabled:opacity-50"
+                                :class="u.pending_registration ? 'text-amber-700' : 'text-talents-700'"
                                 :disabled="resendingId === u.id"
                                 @click="resendInvitation(u)"
                             >
-                                {{ resendingId === u.id ? 'Enviando…' : 'Reenviar convite' }}
+                                {{
+                                    resendingId === u.id
+                                        ? 'Enviando…'
+                                        : u.pending_registration
+                                          ? 'Reenviar convite'
+                                          : 'Redefinir senha'
+                                }}
                             </button>
                             <Link
                                 v-if="canAdmin('equipe', 'edit')"

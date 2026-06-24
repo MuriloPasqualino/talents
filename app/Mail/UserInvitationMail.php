@@ -22,9 +22,15 @@ class UserInvitationMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $subject = $this->company !== null
-            ? 'Convite — portal Talents ('.$this->company->name.')'
-            : 'Convite — equipe administrativa Talents';
+        if ($this->user->hasCompletedRegistration()) {
+            $subject = $this->company !== null
+                ? 'Redefinição de senha — portal Talents ('.$this->company->name.')'
+                : 'Redefinição de senha — equipe administrativa Talents';
+        } else {
+            $subject = $this->company !== null
+                ? 'Convite — portal Talents ('.$this->company->name.')'
+                : 'Convite — equipe administrativa Talents';
+        }
 
         return new Envelope(
             subject: $subject,

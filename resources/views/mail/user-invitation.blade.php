@@ -6,19 +6,36 @@
 </head>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #1f2937;">
     <p>Olá,</p>
-    @if ($company)
-        <p>Foi criado um <strong>acesso ao portal Talents</strong> para a empresa <strong>{{ $company->name }}</strong>.</p>
+    @if ($user->hasCompletedRegistration())
+        @if ($company)
+            <p>Foi solicitada a <strong>redefinição de senha</strong> do seu acesso ao <strong>portal Talents</strong> para a empresa <strong>{{ $company->name }}</strong>.</p>
+        @else
+            <p>Foi solicitada a <strong>redefinição de senha</strong> do seu acesso à <strong>equipe administrativa</strong> da plataforma Talents.</p>
+        @endif
+        <p>Seu usuário é o e-mail: <strong>{{ $user->email }}</strong></p>
+        <p>Para <strong>redefinir sua senha</strong> e entrar no portal, use o link abaixo:</p>
+        <p style="margin: 24px 0;">
+            <a href="{{ $resetPasswordUrl }}" style="display: inline-block; background: #632a7e; color: #fff; padding: 0.75rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
+                Redefinir senha e acessar
+            </a>
+        </p>
+        <p style="font-size: 0.875rem; color: #6b7280;">Depois de redefinir a senha, faça login em: <a href="{{ url('/login') }}">{{ url('/login') }}</a></p>
+        <p style="font-size: 0.875rem; color: #6b7280;">Se você não solicitou esta redefinição, ignore este e-mail.</p>
     @else
-        <p>Foi criado um <strong>acesso à equipe administrativa</strong> da plataforma Talents.</p>
+        @if ($company)
+            <p>Foi criado um <strong>acesso ao portal Talents</strong> para a empresa <strong>{{ $company->name }}</strong>.</p>
+        @else
+            <p>Foi criado um <strong>acesso à equipe administrativa</strong> da plataforma Talents.</p>
+        @endif
+        <p>Seu usuário é o e-mail: <strong>{{ $user->email }}</strong></p>
+        <p>Para <strong>definir sua senha</strong> e entrar no portal, use o link abaixo (permanece válido até você concluir o cadastro da senha):</p>
+        <p style="margin: 24px 0;">
+            <a href="{{ $resetPasswordUrl }}" style="display: inline-block; background: #632a7e; color: #fff; padding: 0.75rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
+                Definir senha e acessar
+            </a>
+        </p>
+        <p style="font-size: 0.875rem; color: #6b7280;">Depois de definir a senha, faça login em: <a href="{{ url('/login') }}">{{ url('/login') }}</a></p>
+        <p style="font-size: 0.875rem; color: #6b7280;">Se você não reconhece este cadastro, ignore este e-mail.</p>
     @endif
-    <p>Seu usuário é o e-mail: <strong>{{ $user->email }}</strong></p>
-    <p>Para <strong>definir sua senha</strong> e entrar no portal, use o link abaixo (permanece válido até você concluir o cadastro da senha):</p>
-    <p style="margin: 24px 0;">
-        <a href="{{ $resetPasswordUrl }}" style="display: inline-block; background: #632a7e; color: #fff; padding: 0.75rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
-            Definir senha e acessar
-        </a>
-    </p>
-    <p style="font-size: 0.875rem; color: #6b7280;">Depois de definir a senha, faça login em: <a href="{{ url('/login') }}">{{ url('/login') }}</a></p>
-    <p style="font-size: 0.875rem; color: #6b7280;">Se você não reconhece este cadastro, ignore este e-mail.</p>
 </body>
 </html>

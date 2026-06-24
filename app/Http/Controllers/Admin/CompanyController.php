@@ -335,10 +335,12 @@ class CompanyController extends Controller
 
     public function resendInvitation(Company $company): RedirectResponse
     {
-        if (! $company->hasPendingRegistration()) {
+        $admin = $company->registrationAdmin();
+
+        if ($admin === null) {
             return redirect()
                 ->back()
-                ->with('error', 'O cadastro desta empresa já foi concluído.');
+                ->with('error', 'Não foi encontrado um administrador para esta empresa.');
         }
 
         try {
@@ -351,11 +353,13 @@ class CompanyController extends Controller
                 ->with('error', 'Não foi possível reenviar o convite. Erro: '.$e->getMessage());
         }
 
-        $email = $company->registrationAdmin()?->email ?? $company->contact_email;
+        $message = $admin->hasCompletedRegistration()
+            ? 'Link para redefinir a senha enviado para '.$admin->email.'.'
+            : 'Convite de cadastro reenviado para '.$admin->email.'.';
 
         return redirect()
             ->back()
-            ->with('success', 'Convite de cadastro reenviado para '.$email.'.');
+            ->with('success', $message);
     }
 
     public function attachTemplate(Company $company, SurveyTemplate $template): RedirectResponse

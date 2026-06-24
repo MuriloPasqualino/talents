@@ -238,10 +238,6 @@ class AdminUserController extends Controller
     {
         $this->assertTalentsWorkspace($user);
 
-        if ($user->hasCompletedRegistration()) {
-            return redirect()->route('admin.users.index')->with('error', 'Este utilizador já concluiu o cadastro.');
-        }
-
         try {
             $this->resendUserInvitation->execute($user);
         } catch (\Throwable $e) {
@@ -253,10 +249,11 @@ class AdminUserController extends Controller
             );
         }
 
-        return redirect()->route('admin.users.index')->with(
-            'success',
-            'Convite reenviado para '.$user->email.'.'
-        );
+        $message = $user->hasCompletedRegistration()
+            ? 'Link para redefinir a senha enviado para '.$user->email.'.'
+            : 'Convite reenviado para '.$user->email.'.';
+
+        return redirect()->route('admin.users.index')->with('success', $message);
     }
 
     private function assertTalentsWorkspace(User $user): UserWorkspace

@@ -71,7 +71,7 @@ class CompanyUserManagementTest extends TestCase
         Mail::assertSent(UserInvitationMail::class, fn ($mail) => $mail->hasTo($pending->email));
     }
 
-    public function test_resend_invitation_is_rejected_for_registered_company_user(): void
+    public function test_super_admin_can_resend_password_reset_for_registered_company_user(): void
     {
         Mail::fake();
 
@@ -88,8 +88,8 @@ class CompanyUserManagementTest extends TestCase
         $this->actingAs($super)
             ->post(route('admin.companies.users.resend-invitation', [$company, $registered]))
             ->assertRedirect(route('admin.companies.users.index', $company))
-            ->assertSessionHas('error');
+            ->assertSessionHas('success');
 
-        Mail::assertNothingSent();
+        Mail::assertSent(UserInvitationMail::class, fn ($mail) => $mail->hasTo($registered->email));
     }
 }
