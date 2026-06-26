@@ -19,6 +19,7 @@ const props = defineProps({
     recurrenceLabels: { type: Object, default: () => ({}) },
     kinds: { type: Array, default: () => [] },
     recurrences: { type: Array, default: () => [] },
+    maxAttachmentMb: { type: Number, default: 512 },
 });
 
 const companyFilter = ref(props.filters?.company_id ? String(props.filters.company_id) : '');
@@ -227,6 +228,7 @@ function closeDayModal() {
             :recurrences="recurrences"
             :kind-labels="kindLabels"
             :recurrence-labels="recurrenceLabels"
+            :max-attachment-mb="maxAttachmentMb"
             @close="closeDayModal"
         />
 

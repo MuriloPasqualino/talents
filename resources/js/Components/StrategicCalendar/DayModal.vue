@@ -1,8 +1,9 @@
 <script setup>
 import Modal from '@/Components/Modal.vue';
+import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { router, useForm } from '@inertiajs/vue3';
-import { PaperClipIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -14,12 +15,16 @@ const props = defineProps({
     recurrences: { type: Array, default: () => [] },
     kindLabels: { type: Object, default: () => ({}) },
     recurrenceLabels: { type: Object, default: () => ({}) },
+    maxAttachmentMb: { type: Number, default: 512 },
 });
 
 const emit = defineEmits(['close']);
 
 const showCreateForm = ref(false);
 const editingSourceId = ref(null);
+const uploadProgress = ref(0);
+const uploadProcessing = ref(false);
+const uploadError = ref('');
 
 const createForm = useForm({
     title: '',
@@ -157,15 +162,38 @@ function uploadAttachments(sourceId, event) {
     const files = event.target.files;
     if (!files?.length) return;
 
+    uploadError.value = '';
+    const maxBytes = props.maxAttachmentMb * 1024 * 1024;
+    const oversized = Array.from(files).find((file) => file.size > maxBytes);
+    if (oversized) {
+        uploadError.value = `O arquivo "${oversized.name}" excede ${props.maxAttachmentMb} MB.`;
+        event.target.value = '';
+        return;
+    }
+
     const fd = new FormData();
     for (const file of files) {
         fd.append('files[]', file);
     }
 
+    uploadProcessing.value = true;
+    uploadProgress.value = 0;
+
     router.post(route('admin.strategic-calendar.attachments.store', sourceId), fd, {
         forceFormData: true,
         preserveScroll: true,
         preserveState: true,
+        onProgress: (p) => {
+            uploadProgress.value = p?.percentage ?? 0;
+        },
+        onFinish: () => {
+            uploadProcessing.value = false;
+            uploadProgress.value = 0;
+        },
+        onError: (errors) => {
+            const first = Object.values(errors ?? {})[0];
+            uploadError.value = Array.isArray(first) ? first[0] : String(first ?? 'Falha ao enviar anexo(s).');
+        },
     });
 
     event.target.value = '';
@@ -296,31 +324,15 @@ function destroyAttachment(attachmentId) {
                                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
                                             Anexos
                                         </p>
-                                        <ul v-if="item.attachments?.length" class="mt-2 space-y-1">
-                                            <li
-                                                v-for="att in item.attachments"
-                                                :key="att.id"
-                                                class="flex items-center justify-between gap-2 text-sm"
-                                            >
-                                                <a
-                                                    :href="att.url"
-                                                    class="inline-flex min-w-0 items-center gap-1.5 truncate font-medium text-talents-700 hover:underline"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
-                                                    <PaperClipIcon class="h-4 w-4 shrink-0" aria-hidden="true" />
-                                                    <span class="truncate">{{ att.name }}</span>
-                                                </a>
-                                                <button
-                                                    type="button"
-                                                    class="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                                                    title="Remover anexo"
-                                                    @click="destroyAttachment(att.id)"
-                                                >
-                                                    <TrashIcon class="h-4 w-4" aria-hidden="true" />
-                                                </button>
-                                            </li>
-                                        </ul>
+                                        <AttachmentList
+                                            v-if="item.attachments?.length"
+                                            class="mt-2"
+                                            :attachments="item.attachments"
+                                            :link-prefix="''"
+                                            compact
+                                            removable
+                                            @remove="destroyAttachment"
+                                        />
                                         <p v-else class="mt-2 text-xs text-slate-500">Nenhum anexo.</p>
                                         <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-talents-700 hover:text-talents-800">
                                             <PlusIcon class="h-4 w-4" aria-hidden="true" />
@@ -328,10 +340,25 @@ function destroyAttachment(attachmentId) {
                                             <input
                                                 type="file"
                                                 multiple
+                                                accept="application/pdf,image/*,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                                                 class="sr-only"
+                                                :disabled="uploadProcessing"
                                                 @change="uploadAttachments(item.source_id ?? item.id, $event)"
                                             />
                                         </label>
+                                        <p class="mt-1 text-xs text-slate-500">
+                                            PDF, imagens, documentos ou vídeos (máx. {{ maxAttachmentMb }} MB cada).
+                                        </p>
+                                        <p v-if="uploadError" class="mt-1 text-xs text-red-600">{{ uploadError }}</p>
+                                        <div v-if="uploadProcessing" class="mt-2 space-y-1">
+                                            <p class="text-xs text-slate-600">Enviando… {{ Math.round(uploadProgress) }}%</p>
+                                            <div class="h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                                <div
+                                                    class="h-full rounded-full bg-talents-600 transition-all"
+                                                    :style="{ width: `${uploadProgress}%` }"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div class="flex flex-wrap gap-2 pt-1">
@@ -363,19 +390,12 @@ function destroyAttachment(attachmentId) {
                                     <p v-if="item.description" class="mt-1 line-clamp-2 text-sm text-slate-600">
                                         {{ item.description }}
                                     </p>
-                                    <ul v-if="item.attachments?.length" class="mt-2 space-y-0.5">
-                                        <li v-for="att in item.attachments" :key="att.id">
-                                            <a
-                                                :href="att.url"
-                                                class="inline-flex items-center gap-1 text-xs font-medium text-talents-700 hover:underline"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                <PaperClipIcon class="h-3.5 w-3.5" aria-hidden="true" />
-                                                {{ att.name }}
-                                            </a>
-                                        </li>
-                                    </ul>
+                                    <AttachmentList
+                                        v-if="item.attachments?.length"
+                                        class="mt-2"
+                                        :attachments="item.attachments"
+                                        compact
+                                    />
                                     <p v-if="item.company?.name" class="mt-1 text-xs text-slate-500">
                                         {{ item.company.name }}
                                     </p>

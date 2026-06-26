@@ -11,7 +11,6 @@ use App\Support\StrategicCalendarPeriod;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -104,6 +103,7 @@ class StrategicCalendarController extends Controller
             'kindLabels' => collect(StrategicCalendarItemKind::cases())->mapWithKeys(
                 fn (StrategicCalendarItemKind $k) => [$k->value => $k->label()]
             ),
+            'maxAttachmentMb' => $this->maxAttachmentMb(),
         ]);
     }
 
@@ -116,13 +116,13 @@ class StrategicCalendarController extends Controller
             abort(404);
         }
 
-        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
-            abort(404);
-        }
+        return $attachment->toHttpResponse();
+    }
 
-        return Storage::disk($attachment->disk)->download(
-            $attachment->path,
-            $attachment->downloadName(),
-        );
+    private function maxAttachmentMb(): int
+    {
+        $maxKb = (int) config('strategic_calendar.max_attachment_kb', 524288);
+
+        return (int) max(1, (int) floor($maxKb / 1024));
     }
 }

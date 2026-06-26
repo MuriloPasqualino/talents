@@ -1,17 +1,19 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue';
+import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { PaperClipIcon, PlusIcon, TrashIcon } from '@heroicons/vue/24/outline';
-import { computed } from 'vue';
+import { PlusIcon } from '@heroicons/vue/24/outline';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     item: Object,
     companies: Array,
     kinds: Array,
     recurrences: Array,
+    maxAttachmentMb: { type: Number, default: 512 },
 });
 
 const occursOn =
@@ -35,6 +37,9 @@ const form = useForm({
 
 const showRecurrenceEnd = computed(() => Boolean(form.recurrence));
 const attachments = computed(() => props.item.attachments ?? []);
+const uploadProgress = ref(0);
+const uploadProcessing = ref(false);
+const uploadError = ref('');
 
 const submit = () => {
     form.transform((data) => ({
@@ -49,14 +54,37 @@ function uploadAttachments(event) {
     const files = event.target.files;
     if (!files?.length) return;
 
+    uploadError.value = '';
+    const maxBytes = props.maxAttachmentMb * 1024 * 1024;
+    const oversized = Array.from(files).find((file) => file.size > maxBytes);
+    if (oversized) {
+        uploadError.value = `O arquivo "${oversized.name}" excede ${props.maxAttachmentMb} MB.`;
+        event.target.value = '';
+        return;
+    }
+
     const fd = new FormData();
     for (const file of files) {
         fd.append('files[]', file);
     }
 
+    uploadProcessing.value = true;
+    uploadProgress.value = 0;
+
     router.post(route('admin.strategic-calendar.attachments.store', props.item.id), fd, {
         forceFormData: true,
         preserveScroll: true,
+        onProgress: (p) => {
+            uploadProgress.value = p?.percentage ?? 0;
+        },
+        onFinish: () => {
+            uploadProcessing.value = false;
+            uploadProgress.value = 0;
+        },
+        onError: (errors) => {
+            const first = Object.values(errors ?? {})[0];
+            uploadError.value = Array.isArray(first) ? first[0] : String(first ?? 'Falha ao enviar anexo(s).');
+        },
     });
 
     event.target.value = '';
@@ -137,38 +165,40 @@ function destroyAttachment(attachmentId) {
             </div>
             <div>
                 <InputLabel value="Anexos" />
-                <ul v-if="attachments.length" class="mt-2 space-y-2">
-                    <li
-                        v-for="att in attachments"
-                        :key="att.id"
-                        class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                    >
-                        <a
-                            :href="att.url"
-                            class="inline-flex min-w-0 items-center gap-2 truncate font-medium text-talents-700 hover:underline"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            <PaperClipIcon class="h-4 w-4 shrink-0" aria-hidden="true" />
-                            <span class="truncate">{{ att.name }}</span>
-                        </a>
-                        <button
-                            type="button"
-                            class="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                            title="Remover anexo"
-                            @click="destroyAttachment(att.id)"
-                        >
-                            <TrashIcon class="h-4 w-4" aria-hidden="true" />
-                        </button>
-                    </li>
-                </ul>
+                <AttachmentList
+                    v-if="attachments.length"
+                    class="mt-2"
+                    :attachments="attachments"
+                    :link-prefix="''"
+                    removable
+                    @remove="destroyAttachment"
+                />
                 <p v-else class="mt-2 text-sm text-slate-500">Nenhum anexo enviado.</p>
                 <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-talents-700 hover:text-talents-800">
                     <PlusIcon class="h-4 w-4" aria-hidden="true" />
                     Adicionar anexos
-                    <input type="file" multiple class="sr-only" @change="uploadAttachments" />
+                    <input
+                        type="file"
+                        multiple
+                        accept="application/pdf,image/*,video/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                        class="sr-only"
+                        :disabled="uploadProcessing"
+                        @change="uploadAttachments"
+                    />
                 </label>
-                <p class="mt-1 text-xs text-gray-500">PDF, imagens ou documentos de apoio (máx. 10 MB cada).</p>
+                <p class="mt-1 text-xs text-gray-500">
+                    PDF, imagens, documentos ou vídeos (máx. {{ maxAttachmentMb }} MB cada).
+                </p>
+                <p v-if="uploadError" class="mt-1 text-sm text-red-600">{{ uploadError }}</p>
+                <div v-if="uploadProcessing" class="mt-2 space-y-1">
+                    <p class="text-sm text-gray-600">Enviando arquivo… {{ Math.round(uploadProgress) }}%</p>
+                    <div class="h-2 overflow-hidden rounded-full bg-slate-200">
+                        <div
+                            class="h-full rounded-full bg-talents-600 transition-all"
+                            :style="{ width: `${uploadProgress}%` }"
+                        />
+                    </div>
+                </div>
             </div>
             <div>
                 <InputLabel for="company_id" value="Empresa (opcional)" />

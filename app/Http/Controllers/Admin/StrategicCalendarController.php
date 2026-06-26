@@ -13,7 +13,6 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -101,6 +100,7 @@ class StrategicCalendarController extends Controller
                 'label' => $k->label(),
             ])->values()->all(),
             'recurrences' => $this->recurrenceOptions(),
+            'maxAttachmentMb' => $this->maxAttachmentMb(),
         ]);
     }
 
@@ -139,6 +139,8 @@ class StrategicCalendarController extends Controller
                     'id' => $a->id,
                     'name' => $a->downloadName(),
                     'url' => route('admin.strategic-calendar.attachment-download', $a->id),
+                    'mime' => $a->mime,
+                    'size' => $a->size,
                 ])->values()->all(),
             ],
             'companies' => Company::query()->orderBy('name')->get(['id', 'name']),
@@ -147,6 +149,7 @@ class StrategicCalendarController extends Controller
                 'label' => $k->label(),
             ]),
             'recurrences' => $this->recurrenceOptions(),
+            'maxAttachmentMb' => $this->maxAttachmentMb(),
         ]);
     }
 
@@ -180,7 +183,7 @@ class StrategicCalendarController extends Controller
 
     public function attachmentsStore(Request $request, StrategicCalendarItem $item): RedirectResponse
     {
-        $maxKb = (int) config('strategic_calendar.max_attachment_kb', 10240);
+        $maxKb = (int) config('strategic_calendar.max_attachment_kb', 524288);
 
         $request->validate([
             'files' => ['required', 'array', 'min:1'],
@@ -213,14 +216,14 @@ class StrategicCalendarController extends Controller
 
     public function attachmentDownload(StrategicCalendarItemAttachment $attachment): StreamedResponse|Response
     {
-        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
-            abort(404);
-        }
+        return $attachment->toHttpResponse();
+    }
 
-        return Storage::disk($attachment->disk)->download(
-            $attachment->path,
-            $attachment->downloadName(),
-        );
+    private function maxAttachmentMb(): int
+    {
+        $maxKb = (int) config('strategic_calendar.max_attachment_kb', 524288);
+
+        return (int) max(1, (int) floor($maxKb / 1024));
     }
 
     private function filteredMasterQuery(Request $request)

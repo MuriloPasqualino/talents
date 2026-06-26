@@ -346,6 +346,60 @@ class StrategicCalendarTest extends TestCase
         Storage::disk('public')->assertExists($item->attachments->first()->path);
     }
 
+    public function test_admin_can_upload_video_attachment(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->superAdmin()->create();
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Com vídeo',
+            'description' => 'Treinamento',
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-07-01',
+            'company_id' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/calendario-estrategico/'.$item->id.'/anexos', [
+                'files' => [
+                    UploadedFile::fake()->create('treinamento.mp4', 5000, 'video/mp4'),
+                ],
+            ])
+            ->assertRedirect();
+
+        $item->refresh();
+        $this->assertCount(1, $item->attachments);
+        $this->assertTrue($item->attachments->first()->isVideo());
+        Storage::disk('public')->assertExists($item->attachments->first()->path);
+    }
+
+    public function test_admin_rejects_attachment_above_max_size(): void
+    {
+        Storage::fake('public');
+        config(['strategic_calendar.max_attachment_kb' => 100]);
+
+        $admin = User::factory()->superAdmin()->create();
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Com anexo grande',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-07-01',
+            'company_id' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/admin/calendario-estrategico/'.$item->id.'/anexos', [
+                'files' => [
+                    UploadedFile::fake()->create('grande.mp4', 101, 'video/mp4'),
+                ],
+            ])
+            ->assertSessionHasErrors('files.0');
+
+        $this->assertCount(0, $item->fresh()->attachments);
+    }
+
     public function test_client_can_download_attachment_for_global_item(): void
     {
         Storage::fake('public');
@@ -374,8 +428,47 @@ class StrategicCalendarTest extends TestCase
 
         $user = User::factory()->companyAdmin($company->id)->create();
 
-        $this->actingAs($user)
-            ->get('/client/calendario-estrategico/anexos/'.$attachment->id.'/download')
-            ->assertOk();
+        $response = $this->actingAs($user)
+            ->get('/client/calendario-estrategico/anexos/'.$attachment->id.'/download');
+
+        $response->assertOk();
+        $this->assertStringContainsString('attachment', (string) $response->headers->get('Content-Disposition'));
+    }
+
+    public function test_client_video_attachment_served_inline(): void
+    {
+        Storage::fake('public');
+
+        $company = $this->baseCompany();
+        $company->update(['strategic_calendar_access' => true]);
+
+        $path = 'strategic-calendar/video.mp4';
+        Storage::disk('public')->put($path, 'fake-video-content');
+
+        $item = StrategicCalendarItem::query()->create([
+            'title' => 'Global com vídeo',
+            'description' => null,
+            'kind' => StrategicCalendarItemKind::Event,
+            'occurs_on' => '2026-05-20',
+            'company_id' => null,
+        ]);
+
+        $attachment = $item->attachments()->create([
+            'disk' => 'public',
+            'path' => $path,
+            'original_name' => 'treinamento.mp4',
+            'mime' => 'video/mp4',
+            'size' => 18,
+        ]);
+
+        $user = User::factory()->companyAdmin($company->id)->create();
+
+        $response = $this->actingAs($user)
+            ->get('/client/calendario-estrategico/anexos/'.$attachment->id.'/download');
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'video/mp4');
+        $this->assertStringContainsString('inline', (string) $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('treinamento.mp4', (string) $response->headers->get('Content-Disposition'));
     }
 }

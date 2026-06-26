@@ -154,7 +154,7 @@ class StrategicCalendarOccurrenceExpander
     }
 
     /**
-     * @return list<array{id:int, name:string, url:string|null}>
+     * @return list<array{id:int, name:string, mime:string|null, size:int|null, url:string|null}>
      */
     private static function attachmentsPayload(
         StrategicCalendarItem $item,
@@ -167,6 +167,8 @@ class StrategicCalendarOccurrenceExpander
         return $item->attachments->map(fn ($attachment) => [
             'id' => $attachment->id,
             'name' => $attachment->downloadName(),
+            'mime' => $attachment->mime,
+            'size' => $attachment->size,
             'url' => $attachmentDownloadRouteName
                 ? route($attachmentDownloadRouteName, $attachment->id)
                 : null,

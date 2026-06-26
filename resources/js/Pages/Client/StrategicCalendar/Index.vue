@@ -1,5 +1,6 @@
 <script setup>
 import StrategicCalendar from '@/Components/StrategicCalendar.vue';
+import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import ClientLayout from '@/Layouts/ClientLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
@@ -97,18 +98,11 @@ const goToday = () => {
                             <p v-if="row.description" class="mt-2 line-clamp-2 text-sm text-slate-600">
                                 {{ row.description }}
                             </p>
-                            <ul v-if="row.attachments?.length" class="mt-2 space-y-1">
-                                <li v-for="att in row.attachments" :key="att.id">
-                                    <a
-                                        :href="att.url"
-                                        class="inline-flex text-sm font-medium text-talents-700 hover:underline"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        Anexo: {{ att.name }}
-                                    </a>
-                                </li>
-                            </ul>
+                            <AttachmentList
+                                v-if="row.attachments?.length"
+                                class="mt-2"
+                                :attachments="row.attachments"
+                            />
                         </div>
                         <span class="shrink-0 text-sm tabular-nums text-slate-500">{{
                             row.occurs_on ? new Date(row.occurs_on).toLocaleDateString('pt-BR') : ''

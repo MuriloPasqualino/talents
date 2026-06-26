@@ -1,4 +1,5 @@
 <script setup>
+import AttachmentList from '@/Components/StrategicCalendar/AttachmentList.vue';
 import StrategicKindBadge from '@/Components/StrategicKindBadge.vue';
 import { ChevronLeftIcon, ChevronRightIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import { Link, router } from '@inertiajs/vue3';
@@ -462,18 +463,11 @@ function monthCellClass(cell) {
                             {{ it.description }}
                         </p>
                         <p v-if="it.recurrence_label" class="mt-2 text-xs text-violet-600">Repete: {{ it.recurrence_label }}</p>
-                        <ul v-if="it.attachments?.length" class="mt-2 space-y-1">
-                            <li v-for="att in it.attachments" :key="att.id">
-                                <a
-                                    :href="att.url"
-                                    class="inline-flex text-sm font-medium text-talents-700 hover:underline"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Anexo: {{ att.name }}
-                                </a>
-                            </li>
-                        </ul>
+                        <AttachmentList
+                            v-if="it.attachments?.length"
+                            class="mt-2"
+                            :attachments="it.attachments"
+                        />
                         <p v-if="it.company?.name" class="mt-2 text-xs text-slate-500">
                             Empresa: {{ it.company.name }}
                         </p>
@@ -524,18 +518,13 @@ function monthCellClass(cell) {
                                         {{ it.description }}
                                     </p>
                                     <p v-if="it.recurrence_label" class="mt-1 text-xs text-violet-600">{{ it.recurrence_label }}</p>
-                                    <ul v-if="it.attachments?.length" class="mt-1 space-y-0.5">
-                                        <li v-for="att in it.attachments" :key="att.id">
-                                            <a
-                                                :href="att.url"
-                                                class="inline-block text-xs font-medium text-talents-700 hover:underline"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                {{ att.name }}
-                                            </a>
-                                        </li>
-                                    </ul>
+                                    <AttachmentList
+                                        v-if="it.attachments?.length"
+                                        class="mt-1"
+                                        :attachments="it.attachments"
+                                        compact
+                                        :link-prefix="''"
+                                    />
                                     <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
                                 </div>
                                 <Link
@@ -597,18 +586,11 @@ function monthCellClass(cell) {
                                 <p v-if="it.description" class="mt-2 line-clamp-3 text-sm text-slate-600">
                                     {{ it.description }}
                                 </p>
-                                <ul v-if="it.attachments?.length" class="mt-2 space-y-1">
-                                    <li v-for="att in it.attachments" :key="att.id">
-                                        <a
-                                            :href="att.url"
-                                            class="inline-flex text-sm font-medium text-talents-700 hover:underline"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            Anexo: {{ att.name }}
-                                        </a>
-                                    </li>
-                                </ul>
+                                <AttachmentList
+                                    v-if="it.attachments?.length"
+                                    class="mt-2"
+                                    :attachments="it.attachments"
+                                />
                                 <p v-if="it.company?.name" class="mt-1 text-xs text-slate-500">{{ it.company.name }}</p>
                             </li>
                         </ul>
