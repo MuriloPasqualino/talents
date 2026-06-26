@@ -102,24 +102,35 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
-        <section class="mx-auto max-w-6xl px-4 py-16 md:py-24">
-            <div class="max-w-3xl">
-                <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
-                    Consultoria estratégica em gestão de pessoas
-                </p>
-                <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
-                    Transformamos pessoas em estratégias de crescimento.
-                </h1>
-                <p class="mt-6 text-lg leading-relaxed text-slate-600">
-                    A Talents é uma consultoria estratégica em gestão de pessoas que ajuda empresas e profissionais
-                    através de comportamento, desenvolvimento humano e direcionamento estratégico.
-                </p>
-                <div class="mt-8 flex flex-wrap gap-3">
-                    <Link :href="route('landing.empresas')" class="btn-primary"> Para Empresas </Link>
-                    <Link :href="route('landing.pessoas')" class="btn-secondary"> Para Pessoas </Link>
-                    <Link :href="route('landing.contato')" class="btn-ghost"> Falar com Especialista </Link>
+        <section class="relative overflow-hidden lg:min-h-[560px]">
+            <div class="relative z-10 mx-auto max-w-6xl px-4 py-16 md:py-24 lg:py-28">
+                <div class="lg:max-w-[46%]">
+                    <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
+                        Consultoria estratégica em gestão de pessoas
+                    </p>
+                    <h1 class="mt-4 text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
+                        Transformamos pessoas em estratégias de crescimento.
+                    </h1>
+                    <p class="mt-6 text-lg leading-relaxed text-slate-600">
+                        A Talents é uma consultoria estratégica em gestão de pessoas que ajuda empresas e profissionais
+                        através de comportamento, desenvolvimento humano e direcionamento estratégico.
+                    </p>
+                    <div class="mt-8 flex flex-wrap gap-3">
+                        <Link :href="route('landing.empresas')" class="btn-primary"> Para Empresas </Link>
+                        <Link :href="route('landing.pessoas')" class="btn-secondary"> Para Pessoas </Link>
+                        <Link :href="route('landing.contato')" class="btn-ghost"> Falar com Especialista </Link>
+                    </div>
                 </div>
             </div>
+
+            <img
+                src="/images/hero-home.png"
+                alt="Profissional apresentando perfis comportamentais: Executor, Comunicador, Planejador e Analista"
+                class="mt-10 h-auto w-full rounded-l-[3rem] object-cover object-[72%_center] md:mt-12 md:max-h-[480px] lg:absolute lg:inset-y-0 lg:right-0 lg:mt-0 lg:h-full lg:max-h-none lg:w-1/2 lg:rounded-none lg:object-[78%_center]"
+                width="1124"
+                height="901"
+                fetchpriority="high"
+            />
         </section>
 
         <section class="py-16">
