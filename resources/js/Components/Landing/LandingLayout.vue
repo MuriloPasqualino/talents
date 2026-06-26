@@ -10,12 +10,7 @@ const props = defineProps({
     canonical: { type: String, default: null },
     canLogin: Boolean,
     canRegister: Boolean,
-    overlayHeader: { type: Boolean, default: false },
 });
-
-const headerClass = computed(() =>
-    props.overlayHeader ? 'absolute inset-x-0 top-0 z-30' : 'landing-header',
-);
 
 const mobileOpen = ref(false);
 const showContactModal = ref(false);
@@ -78,8 +73,8 @@ defineExpose({ openContact });
         <slot name="head" />
     </Head>
 
-    <div class="app-shell min-h-screen scroll-smooth text-slate-900" :class="{ relative: overlayHeader }">
-        <header :class="headerClass">
+    <div class="app-shell min-h-screen scroll-smooth text-slate-900">
+        <header class="landing-header">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
                 <Link href="/" class="inline-flex shrink-0 items-center">
                     <img src="/images/logo.png" alt="Talents — Gestão de Pessoas" class="h-14 w-auto md:h-16" />
@@ -126,10 +121,7 @@ defineExpose({ openContact });
                     </button>
                     <button
                         type="button"
-                        :class="[
-                            'rounded-lg p-2 text-slate-600',
-                            overlayHeader ? 'hover:bg-white/20' : 'hover:bg-slate-100',
-                        ]"
+                        class="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
                         aria-label="Abrir menu"
                         @click="mobileOpen = !mobileOpen"
                     >

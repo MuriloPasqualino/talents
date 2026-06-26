@@ -95,7 +95,6 @@ const organizationJsonLd = computed(() =>
         :description="description"
         :can-login="canLogin"
         :can-register="canRegister"
-        :overlay-header="true"
     >
         <template #head>
             <component :is="'script'" type="application/ld+json" head-key="jsonld-org">
@@ -103,8 +102,8 @@ const organizationJsonLd = computed(() =>
             </component>
         </template>
 
-        <section class="relative overflow-hidden lg:min-h-[640px]">
-            <div class="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-28 md:pb-24 md:pt-32 lg:pb-28 lg:pt-40">
+        <section class="relative overflow-hidden lg:min-h-[560px]">
+            <div class="relative z-10 mx-auto max-w-6xl px-4 py-16 md:py-24 lg:py-28">
                 <div class="lg:max-w-[46%]">
                     <p class="text-sm font-semibold uppercase tracking-widest text-talents-600">
                         Consultoria estratégica em gestão de pessoas
@@ -127,7 +126,7 @@ const organizationJsonLd = computed(() =>
             <img
                 src="/images/hero-home.png"
                 alt="Profissional apresentando perfis comportamentais: Executor, Comunicador, Planejador e Analista"
-                class="pointer-events-none relative z-0 mx-auto mt-10 w-full max-w-lg object-contain md:mt-12 lg:absolute lg:-top-[6%] lg:right-0 lg:mx-0 lg:mt-0 lg:h-[112%] lg:w-auto lg:max-w-none lg:translate-x-[5%]"
+                class="mt-10 h-auto w-full rounded-l-[3rem] object-cover object-[72%_center] md:mt-12 md:max-h-[480px] lg:absolute lg:inset-y-0 lg:right-0 lg:mt-0 lg:h-full lg:max-h-none lg:w-1/2 lg:rounded-none lg:object-[78%_center]"
                 width="1124"
                 height="901"
                 fetchpriority="high"
